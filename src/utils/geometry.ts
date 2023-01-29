@@ -1,3 +1,5 @@
+import { resourceLimits } from "worker_threads";
+
 interface ImageBound {
   left: number;
   top: number;
@@ -14,38 +16,18 @@ export function calculateBounds(canvasWidth: number, canvasHeight: number, image
 
   if ((canvasWidth >= canvasHeight && imageWidth >= imageHeight) ||
       (canvasHeight > canvasWidth && imageHeight >= imageWidth)) {
-      let scale = canvasWidth / imageWidth;
-      result.width = imageWidth * scale;
-      result.height = imageHeight * scale;
+    let scale = Math.min(canvasWidth / imageWidth, canvasHeight / imageHeight);
+    result.width = imageWidth * scale;
+    result.height = imageHeight * scale;
+    result.top = (canvasHeight - result.height)/2;
+    result.left = (canvasWidth - result.width)/2;
   } else {
     let scale = canvasWidth / imageHeight;
     result.width = imageHeight * scale;
     result.height = imageWidth * scale;
+    result.rotate = true;
   }
-    // canvas 20 image 10 => 2
-    if (canvasWidth >= canvasHeight) {
-        if (imageWidth >= imageHeight) {
-            let scale = canvasWidth / imageWidth;
-            result.width = imageWidth * scale;
-            result.height = imageHeight * scale;
-        } else {
-            let scale = canvasWidth / imageHeight;
-            result.rotate = true;
-            result.width = imageHeight * scale;
-            result.height = imageWidth * scale;
-        }
-    } else {
-        // canvasHeight > canvasWidth
-        if (imageHeight > imageWidth) {
-            let scale = canvasWidth / imageWidth;
-            result.width = imageWidth * scale;
-            result.height = imageHeight * scale;
-        } else {
-            let scale = canvasWidth / imageHeight;
-            result.width = imageHeight * scale;
-            result.height = imageWidth * scale;
-        }
-    }
+
     
     result.rotate = rotate;
     return result;
