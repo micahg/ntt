@@ -1,4 +1,4 @@
-interface ImageBound {
+export interface ImageBound {
   left: number;
   top: number;
   width: number;

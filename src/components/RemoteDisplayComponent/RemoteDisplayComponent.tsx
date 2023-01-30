@@ -1,4 +1,6 @@
 import { createRef, useEffect } from 'react';
+import { ImageBound, calculateBounds } from '../../utils/geometry';
+
 import styles from './RemoteDisplayComponent.module.css';
 
 interface RemoteDisplayComponentProps {}
@@ -7,25 +9,17 @@ const RemoteDisplayComponent = () => {
   const imgURI: string = 'https://www.dndbeyond.com/attachments/5/762/map-gnomegarde-pc.jpg';
   const fowRef = createRef<HTMLCanvasElement>();
   const mapRef = createRef<HTMLDivElement>();
-  let image: HTMLOrSVGImageElement | null = null;
+  let image: HTMLImageElement | null = null;
 
   const imgLoaded = () => {
     if (!image) {
+      // TODO SIGNAL ERROR
       console.error(`Image is invalid`);
       return;
     }
+
     const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
     const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
-
-    // const imageWide = img.width >= img.height;
-    // const canvasWide = width >= height;
-
-    // if (imageWide !== canvasWide) {
-    //   img.style.height = `${width}px`;
-    //   img.style.width = `${height}px`;
-    //   img.style.transform = 'rotate(90deg)';
-    //   img.style.zIndex = "-1";
-    // }
 
     console.log(`Image  is ${image.width} x ${image.height}`);
     console.log(`Window is ${width} x ${height}`);
@@ -37,13 +31,27 @@ const RemoteDisplayComponent = () => {
       return;
     }
     const ctx = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
     if (!ctx) {
       // TODO SIGNAL ERROR
       console.error(`Unable to get canvas context`);
       return;
     }
+
+    // fix rotation shit
+    // https://stackoverflow.com/questions/17411991/html5-canvas-rotate-image
+    let bounds = calculateBounds(canvas.width, canvas.height, image.width, image.height);
+    if (bounds.rotate) {
+      image.style.transform = 'rotate(90deg)';
+    }
+
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(image, 10, 10, 90, 90)
+    ctx.drawImage(image, bounds.left, bounds.top, bounds.width, bounds.height);
     ctx.fillStyle = "#FF0000";
     ctx.fillRect(0,0,150,75);
   }
@@ -61,7 +69,7 @@ const RemoteDisplayComponent = () => {
         console.log('Image already loaded');
         return;
       }
-      image = this as HTMLOrSVGImageElement;
+      image = this as HTMLImageElement;
       imgLoaded();
     }
     img.onerror = function() { imgFailed(); }
