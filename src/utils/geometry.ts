@@ -1,5 +1,3 @@
-import { resourceLimits } from "worker_threads";
-
 interface ImageBound {
   left: number;
   top: number;
@@ -22,9 +20,11 @@ export function calculateBounds(canvasWidth: number, canvasHeight: number, image
     result.top = (canvasHeight - result.height)/2;
     result.left = (canvasWidth - result.width)/2;
   } else {
-    let scale = canvasWidth / imageHeight;
-    result.width = imageHeight * scale;
-    result.height = imageWidth * scale;
+    let scale = Math.min(canvasWidth / imageHeight, canvasHeight / imageWidth);
+    result.width =  imageWidth * scale;
+    result.height = imageHeight * scale;
+    result.top = (canvasHeight - result.width)/2;
+    result.left = (canvasWidth - result.height)/2;
     result.rotate = true;
   }
 
