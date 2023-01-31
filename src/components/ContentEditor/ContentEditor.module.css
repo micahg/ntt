@@ -1,1 +1,30 @@
-.ContentEditor {}
+.ContentEditor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.ContentContainer {
+  position: absolute;
+  margin-bottom: 4em;
+}
+
+.ContentCanvas {
+  
+}
+
+.ControlsContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: right;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 1;
+}
+
+.ControlsContainer button{
+  border-radius: 12px;
+  margin: 0.5em;
+  padding: 0.5em
+}
