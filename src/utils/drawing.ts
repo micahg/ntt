@@ -19,7 +19,7 @@ export function loadImage(uri: string): Promise<HTMLImageElement> {
   });
 }
 
-export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): Promise<void> {
 
   const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
   const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) - CONTROLS_HEIGHT;
@@ -33,11 +33,7 @@ export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, 
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  if (!ctx) {
-    // TODO SIGNAL ERROR
-    console.error(`Unable to get canvas context`);
-    return;
-  }
+  if (!ctx) return Promise.reject(`Unable to get canvas context`);
 
   let bounds = calculateBounds(canvas.width, canvas.height, image.width, image.height);
   console.log(`Scaled Image is ${bounds.width} x ${bounds.height}`)
@@ -51,4 +47,6 @@ export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, 
   ctx.restore();
 
   ctx.save();
+
+  return Promise.resolve();
 }
