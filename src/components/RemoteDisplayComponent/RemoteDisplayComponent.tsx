@@ -1,4 +1,5 @@
 import { createRef, useEffect } from 'react';
+import { isContext } from 'vm';
 import { ImageBound, calculateBounds } from '../../utils/geometry';
 
 import styles from './RemoteDisplayComponent.module.css';
@@ -45,14 +46,17 @@ const RemoteDisplayComponent = () => {
     // fix rotation shit
     // https://stackoverflow.com/questions/17411991/html5-canvas-rotate-image
     let bounds = calculateBounds(canvas.width, canvas.height, image.width, image.height);
-    if (bounds.rotate) {
-      image.style.transform = 'rotate(90deg)';
-    }
-
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(image, bounds.left, bounds.top, bounds.width, bounds.height);
     ctx.fillStyle = "#FF0000";
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2);
+    if (bounds.rotate) {
+      ctx.rotate(90 * Math.PI/180);
+      ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
+    } else {
+      ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
+    }
+    ctx.restore();
     ctx.fillRect(0,0,150,75);
   }
 
