@@ -43,8 +43,6 @@ const RemoteDisplayComponent = () => {
       return;
     }
 
-    // fix rotation shit
-    // https://stackoverflow.com/questions/17411991/html5-canvas-rotate-image
     let bounds = calculateBounds(canvas.width, canvas.height, image.width, image.height);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#FF0000";
@@ -52,10 +50,8 @@ const RemoteDisplayComponent = () => {
     ctx.translate(canvas.width/2, canvas.height/2);
     if (bounds.rotate) {
       ctx.rotate(90 * Math.PI/180);
-      ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
-    } else {
-      ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
     }
+    ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
     ctx.restore();
     ctx.fillRect(0,0,150,75);
   }
