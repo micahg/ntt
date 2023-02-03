@@ -10,7 +10,6 @@ export const CONTROLS_HEIGHT = 46;
  */
 export function loadImage(uri: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-
     const img = new Image();
     img.id = 'mapImage'
     img.onload = function() { resolve(this as HTMLImageElement); }
@@ -46,7 +45,14 @@ export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, 
   ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
   ctx.restore();
 
-  ctx.save();
+  return Promise.resolve();
+}
 
+export function setupOverlayCanvas(background: HTMLCanvasElement, overlay: HTMLCanvasElement, overlayCtx: CanvasRenderingContext2D): Promise<void> {
+  overlay.width = background.width;
+  overlay.height = background.height;
+  overlay.style.width = `${background.width}px`;
+  overlay.style.height = `${background.height}px`;
+  overlayCtx.save();
   return Promise.resolve();
 }

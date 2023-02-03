@@ -10,7 +10,18 @@
 }
 
 .ContentCanvas {
+  z-index: 1;
+  top: 0;
+  left: 0;
+  position: absolute;
+}
+
+.OverlayCanvas {
+  z-index: 2;
   cursor: pointer;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .ControlsContainer {
@@ -23,8 +34,26 @@
   z-index: 1;
 }
 
-.ControlsContainer button{
+.ControlsContainer button {
   border-radius: 12px;
   margin: 0.5em;
-  padding: 0.5em
+  padding: 0.5em;
+  transition-duration: 0.4s;
+  background-color: gray;
+  color: black;
+}
+
+.ControlsContainer button:hover {
+  background-color: lightgray;
+  color: black;
+}
+
+.ControlsContainer button:active {
+  background-color: whitesmoke;
+  color: black;
+}
+
+.ContentContainer button:disabled {
+  background-color: white;
+  color: gray;
 }

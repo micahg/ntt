@@ -1,5 +1,5 @@
 import { createRef, useEffect } from 'react';
-import { IMG_URI, loadImage, renderImage } from '../../utils/drawing';
+import { IMG_URI, loadImage, renderImage, setupOverlayCanvas } from '../../utils/drawing';
 import styles from './ContentEditor.module.css';
 
 interface ContentEditorProps {}
@@ -7,6 +7,7 @@ interface ContentEditorProps {}
 const ContentEditor = () => {
 
   const contentCanvasRef = createRef<HTMLCanvasElement>();
+  const overlayCanvasRef = createRef<HTMLCanvasElement>();
   let mouseStartX: number = 0;
   let mouseStartY: number = 0;
   let mouseEndX: number = 0;
@@ -15,27 +16,42 @@ const ContentEditor = () => {
   let baseData: ImageData | null = null;
 
   useEffect(() => {
-    const canvas = contentCanvasRef.current;
-    if (!canvas) {
+    const contentCnvs = contentCanvasRef.current;
+    if (!contentCnvs) {
       // TODO SIGNAL ERROR
-      console.error(`Unable to get canvas ref`);
+      console.error(`Unable to get content canvas ref`);
       return;
     }
 
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) {
+    const overlayCnvs = overlayCanvasRef.current;
+    if (!overlayCnvs) {
       // TODO SIGNAL ERROR
-      console.error(`Unable to get canvas context`);
+      console.error(`Unable to get overlay canvas ref`)
+      return;
+    }
+
+    const contentCtx = contentCnvs.getContext('2d', { alpha: false });
+    if (!contentCtx) {
+      // TODO SIGNAL ERROR
+      console.error(`Unable to get content canvas context`);
+      return;
+    }
+
+    const overlayCtx = overlayCnvs.getContext('2d', {alpha: true})
+    if (!overlayCtx) {
+      // TODO SIGNAL ERROR
+      console.error('Unable to get overlay canvas context')
       return;
     }
 
     loadImage(IMG_URI)
-      .then(img => renderImage(img, canvas, ctx))
+      .then(img => renderImage(img, contentCnvs, contentCtx))
+      .then(() => setupOverlayCanvas(contentCnvs, overlayCnvs, overlayCtx))
       .then(() => {
-        baseData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        canvas.addEventListener('mousedown', mouseDown);
-        canvas.addEventListener('mouseup', mouseUp);    
-        canvas.addEventListener('mousemove', (event: MouseEvent) => mouseMove(event, ctx));
+        baseData = overlayCtx.getImageData(0, 0, contentCnvs.width, contentCnvs.height);
+        overlayCnvs.addEventListener('mousedown', mouseDown);
+        overlayCnvs.addEventListener('mouseup', mouseUp);    
+        overlayCnvs.addEventListener('mousemove', (event: MouseEvent) => mouseMove(event, overlayCtx));
       })
       .catch(err => {
         // TODO SIGNAL ERROR
@@ -69,7 +85,8 @@ const ContentEditor = () => {
   return (
     <div className={styles.ContentEditor} data-testid="ContentEditor">
       <div className={styles.ContentContainer} data-testid="RemoteDisplayComponent">
-        <canvas id='fow' className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
+        <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
+        <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
       </div>
       <div className={styles.ControlsContainer}>
         <button>Pan and Zoom</button>
