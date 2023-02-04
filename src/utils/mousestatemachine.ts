@@ -50,8 +50,7 @@ export class MouseStateMachine implements StateMachine {
   }
 
   doComplete(args: any[]) {
-    let evt: MouseEvent = args[0];
-    if (this.selectedCallback && this.startX != this.endX && this.startY != this.endY) {
+    if (this.selectedCallback && this.startX !== this.endX && this.startY !== this.endY) {
       this.selectedCallback(this.startX, this.startY, this.endX, this.endY);
     }
     this.startX = -1;
