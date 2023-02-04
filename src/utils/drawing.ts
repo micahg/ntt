@@ -24,9 +24,6 @@ export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, 
   const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
   const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) - CONTROLS_HEIGHT;
 
-  console.log(`Image  is ${image.width} x ${image.height}`);
-  console.log(`Window is ${width} x ${height}`);
-  console.log(`Adjusted window is ${width} x ${height}`)
 
   canvas.width = width;
   canvas.height = height;
