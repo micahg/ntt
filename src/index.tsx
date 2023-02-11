@@ -3,15 +3,17 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './components/App/App';
 import reportWebVitals from './reportWebVitals';
+import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { AppReducer } from './reducers/AppReducer';
 import { EnvironmentMiddleware } from './middleware/EnvironmentMiddleware';
-import { Provider } from 'react-redux';
+import { ContentMiddleware } from './middleware/ContentMiddleware';
 
 const store = configureStore({
   reducer: AppReducer,
   middleware: [
     EnvironmentMiddleware,
+    ContentMiddleware,
   ],
 });
 
