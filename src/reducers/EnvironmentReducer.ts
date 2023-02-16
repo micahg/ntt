@@ -1,7 +1,7 @@
 import { PayloadAction } from "@reduxjs/toolkit";
 
 export type EnvironmentReducerState = {
-    readonly api: String |undefined;
+    readonly api: string |undefined;
 };
 
 const initialState: EnvironmentReducerState = {

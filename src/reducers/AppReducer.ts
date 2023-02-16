@@ -1,6 +1,5 @@
 import { combineReducers } from 'redux';
 import { ContentReducer, ContentReducerState } from './ContentReducer';
-// import { EducatorReducer, EducatorReducerState } from './EducatorReducer';
 import { EnvironmentReducer, EnvironmentReducerState } from './EnvironmentReducer';
 
 export type AppReducerState = {
