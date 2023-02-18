@@ -52,7 +52,8 @@ const RemoteDisplayComponent = () => {
       }
 
       if ('overlay' in js && apiUrl) {
-        loadImage(`${apiUrl}/${js.overlay}`).then((img: HTMLImageElement) => {
+        let ts: number = new Date().getTime();
+        loadImage(`${apiUrl}/${js.overlay}?${ts}`).then((img: HTMLImageElement) => {
           renderImage(img, overlayCnvs, overlayCtx);
         }).catch(err => {
           console.error(err);
