@@ -1,4 +1,4 @@
-import { createRef, useEffect } from 'react';
+import { createRef, useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { IMG_URI, loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay} from '../../utils/drawing';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
@@ -11,7 +11,9 @@ const ContentEditor = () => {
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
   const obscureButtonRef = createRef<HTMLButtonElement>();
+  const backgroundMenuRef = createRef<HTMLDivElement>();
   const sm = new MouseStateMachine();
+  const [showMenu, setShowMenu] = useState<boolean>(false);
 
   useEffect(() => {
     const contentCnvs = contentCanvasRef.current;
@@ -63,7 +65,7 @@ const ContentEditor = () => {
         obscureButtonRef.current.disabled = false;
       } else {
         // TODO SIGNAL ERROR
-        console.error('Unable to get ')
+        console.error('Unable to get obscure button ref')
       }
     });
 
@@ -75,14 +77,13 @@ const ContentEditor = () => {
     }
 
     loadImage(IMG_URI)
-      .then(img => renderImage(img, contentCnvs, contentCtx))
+      .then(img =>renderImage(img, contentCnvs, contentCtx))
       .then(() => setupOverlayCanvas(contentCnvs, overlayCnvs, overlayCtx))
       .then(() => {
         overlayCnvs.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
         overlayCnvs.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
         overlayCnvs.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-      })
-      .catch(err => {
+      }).catch(err => {
         // TODO SIGNAL ERROR
         console.log(`Unable to load image: ${JSON.stringify(err)}`);
       });
@@ -94,7 +95,12 @@ const ContentEditor = () => {
         <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
         <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
       </div>
+      {showMenu && <div className={styles.BackgroundMenu}>
+        <a href='#'>Upload</a>
+        <a href='#'>Link</a>
+      </div>}
       <div className={styles.ControlsContainer}>
+        <button onClick={() => setShowMenu(!showMenu)}>Background</button>
         <button>Pan and Zoom</button>
         <button ref={obscureButtonRef}>Obscure</button>
       </div>

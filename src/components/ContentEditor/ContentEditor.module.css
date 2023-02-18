@@ -24,6 +24,34 @@
   left: 0;
 }
 
+.BackgroundMenu {
+  z-index: 3;
+  position: absolute;
+  right: 8em;
+  bottom: 3em;
+}
+
+.BackgroundMenu a {
+  background-color: gray;
+  color: black;
+  display: block;
+  text-decoration: none;
+  width: 10em;
+  text-align: left;
+  padding: 0.25em;
+  border: 1px solid black;
+}
+
+.BackgroundMenu a:hover {
+  background-color: lightgray;
+  color: black;
+}
+
+.BackgroundMenu a:active {
+  background-color: whitesmoke;
+  color: black;
+}
+
 .ControlsContainer {
   display: flex;
   flex-direction: row;

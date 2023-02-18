@@ -3,6 +3,7 @@ import { calculateBounds } from "./geometry";
 export const IMG_URI: string = 'map-gnomegarde-pc.jpg';
 export const CONTROLS_HEIGHT = 46;
 let baseData: ImageData | null = null;
+let overlayInitialized: boolean = false;
 
 /**
  * Load an image.
@@ -54,7 +55,6 @@ export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, 
   if (!ctx) return Promise.reject(`Unable to get canvas context`);
 
   let bounds = calculateBounds(canvas.width, canvas.height, image.width, image.height);
-  console.log(`Scaled Image is ${bounds.width} x ${bounds.height}`)
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(canvas.width/2, canvas.height/2);
@@ -68,11 +68,16 @@ export function renderImage(image: HTMLImageElement, canvas: HTMLCanvasElement, 
 }
 
 export function setupOverlayCanvas(background: HTMLCanvasElement, overlay: HTMLCanvasElement, overlayCtx: CanvasRenderingContext2D): Promise<void> {
+  // avoid rerender after initialization
+  if (overlayInitialized) {
+    return Promise.resolve();
+  }
   overlay.width = background.width;
   overlay.height = background.height;
   overlay.style.width = `${background.width}px`;
   overlay.style.height = `${background.height}px`;
   overlayCtx.save();
+  overlayInitialized = true;
   return Promise.resolve();
 }
 
