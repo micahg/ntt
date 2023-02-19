@@ -1,8 +1,11 @@
 import { createRef, useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { IMG_URI, loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay} from '../../utils/drawing';
+import { IMG_URI, loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection} from '../../utils/drawing';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
+import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
+
+const sm = new MouseStateMachine();
 
 interface ContentEditorProps {}
 
@@ -10,71 +13,83 @@ const ContentEditor = () => {
   const dispatch = useDispatch();
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
-  const obscureButtonRef = createRef<HTMLButtonElement>();
-  const backgroundMenuRef = createRef<HTMLDivElement>();
-  const sm = new MouseStateMachine();
+  
   const [showMenu, setShowMenu] = useState<boolean>(false);
+  const [canObscure, setCanObscure] = useState<boolean>(false);
 
-  useEffect(() => {
-    const contentCnvs = contentCanvasRef.current;
-    if (!contentCnvs) {
+  const getContent = () => {
+    const cnvs = contentCanvasRef.current;
+    if (!cnvs) {
       // TODO SIGNAL ERROR
       console.error(`Unable to get content canvas ref`);
       return;
     }
 
+    const ctx = cnvs.getContext('2d', { alpha: false });
+    if (!ctx) {
+      // TODO SIGNAL ERROR
+      console.error(`Unable to get content canvas context`);
+      return;
+    }
+    return [cnvs, ctx];
+  }
+
+  const getOverlay = () => {
     const overlayCnvs = overlayCanvasRef.current;
     if (!overlayCnvs) {
       // TODO SIGNAL ERROR
       console.error(`Unable to get overlay canvas ref`)
       return;
     }
-
-    const contentCtx = contentCnvs.getContext('2d', { alpha: false });
-    if (!contentCtx) {
-      // TODO SIGNAL ERROR
-      console.error(`Unable to get content canvas context`);
-      return;
-    }
-
     const overlayCtx = overlayCnvs.getContext('2d', {alpha: true})
     if (!overlayCtx) {
       // TODO SIGNAL ERROR
       console.error('Unable to get overlay canvas context')
       return;
     }
+    return [overlayCnvs, overlayCtx];
+  }
 
+  const obscure = (x1: number, y1: number, x2: number, y2: number) => {
+    let overlay = getOverlay();
+    if (!overlay) return;
+
+    obscureOverlay.bind(overlay[1] as CanvasRenderingContext2D)(x1, y1, x2, y2);
+    overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
+      if (!blob) {
+        // TODO SIGNAL ERROR
+        return;
+      }
+      dispatch({type: 'content/overlay', payload: blob})
+    }, 'image/png', 1);
+  }
+
+  useEffect(() => {
+    const content = getContent();
+    const overlay = getOverlay();
+    if (!content || !overlay) return;
+    const contentCnvs = content[0] as HTMLCanvasElement;
+    const overlayCnvs = overlay[0] as HTMLCanvasElement;
+    const contentCtx = content[1] as CanvasRenderingContext2D;
+    const overlayCtx = overlay[1] as CanvasRenderingContext2D;
+
+    setCallback(sm, 'wait', sm.resetCoordinates);
+    setCallback(sm, 'record', () => {
+      setShowMenu(false)
+      setCanObscure(true);
+    });
+    setCallback(sm, 'background_select', () => {
+      clearOverlaySelection.bind(overlayCtx)();
+      sm.resetCoordinates();
+      setCanObscure(false);
+      setShowMenu(true);
+    });
+    setCallback(sm, 'obscure', () => {
+      obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
+      sm.transition('wait');
+    })
     sm.setMoveCallback(selectOverlay.bind(overlayCtx));
     sm.setStartCallback(storeOverlay.bind(overlayCtx));
-    sm.setSelectedCallback((x1, y1, x2, y2) => {
-      if (obscureButtonRef.current) {
-        obscureButtonRef.current.onclick = function() {
-          obscureOverlay.bind(overlayCtx)(x1, y1, x2, y2);
-          if (obscureButtonRef.current) {
-            obscureButtonRef.current.onclick = null;
-            obscureButtonRef.current.disabled = true;
-          }
-          overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
-            if (!blob) {
-              // TODO SIGNAL ERROR
-              return;
-            }
-            dispatch({type: 'content/overlay', payload: blob})
-          }, 'image/png', 1);
-        }
-        obscureButtonRef.current.disabled = false;
-      } else {
-        // TODO SIGNAL ERROR
-        console.error('Unable to get obscure button ref')
-      }
-    });
-
-    const obscureButton = obscureButtonRef.current;
-    if (!obscureButton) {
-      // TODO SIGNAL ERROR
-      console.error('Unable to get obscure button');
-      return;
-    }
 
     loadImage(IMG_URI)
       .then(img =>renderImage(img, contentCnvs, contentCtx))
@@ -100,9 +115,12 @@ const ContentEditor = () => {
         <a href='#'>Link</a>
       </div>}
       <div className={styles.ControlsContainer}>
-        <button onClick={() => setShowMenu(!showMenu)}>Background</button>
+        <input disabled={true}></input>
+        <button onClick={() => sm.transition('background')}>Background</button>
         <button>Pan and Zoom</button>
-        <button ref={obscureButtonRef}>Obscure</button>
+        <button disabled={!canObscure} onClick={() => {
+          sm.transition('obscure')
+        }}>Obscure</button>
       </div>
     </div>
   );

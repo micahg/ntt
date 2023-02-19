@@ -117,3 +117,8 @@ export function selectOverlay(this: CanvasRenderingContext2D, x1: number, y1: nu
   this.fillStyle = "rgba(255, 255, 255, 0.25)";
   this.fillRect(x1,y1,x2-x1,y2-y1);
 }
+
+export function clearOverlaySelection(this: CanvasRenderingContext2D) {
+  if (baseData === null) return;
+  this.putImageData(baseData, 0, 0);
+}
