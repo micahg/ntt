@@ -88,6 +88,19 @@ const ContentEditor = () => {
     }
   }
 
+  const selectFile = () => {
+    let input = document.createElement('input');
+    input.type='file';
+    input.multiple = false;
+    input.onchange = () => {
+      if (!input.files) return sm.transition('done');
+      let file = input.files[0];
+      console.log(file);
+      sm.transition('done');
+    }
+    input.click();
+  }
+
   useEffect(() => {
     const content = getContent();
     const overlay = getOverlay();
@@ -118,18 +131,7 @@ const ContentEditor = () => {
       setCanLink(true);
       setShowMenu(false);
     });
-    setCallback(sm, 'background_upload', () => {
-      let input = document.createElement('input');
-      input.type='file';
-      input.multiple = false;
-      input.onchange = () => {
-        if (!input.files) return sm.transition('done');
-        let file = input.files[0];
-        console.log(file);
-        sm.transition('done');
-      }
-      input.click();
-    });
+    setCallback(sm, 'background_upload', selectFile);
     setCallback(sm, 'obscure', () => {
       obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
       sm.transition('wait');
