@@ -43,7 +43,10 @@ export class MouseStateMachine implements StateMachine {
     setCallback(this, 'record_mouse', this.doRecord);
   }
 
-  transition(input: string, ...args: any[]): void { transitionStateMachine(this, input, args[0]); }
+  transition(input: string, ...args: any[]): void {
+    if (this.current == 'complete' && input == 'down') this.resetCoordinates();
+    transitionStateMachine(this, input, args[0]);
+  }
 
   doRecord(args: any[]) {
     // process consumer record callback first
