@@ -31,7 +31,7 @@
   bottom: 3em;
 }
 
-.BackgroundMenu a {
+.BackgroundMenu button {
   background-color: gray;
   color: black;
   display: block;
@@ -42,12 +42,12 @@
   border: 1px solid black;
 }
 
-.BackgroundMenu a:hover {
+.BackgroundMenu button:hover {
   background-color: lightgray;
   color: black;
 }
 
-.BackgroundMenu a:active {
+.BackgroundMenu button:active {
   background-color: whitesmoke;
   color: black;
 }

@@ -16,6 +16,8 @@ const ContentEditor = () => {
   
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [canObscure, setCanObscure] = useState<boolean>(false);
+  const [canLink, setCanLink] = useState<boolean>(false);
+  const [link, setLink] = useState<string>('');
 
   const getContent = () => {
     const cnvs = contentCanvasRef.current;
@@ -64,6 +66,28 @@ const ContentEditor = () => {
     }, 'image/png', 1);
   }
 
+  const keyPress = (key: string) => {
+    if (key.toLowerCase() == 'enter') {
+      let url: URL | null= null;
+      try {
+        url = new URL(link);
+      } catch (err) {
+        // TODO MATERIAL use snackbar
+        alert('Invalid URL!')
+        return;
+      }
+
+      if (!url) {
+        alert('Something went wrong!');
+        return;
+      }
+      dispatch({type: 'content/background', payload: url})
+      sm.transition('done');
+    } else if (key.toLowerCase() == 'escape') {
+      sm.transition('done');
+    }
+  }
+
   useEffect(() => {
     const content = getContent();
     const overlay = getOverlay();
@@ -73,7 +97,13 @@ const ContentEditor = () => {
     const contentCtx = content[1] as CanvasRenderingContext2D;
     const overlayCtx = overlay[1] as CanvasRenderingContext2D;
 
-    setCallback(sm, 'wait', sm.resetCoordinates);
+    setCallback(sm, 'wait', () => {
+      sm.resetCoordinates();
+      setLink('');
+      setShowMenu(false);
+      setCanLink(false);
+      setCanObscure(false);
+    });
     setCallback(sm, 'record', () => {
       setShowMenu(false)
       setCanObscure(true);
@@ -83,6 +113,22 @@ const ContentEditor = () => {
       sm.resetCoordinates();
       setCanObscure(false);
       setShowMenu(true);
+    });
+    setCallback(sm, 'background_link', () => {
+      setCanLink(true);
+      setShowMenu(false);
+    });
+    setCallback(sm, 'background_upload', () => {
+      let input = document.createElement('input');
+      input.type='file';
+      input.multiple = false;
+      input.onchange = () => {
+        if (!input.files) return sm.transition('done');
+        let file = input.files[0];
+        console.log(file);
+        sm.transition('done');
+      }
+      input.click();
     });
     setCallback(sm, 'obscure', () => {
       obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
@@ -111,11 +157,16 @@ const ContentEditor = () => {
         <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
       </div>
       {showMenu && <div className={styles.BackgroundMenu}>
-        <a href='#'>Upload</a>
-        <a href='#'>Link</a>
+        <button onClick={() => sm.transition('upload')}>Upload</button>
+        <button onClick={() => sm.transition('link')}>Link</button>
       </div>}
       <div className={styles.ControlsContainer}>
-        <input disabled={true}></input>
+        <input
+          value={link}
+          disabled={!canLink}
+          onChange={(e) => setLink(e.target.value)}
+          onKeyUp={(e) => keyPress(e.key)}>
+        </input>
         <button onClick={() => sm.transition('background')}>Background</button>
         <button>Pan and Zoom</button>
         <button disabled={!canObscure} onClick={() => {

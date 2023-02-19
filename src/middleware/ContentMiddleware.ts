@@ -5,6 +5,12 @@ import { AppReducerState } from '../reducers/AppReducer';
 
 export const ContentMiddleware: Middleware = storeAPI => next => action=> {
   switch (action.type) {
+    case 'content/background':
+      let bgUrl = action.payload as URL;
+      if (bgUrl) {
+        console.log(`MICAH GOT ${JSON.stringify(bgUrl)}`);
+      }
+      return;
     case 'content/overlay':
       let blob: Blob = action.payload;
       let state: AppReducerState = storeAPI.getState();

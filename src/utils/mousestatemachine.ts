@@ -39,6 +39,12 @@ export class MouseStateMachine implements StateMachine {
         'down': 'record_mouse',
         'cancel': 'wait',
       },
+      'background_link': {
+        'done': 'wait',
+      },
+      'background_upload': {
+        'done': 'wait',
+      }
     };
     setCallback(this, 'record_mouse', this.doRecord);
   }
