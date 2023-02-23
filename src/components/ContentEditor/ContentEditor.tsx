@@ -1,5 +1,6 @@
 import { createRef, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppReducerState } from '../../reducers/AppReducer';
 import { IMG_URI, loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection} from '../../utils/drawing';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
@@ -18,6 +19,8 @@ const ContentEditor = () => {
   const [canObscure, setCanObscure] = useState<boolean>(false);
   const [canLink, setCanLink] = useState<boolean>(false);
   const [link, setLink] = useState<string>('');
+  const background = useSelector((state: AppReducerState) => state.content.background);
+  const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
 
   const getContent = () => {
     const cnvs = contentCanvasRef.current;
@@ -81,7 +84,7 @@ const ContentEditor = () => {
         alert('Something went wrong!');
         return;
       }
-      dispatch({type: 'content/background', payload: url})
+      dispatch({type: 'content/background', payload: url});
       sm.transition('done');
     } else if (key.toLowerCase() == 'escape') {
       sm.transition('done');
@@ -94,8 +97,7 @@ const ContentEditor = () => {
     input.multiple = false;
     input.onchange = () => {
       if (!input.files) return sm.transition('done');
-      let file = input.files[0];
-      console.log(file);
+      dispatch({type: 'content/background', payload: input.files[0]})
       sm.transition('done');
     }
     input.click();
@@ -139,21 +141,40 @@ const ContentEditor = () => {
     sm.setMoveCallback(selectOverlay.bind(overlayCtx));
     sm.setStartCallback(storeOverlay.bind(overlayCtx));
 
-    loadImage(IMG_URI)
+    overlayCnvs.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
+    overlayCnvs.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
+    overlayCnvs.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
+  });
+
+  useEffect(() => {
+    if (!apiUrl || !background) return;
+    const content = getContent();
+    const overlay = getOverlay();
+    if (!content || !overlay) return;
+    const contentCnvs = content[0] as HTMLCanvasElement;
+    const overlayCnvs = overlay[0] as HTMLCanvasElement;
+    const contentCtx = content[1] as CanvasRenderingContext2D;
+    const overlayCtx = overlay[1] as CanvasRenderingContext2D;    
+    let bgImg = `${apiUrl}/${background}`;
+    loadImage(bgImg)
       .then(img =>renderImage(img, contentCnvs, contentCtx))
       .then(() => setupOverlayCanvas(contentCnvs, overlayCnvs, overlayCtx))
       .then(() => {
-        overlayCnvs.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
-        overlayCnvs.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
-        overlayCnvs.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
       }).catch(err => {
         // TODO SIGNAL ERROR
         console.log(`Unable to load image: ${JSON.stringify(err)}`);
       });
-  });
+  }, [apiUrl, background])
 
   return (
-    <div className={styles.ContentEditor} data-testid="ContentEditor">
+    <div className={styles.ContentEditor}
+      data-testid="ContentEditor"
+      onFocus={() =>{
+        if (sm.current == 'background_upload') {
+          sm.transition('done')
+        }
+      }}
+    >
       <div className={styles.ContentContainer} data-testid="RemoteDisplayComponent">
         <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
         <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>

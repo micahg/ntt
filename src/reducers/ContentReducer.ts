@@ -2,7 +2,7 @@ import { PayloadAction } from "@reduxjs/toolkit";
 
 export type ContentReducerState = {
   readonly overlay: Blob | undefined;
-  readonly background: Blob | undefined;
+  readonly background: string | undefined;
 };
 
 const initialState: ContentReducerState = {

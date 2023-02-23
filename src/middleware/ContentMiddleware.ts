@@ -37,7 +37,8 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         console.log('URL');
       } else if (isFile(load)) {
         sendFile(storeAPI, action.payload, 'background').then((value) => {
-          console.log(`I did send ${JSON.stringify(value)}`);
+          let ts: number = (new Date()).getTime();
+          action.payload = `${value.data.path}?${ts}`;
           return next(action);
         }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       } else {
