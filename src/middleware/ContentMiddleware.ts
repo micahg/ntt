@@ -4,12 +4,8 @@ import { blob } from 'stream/consumers';
 import { AppReducerState } from '../reducers/AppReducer';
 import { rejects } from 'assert';
 
-function isURL(payload: URL | File): payload is URL {
-  return (payload as URL).host !== undefined;
-}
-
-function isFile(payload: URL | File): payload is File {
-  return (payload as File).lastModified !== undefined;
+function isBlob(payload: URL | Blob): payload is File {
+  return (payload as Blob).type !== undefined;
 }
 
 function sendFile(storeAPI: MiddlewareAPI, blob: File | URL, layer: string): Promise<AxiosResponse> {
@@ -23,8 +19,8 @@ function sendFile(storeAPI: MiddlewareAPI, blob: File | URL, layer: string): Pro
   
     let url: string = `${state.environment.api}/asset`;
     let formData = new FormData();
-    let contentType: string = isFile(blob) ? blob.type : 'multipart/form-data';
-    let content: Blob | string = isFile(blob) ? blob as Blob : blob.toString();
+    let contentType: string = isBlob(blob) ? blob.type : 'multipart/form-data';
+    let content: Blob | string = isBlob(blob) ? blob as Blob : blob.toString();
     formData.append('layer', layer);
     formData.append('image', content);
     axios.put(url, formData, { headers: { 'Content-Type': contentType }}).then(value => resolve(value))
@@ -43,12 +39,8 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       }
 
       let url: string = `${state.environment.api}/state`;
-      let update = {
-        'background': state.content.background,
-        'overlay': state.content.overlay,
-      };
 
-      axios.put(url, update).then(() => {
+      axios.put(url).then(() => {
         action.payload = (new Date()).getTime();
         next(action);  
       }).catch(err => {
@@ -58,7 +50,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       });
       break;
     case 'content/background':
-      let load: URL | File = action.payload;
+      let load: URL | Blob = action.payload;
       sendFile(storeAPI, action.payload, 'background').then((value) => {
         let ts: number = (new Date()).getTime();
         action.payload = `${value.data.path}?${ts}`;
