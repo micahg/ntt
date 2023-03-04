@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { IMG_URI, loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection, getCanvas, initOverlay} from '../../utils/drawing';
+import { IMG_URI, loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection, getCanvas, initOverlay, revealOverlay} from '../../utils/drawing';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
@@ -45,7 +45,7 @@ const ContentEditor = () => {
     if (!overlayStuff) return;
     let { cnvs, ctx } = overlayStuff;
 
-    obscureOverlay.bind(ctx)(x1, y1, x2, y2);
+    revealOverlay.bind(ctx)(x1, y1, x2, y2);
     overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
       if (!blob) {
         // TODO SIGNAL ERROR

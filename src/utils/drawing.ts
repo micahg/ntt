@@ -15,7 +15,8 @@ export function loadImage(uri: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     img.onload = function() { resolve(this as HTMLImageElement); }
     img.onerror = function(error) { reject(error); }
-    // TODO MICAH get rid of this. This is a hack to stop an exception:
+    // Anonymous only works if the server cors are setup... Setting it avoids the
+    // error:
     //
     //    The canvas has been tainted by cross-origin data.
     //
