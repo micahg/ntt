@@ -13,6 +13,7 @@ const ContentEditor = () => {
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
   
+  const [backgroundLoaded, setBackgroundLoaded] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [canObscure, setCanObscure] = useState<boolean>(false);
   const [canLink, setCanLink] = useState<boolean>(false);
@@ -21,6 +22,17 @@ const ContentEditor = () => {
   const overlay = useSelector((state: AppReducerState) => state.content.overlay);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
+
+  const updateBackground = (data: URL | File) => {
+      // send without payload to wipe overlay
+      dispatch({type: 'content/overlay'});
+
+      // update our internal state to indicate we have no background... yet
+      setBackgroundLoaded(false);
+
+      // send the new background
+      dispatch({type: 'content/background', payload: data});
+  }
 
   const obscure = (x1: number, y1: number, x2: number, y2: number) => {
     let overlayStuff = getCanvas(overlayCanvasRef, true);
@@ -67,7 +79,7 @@ const ContentEditor = () => {
         alert('Something went wrong!');
         return;
       }
-      dispatch({type: 'content/background', payload: url});
+      updateBackground(url);
       sm.transition('done');
     } else if (key.toLowerCase() === 'escape') {
       sm.transition('done');
@@ -80,7 +92,7 @@ const ContentEditor = () => {
     input.multiple = false;
     input.onchange = () => {
       if (!input.files) return sm.transition('done');
-      dispatch({type: 'content/background', payload: input.files[0]})
+      updateBackground(input.files[0]);
       sm.transition('done');
     }
     input.click();
@@ -156,8 +168,11 @@ const ContentEditor = () => {
     const overlayCtx = overlayStuff.ctx;  
     let bgImg = `${apiUrl}/${background}`;
     loadImage(bgImg)
-      .then(img =>renderImage(img, contentCnvs, contentCtx))
-      .then(() => setupOverlayCanvas(contentCnvs, overlayCnvs, overlayCtx))
+      .then(img =>renderImage(img, contentCnvs, contentCtx, true))
+      .then(bounds => {
+        setBackgroundLoaded(true);
+        setupOverlayCanvas(bounds, overlayCnvs, overlayCtx)
+      })
       .catch(err => {
         // TODO SIGNAL ERROR
         console.log(`Unable to load image: ${JSON.stringify(err)}`);
@@ -174,6 +189,8 @@ const ContentEditor = () => {
   }, [apiUrl]);
 
   useEffect(() => {
+    // if the background isn't loaded yet, no point rendering the overlay
+    if (!backgroundLoaded) return;
     // if the overlay is a string, then load it. This should only be the case on init
     if (!overlay) return;
     if ((overlay as Blob).type !== undefined) return;
@@ -188,7 +205,7 @@ const ContentEditor = () => {
       .then(img => renderImage(img, overlayCnvs, overlayCtx))
       .then(() => initOverlay())
       .catch(err => console.error(err));
-  }, [overlay])
+  }, [overlay, backgroundLoaded])
 
   return (
     <div className={styles.ContentEditor}

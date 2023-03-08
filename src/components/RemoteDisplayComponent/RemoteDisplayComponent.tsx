@@ -1,7 +1,7 @@
 import { createRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { getCanvas, loadImage, renderImage, setupOverlayCanvas } from '../../utils/drawing';
+import { getCanvas, loadImage, renderImage } from '../../utils/drawing';
 
 import styles from './RemoteDisplayComponent.module.css';
 

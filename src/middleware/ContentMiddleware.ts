@@ -74,6 +74,10 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;
     case 'content/overlay':
+      // undefined means we're wiping the canvas... probably a new background
+      if (action.payload === undefined) return next(action);
+
+      // if we have an overlay payload then send it
       sendFile(storeAPI, action.payload, 'overlay').then((value) => {
         console.log(`I did send ${JSON.stringify(value)}`);
         return next(action);
