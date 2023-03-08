@@ -58,7 +58,7 @@ export class MouseStateMachine implements StateMachine {
   }
 
   transition(input: string, ...args: any[]): void {
-    if (this.current == 'complete' && input == 'down') this.resetCoordinates();
+    if (this.current === 'complete' && input === 'down') this.resetCoordinates();
     transitionStateMachine(this, input, args[0]);
   }
 

@@ -37,9 +37,8 @@ const ContentEditor = () => {
   const obscure = (x1: number, y1: number, x2: number, y2: number) => {
     let overlayStuff = getCanvas(overlayCanvasRef, true);
     if (!overlayStuff) return;
-    let { cnvs, ctx } = overlayStuff;
 
-    obscureOverlay.bind(ctx)(x1, y1, x2, y2);
+    obscureOverlay.bind(overlayStuff.ctx)(x1, y1, x2, y2);
     overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
       if (!blob) {
         // TODO SIGNAL ERROR
@@ -52,9 +51,8 @@ const ContentEditor = () => {
   const reveal = (x1: number, y1: number, x2: number, y2: number) => {
     let overlayStuff = getCanvas(overlayCanvasRef, true);
     if (!overlayStuff) return;
-    let { cnvs, ctx } = overlayStuff;
 
-    revealOverlay.bind(ctx)(x1, y1, x2, y2);
+    revealOverlay.bind(overlayStuff.ctx)(x1, y1, x2, y2);
     overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
       if (!blob) {
         // TODO SIGNAL ERROR
@@ -177,16 +175,16 @@ const ContentEditor = () => {
         // TODO SIGNAL ERROR
         console.log(`Unable to load image: ${JSON.stringify(err)}`);
       });
-  }, [apiUrl, background])
+  }, [apiUrl, background, contentCanvasRef, overlayCanvasRef])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
 
   // force render of current state as soon as we have an API to talk to
   useEffect(() => {
-    if (!apiUrl) return;
+    if (!apiUrl || !dispatch) return;
     dispatch({type: 'content/pull'}); // TODO why th does this need braces?
-  }, [apiUrl]);
+  }, [apiUrl, dispatch]);
 
   useEffect(() => {
     // if the background isn't loaded yet, no point rendering the overlay
@@ -205,13 +203,13 @@ const ContentEditor = () => {
       .then(img => renderImage(img, overlayCnvs, overlayCtx))
       .then(() => initOverlay())
       .catch(err => console.error(err));
-  }, [overlay, backgroundLoaded])
+  }, [apiUrl, overlayCanvasRef, overlay, backgroundLoaded])
 
   return (
     <div className={styles.ContentEditor}
       data-testid="ContentEditor"
       onFocus={() =>{
-        if (sm.current == 'background_upload') {
+        if (sm.current === 'background_upload') {
           sm.transition('done')
         }
       }}

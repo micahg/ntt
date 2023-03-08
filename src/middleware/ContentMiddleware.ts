@@ -1,8 +1,6 @@
-import { Middleware, MiddlewareAPI, StateFromReducersMapObject } from 'redux';
+import { Middleware, MiddlewareAPI } from 'redux';
 import axios, { AxiosResponse } from 'axios';
-import { blob } from 'stream/consumers';
 import { AppReducerState } from '../reducers/AppReducer';
-import { rejects } from 'assert';
 
 function isBlob(payload: URL | Blob): payload is File {
   return (payload as Blob).type !== undefined;
@@ -66,7 +64,6 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
     }
     break;
     case 'content/background':
-      let load: URL | Blob = action.payload;
       sendFile(storeAPI, action.payload, 'background').then((value) => {
         let ts: number = (new Date()).getTime();
         action.payload = `${value.data.path}?${ts}`;
