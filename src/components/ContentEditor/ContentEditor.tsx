@@ -1,15 +1,12 @@
-import { render } from '@testing-library/react';
 import { createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { IMG_URI, loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection, getCanvas, initOverlay, revealOverlay} from '../../utils/drawing';
+import { loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection, getCanvas, initOverlay, revealOverlay} from '../../utils/drawing';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
 
 const sm = new MouseStateMachine();
-
-interface ContentEditorProps {}
 
 const ContentEditor = () => {
   const dispatch = useDispatch();
@@ -56,7 +53,7 @@ const ContentEditor = () => {
   }
 
   const keyPress = (key: string) => {
-    if (key.toLowerCase() == 'enter') {
+    if (key.toLowerCase() === 'enter') {
       let url: URL | null= null;
       try {
         url = new URL(link);
@@ -72,7 +69,7 @@ const ContentEditor = () => {
       }
       dispatch({type: 'content/background', payload: url});
       sm.transition('done');
-    } else if (key.toLowerCase() == 'escape') {
+    } else if (key.toLowerCase() === 'escape') {
       sm.transition('done');
     }
   }
