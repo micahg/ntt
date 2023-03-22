@@ -1,7 +1,7 @@
-import { createRef, useEffect } from 'react';
+import { createRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { getCanvas, loadImage, renderImage } from '../../utils/drawing';
+import { loadImage, renderImage } from '../../utils/drawing';
 
 import styles from './RemoteDisplayComponent.module.css';
 
@@ -9,26 +9,22 @@ const RemoteDisplayComponent = () => {
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
   const apiUrl: string | undefined = useSelector((state: AppReducerState) => state.environment.api);
+  const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
+  const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
 
   useEffect(() => {
+    if (!contentCanvasRef.current || contentCtx != null) return;
+    setContentCtx(contentCanvasRef.current.getContext('2d', { alpha: false }));
+  }, [contentCanvasRef, contentCtx]);
 
-    const overlay = getCanvas(overlayCanvasRef, true);
-    if (!overlay) {
-      // TODO SIGNAL ERROR
-      console.error('Unable to get overlay canvas')
-      return;
-    }
+  useEffect(() => {
+    if (!overlayCanvasRef.current || overlayCtx != null) return;
+    setOverlayCtx(overlayCanvasRef.current.getContext('2d', { alpha: true }));
+  }, [overlayCanvasRef, overlayCtx]);
 
-    const content = getCanvas(contentCanvasRef);
-    if (!content) {
-      // TODO SIGNAL ERROR
-      console.error('Unable to get overlay canvas')
-      return;      
-    }
-    const overlayCnvs = overlay.cnvs;
-    const overlayCtx = overlay.ctx;
-    const contentCnvs = content.cnvs;
-    const contentCtx = content.ctx;
+  useEffect(() => {
+    if (!overlayCtx) return;
+    if (!contentCtx) return;
 
     // TODO FIX THIS FIRST YIKES
     let url = `ws://localhost:3000/`;
@@ -80,8 +76,12 @@ const RemoteDisplayComponent = () => {
           console.error(err);
         });
       }
+
+      if ('viewport' in js.state && js.state.viewport) {
+
+      }
     }
-  });
+  }, [contentCtx, overlayCtx]);
 
   return (
     <div className={styles.map}>
