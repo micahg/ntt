@@ -1,3 +1,10 @@
+export interface Rect {
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+};
+
 export interface ImageBound {
   left: number;
   top: number;
@@ -28,7 +35,18 @@ export function calculateBounds(canvasWidth: number, canvasHeight: number, image
     result.rotate = true;
   }
 
-    
-    result.rotate = rotate;
-    return result;
+  result.rotate = rotate;
+  return result;
+}
+
+export function scaleSelection(selection: Rect, viewport: Rect, width: number, height: number) {
+  let v_w = viewport.width - viewport.x;
+  let v_h = viewport.height - viewport.y;
+  let h_scale = width/v_w;
+  let v_scale = height/v_h;
+  let res: Rect = {
+    x: selection.x * h_scale, y: selection.y * v_scale,
+    width: selection.width * h_scale, height: selection.height * v_scale,
+  };
+  return res;
 }

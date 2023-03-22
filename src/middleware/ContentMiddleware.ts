@@ -1,6 +1,8 @@
 import { Middleware, MiddlewareAPI } from 'redux';
 import axios, { AxiosResponse } from 'axios';
 import { AppReducerState } from '../reducers/AppReducer';
+import { Rect } from '../utils/geometry';
+import { json } from 'stream/consumers';
 
 function isBlob(payload: URL | Blob): payload is File {
   return (payload as Blob).type !== undefined;
@@ -22,6 +24,21 @@ function sendFile(storeAPI: MiddlewareAPI, blob: File | URL, layer: string): Pro
     formData.append('layer', layer);
     formData.append('image', content);
     axios.put(url, formData, { headers: { 'Content-Type': contentType }}).then(value => resolve(value))
+      .catch(err => reject(err));
+  });
+}
+
+function zoom(store: MiddlewareAPI, rect: Rect): Promise<Rect> {
+  return new Promise((resolve, reject) => {
+
+    let state: AppReducerState = store.getState();
+    if (!state.environment.api) {
+      // TODO MICAH display error
+      return reject(`UNABLE TO GET API FROM STATE`);
+    }
+
+    let url: string = `${state.environment.api}/viewport`;
+    axios.put(url,rect).then(value => resolve(value.data))
       .catch(err => reject(err));
   });
 }
@@ -79,6 +96,19 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         console.log(`I did send ${JSON.stringify(value)}`);
         return next(action);
       }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
+      break;
+    case 'content/zoom':
+      if (action.payload === undefined) return;
+      zoom(storeAPI, action.payload).then(value => {
+        action.payload = value;
+        next(action);
+      }).catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
+      break;
+    case 'content/zoomOut':
+      zoom(storeAPI, {x: 0, y: 0, width: 0, height: 0}).then(value => {
+        action.payload = undefined;
+        next(action);
+      }).catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
       break;
     default:
       next(action);

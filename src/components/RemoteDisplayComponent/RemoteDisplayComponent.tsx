@@ -66,7 +66,7 @@ const RemoteDisplayComponent = () => {
       if ('overlay' in js.state && js.state.overlay) {
         let asset: string = js.state.overlay;
         loadImage(`${apiUrl}/${asset}?${ts}`).then((img: HTMLImageElement) => {
-          renderImage(img, overlayCnvs, overlayCtx, true);
+          renderImage(img, overlayCtx, true);
         }).catch(err => {
           console.error(err);
         });
@@ -75,7 +75,7 @@ const RemoteDisplayComponent = () => {
       if ('background' in js.state && js.state.background) {
         let asset: string = js.state.background;
         loadImage(`${apiUrl}/${asset}?${ts}`).then((img: HTMLImageElement) => {
-          renderImage(img, contentCnvs, contentCtx, true);
+          renderImage(img, contentCtx, true);
         }).catch(err => {
           console.error(err);
         });
