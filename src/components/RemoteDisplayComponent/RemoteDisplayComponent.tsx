@@ -2,7 +2,7 @@ import { createRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, renderImage } from '../../utils/drawing';
-import { Rect, trimToAspect } from '../../utils/geometry';
+import { Rect, fillToAspect } from '../../utils/geometry';
 
 import styles from './RemoteDisplayComponent.module.css';
 
@@ -59,30 +59,78 @@ const RemoteDisplayComponent = () => {
         return;
       }
 
-      let viewport: Rect | null = null;
-      if ('viewport' in js.state && js.state.viewport) {
-        viewport = js.state.viewport as Rect;
+      if (!js.state.viewport) {
+        console.error('Unable to render without viewport');
+        return;
       }
+      let viewport: Rect = js.state.viewport;
+
+      // if we have a background to use as reference and a viewport, then we can 
+      // trim the selection appropriatly
+      // let viewport: Rect | null = null;
+      // if ('viewport' in js.state && js.state.viewport) {
+      //   if ('background' in js.state && js.state.background) {
+      //     viewport = js.state.viewport as Rect;
+      //     let adjustedViewport = trimToAspect(viewport, img.width, img.height);
+      //   }
+      // }
 
       let ts: number = new Date().getTime();
+      let overlayUri: string | null = null;
       if ('overlay' in js.state && js.state.overlay) {
-        let asset: string = js.state.overlay;
-        loadImage(`${apiUrl}/${asset}?${ts}`)
-          .then((img: HTMLImageElement) => {
-            renderImage(img, overlayCtx, true, false)
-          })
-          .catch(err => console.error(err));
+        overlayUri = `${apiUrl}/${js.state.overlay}?${ts}`
+        // let asset: string = js.state.overlay;
+        // loadImage(`${apiUrl}/${asset}?${ts}`)
+        //   .then((img: HTMLImageElement) => {
+        //     renderImage(img, overlayCtx, true, false)
+        //   })
+        //   .catch(err => console.error(err));
       }
 
+      let backgroundUri: string | null = null;
       if ('background' in js.state && js.state.background) {
-        let asset: string = js.state.background;
-        loadImage(`${apiUrl}/${asset}?${ts}`).then((img: HTMLImageElement) => {
-          let adjustedViewport = trimToAspect(viewport, img.width, img.height);
-          renderImage(img, contentCtx, true, false, adjustedViewport);
-        }).catch(err => {
-          console.error(err);
-        });
+        backgroundUri = `${apiUrl}/${js.state.background}?${ts}`;
+        // let asset: string = js.state.background;
+        // loadImage(`${apiUrl}/${asset}?${ts}`).then((img: HTMLImageElement) => {
+        //   renderImage(img, contentCtx, true, false);
+        // }).catch(err => {
+        //   console.error(err);
+        // });
       }
+
+      if (!backgroundUri) {
+        console.error(`Unable to determine background URL`);
+        return;
+      }
+
+      /**
+       * I hate this so much... if someone every does contribute to this
+       * project and your js game is better than mine, see if you can make this
+       * less isane. The point is to calculate the expanded the selection to
+       * fill the screen (based on the aspect ratio of the map) then draw the
+       * overlay, then the background. If there is no overlay then just draw
+       * background with expanded selection if there is one.
+       */
+      loadImage(backgroundUri)
+        .then(bgImg => {
+          let bgVP = fillToAspect(viewport, bgImg.width, bgImg.height);
+          if (overlayUri) {
+            loadImage(overlayUri).then(ovrImg => {
+              // need to scale the selection down to the canvas size of the overlay
+              // which (typically) considerably smaller than the background image
+              let scale = bgImg.width/ovrImg.width;
+              let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: viewport.width/scale, height: viewport.height/scale};
+              olVP = fillToAspect(olVP, ovrImg.width, ovrImg.height);
+              renderImage(ovrImg, overlayCtx, true, false, olVP)
+                .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
+                .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
+            }).catch(err => console.error(`Error loading overlay iamge ${overlayUri}: ${JSON.stringify(err)}`));
+          } else {
+            renderImage(bgImg, contentCtx, true, false, viewport)
+              .catch(err => console.error(`Error rendering background imager: ${JSON.stringify(err)}`));
+          }
+        }).catch(err => console.error(`Error loading background image: ${JSON.stringify(err)}`))
+
     }
   }, [contentCtx, overlayCtx]);
 

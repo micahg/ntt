@@ -53,18 +53,34 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
   return res;
 }
 
-export function trimToAspect(selection: Rect | null, width: number, height: number) {
+export function fillToAspect(selection: Rect | null, width: number, height: number) {
   if (!selection) return getRect(0, 0, width, height);
   if (selection.x === 0 && selection.y === 0 && selection.width === width && selection.height === height) {
     return getRect(0, 0, width, height);
   }
-  if (width >= height) {
 
-    let v_scale =  height/width;
-    let res: Rect = { x: selection.x, y: selection.y, width: selection.width, height: v_scale * selection.height}
-    return res;
+  let selR = selection.width / selection.height;
+  let scrR = width/height;
+
+  if (selR >= scrR) {
+    let newHeight = selection.width / scrR;
+    let newY = selection.y + ((selection.height - newHeight)/2)
+    return {x: selection.x, y: newY, width: selection.width, height: newHeight};
+    // let newWidth = width * selR;
+    // let newX = selection.x - (newWidth/2)
+    // return { x: newX, y: selection.y, width: newWidth, height: selection.height}
   }
-  let h_scale = width/height;
-  let res: Rect = { x: selection.x, y: selection.y, width: h_scale * selection.width, height: selection.height}
-  return res;
+
+  let newWidth = scrR * selection.height;
+  let newX = selection.x + ((selection.width - newWidth)/2);
+  return {x: newX, y: selection.y, width: newWidth, height: selection.height}
+
+  // if (selection.width >= selection.height) {
+  //   let v_scale =  height/width;
+  //   let res: Rect = { x: selection.x, y: selection.y, width: selection.width, height: v_scale * selection.height}
+  //   return res;
+  // }
+  // let h_scale = width/height;
+  // let res: Rect = { x: selection.x, y: selection.y, width: h_scale * selection.width, height: selection.height}
+  // return res;
 }
