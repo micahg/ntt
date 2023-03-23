@@ -72,11 +72,13 @@ export function loadImage(data: string | Blob): Promise<HTMLImageElement> {
   }
 }*/
 
-export function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D, resizeCanvas: boolean = false): Promise<ImageBound> {
+export function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
+  resizeCanvas: boolean = false, withControls: boolean = true,
+  viewport: Rect | null = null): Promise<ImageBound> {
 
   if (resizeCanvas) {
     const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
-    const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) - CONTROLS_HEIGHT;
+    const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) - (withControls ? CONTROLS_HEIGHT : 0);
     ctx.canvas.width = width;
     ctx.canvas.height = height;
     ctx.canvas.style.width = `${width}px`;
@@ -92,7 +94,13 @@ export function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext
   if (bounds.rotate) {
     ctx.rotate(90 * Math.PI/180);
   }
-  ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
+  if (viewport != null) {
+    ctx.drawImage(image,
+      viewport.x, viewport.y, viewport.width, viewport.height,
+      -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);  
+  } else {
+    ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
+  }
   ctx.restore();
 
   return Promise.resolve(bounds);

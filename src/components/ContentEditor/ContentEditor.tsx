@@ -100,12 +100,12 @@ const ContentEditor = () => {
 
   const zoomIn = (x1: number, y1: number, x2: number, y2: number) => {
     if (!backgroundSize) return;
-    if (!contentCtx) return;
-    if (!contentCtx.canvas) return;
+    if (!overlayCtx) return;
+    if (!overlayCtx.canvas) return;
     let sel = getRect(x1, y1, x2, y2);
     // the viewport (vp) in this case is not relative to the background image
     // size, but the size of the canvas upon which it is painted
-    let vp = getRect(0,0,contentCtx.canvas.width, contentCtx.canvas.height);
+    let vp = getRect(0,0, overlayCtx.canvas.width, overlayCtx.canvas.height);
     let [w, h] = backgroundSize;
     let payload = scaleSelection(sel, vp, w, h);
     dispatch({type: 'content/zoom', payload: payload});
@@ -170,6 +170,7 @@ const ContentEditor = () => {
     });
     setCallback(sm, 'background_upload', selectFile);
     setCallback(sm, 'obscure', () => {
+      console.log(`Obscuring ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
       obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
       sm.transition('wait');
     });
@@ -177,7 +178,10 @@ const ContentEditor = () => {
       reveal(sm.x1(), sm.y1(), sm.x2(), sm.y2());
       sm.transition('wait');
     });
-    setCallback(sm, 'zoomIn', () => zoomIn(sm.x1(), sm.y1(), sm.x2(), sm.y2()));
+    setCallback(sm, 'zoomIn', () => {
+      console.log(`Zooming ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
+      zoomIn(sm.x1(), sm.y1(), sm.x2(), sm.y2())
+    });
     setCallback(sm, 'zoomOut', () => zoomOut());
     setCallback(sm, 'complete', () => {
       // console.log(`${sm.x1()}, ${sm.x2()}, ${sm.y1()}, ${sm.y2()}`)

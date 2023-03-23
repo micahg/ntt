@@ -2,6 +2,7 @@ import { createRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, renderImage } from '../../utils/drawing';
+import { Rect, trimToAspect } from '../../utils/geometry';
 
 import styles from './RemoteDisplayComponent.module.css';
 
@@ -58,27 +59,29 @@ const RemoteDisplayComponent = () => {
         return;
       }
 
+      let viewport: Rect | null = null;
+      if ('viewport' in js.state && js.state.viewport) {
+        viewport = js.state.viewport as Rect;
+      }
+
       let ts: number = new Date().getTime();
       if ('overlay' in js.state && js.state.overlay) {
         let asset: string = js.state.overlay;
-        loadImage(`${apiUrl}/${asset}?${ts}`).then((img: HTMLImageElement) => {
-          renderImage(img, overlayCtx, true);
-        }).catch(err => {
-          console.error(err);
-        });
+        loadImage(`${apiUrl}/${asset}?${ts}`)
+          .then((img: HTMLImageElement) => {
+            renderImage(img, overlayCtx, true, false)
+          })
+          .catch(err => console.error(err));
       }
 
       if ('background' in js.state && js.state.background) {
         let asset: string = js.state.background;
         loadImage(`${apiUrl}/${asset}?${ts}`).then((img: HTMLImageElement) => {
-          renderImage(img, contentCtx, true);
+          let adjustedViewport = trimToAspect(viewport, img.width, img.height);
+          renderImage(img, contentCtx, true, false, adjustedViewport);
         }).catch(err => {
           console.error(err);
         });
-      }
-
-      if ('viewport' in js.state && js.state.viewport) {
-
       }
     }
   }, [contentCtx, overlayCtx]);

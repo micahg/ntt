@@ -1,3 +1,5 @@
+import { getRect } from "./drawing";
+
 export interface Rect {
   x: number,
   y: number,
@@ -48,5 +50,21 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
     x: selection.x * h_scale, y: selection.y * v_scale,
     width: selection.width * h_scale, height: selection.height * v_scale,
   };
+  return res;
+}
+
+export function trimToAspect(selection: Rect | null, width: number, height: number) {
+  if (!selection) return getRect(0, 0, width, height);
+  if (selection.x === 0 && selection.y === 0 && selection.width === width && selection.height === height) {
+    return getRect(0, 0, width, height);
+  }
+  if (width >= height) {
+
+    let v_scale =  height/width;
+    let res: Rect = { x: selection.x, y: selection.y, width: selection.width, height: v_scale * selection.height}
+    return res;
+  }
+  let h_scale = width/height;
+  let res: Rect = { x: selection.x, y: selection.y, width: h_scale * selection.width, height: selection.height}
   return res;
 }
