@@ -66,21 +66,9 @@ export function fillToAspect(selection: Rect | null, width: number, height: numb
     let newHeight = selection.width / scrR;
     let newY = selection.y + ((selection.height - newHeight)/2)
     return {x: selection.x, y: newY, width: selection.width, height: newHeight};
-    // let newWidth = width * selR;
-    // let newX = selection.x - (newWidth/2)
-    // return { x: newX, y: selection.y, width: newWidth, height: selection.height}
   }
 
   let newWidth = scrR * selection.height;
   let newX = selection.x + ((selection.width - newWidth)/2);
   return {x: newX, y: selection.y, width: newWidth, height: selection.height}
-
-  // if (selection.width >= selection.height) {
-  //   let v_scale =  height/width;
-  //   let res: Rect = { x: selection.x, y: selection.y, width: selection.width, height: v_scale * selection.height}
-  //   return res;
-  // }
-  // let h_scale = width/height;
-  // let res: Rect = { x: selection.x, y: selection.y, width: h_scale * selection.width, height: selection.height}
-  // return res;
 }

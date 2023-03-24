@@ -65,37 +65,15 @@ const RemoteDisplayComponent = () => {
       }
       let viewport: Rect = js.state.viewport;
 
-      // if we have a background to use as reference and a viewport, then we can 
-      // trim the selection appropriatly
-      // let viewport: Rect | null = null;
-      // if ('viewport' in js.state && js.state.viewport) {
-      //   if ('background' in js.state && js.state.background) {
-      //     viewport = js.state.viewport as Rect;
-      //     let adjustedViewport = trimToAspect(viewport, img.width, img.height);
-      //   }
-      // }
-
       let ts: number = new Date().getTime();
       let overlayUri: string | null = null;
       if ('overlay' in js.state && js.state.overlay) {
-        overlayUri = `${apiUrl}/${js.state.overlay}?${ts}`
-        // let asset: string = js.state.overlay;
-        // loadImage(`${apiUrl}/${asset}?${ts}`)
-        //   .then((img: HTMLImageElement) => {
-        //     renderImage(img, overlayCtx, true, false)
-        //   })
-        //   .catch(err => console.error(err));
+        overlayUri = `${apiUrl}/${js.state.overlay}?${ts}`;
       }
 
       let backgroundUri: string | null = null;
       if ('background' in js.state && js.state.background) {
         backgroundUri = `${apiUrl}/${js.state.background}?${ts}`;
-        // let asset: string = js.state.background;
-        // loadImage(`${apiUrl}/${asset}?${ts}`).then((img: HTMLImageElement) => {
-        //   renderImage(img, contentCtx, true, false);
-        // }).catch(err => {
-        //   console.error(err);
-        // });
       }
 
       if (!backgroundUri) {

@@ -103,12 +103,6 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         next(action);
       }).catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
       break;
-    case 'content/zoomOut':
-      zoom(storeAPI, {x: 0, y: 0, width: 0, height: 0}).then(value => {
-        action.payload = undefined;
-        next(action);
-      }).catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
-      break;
     default:
       next(action);
       break;

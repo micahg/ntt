@@ -170,7 +170,7 @@ const ContentEditor = () => {
     });
     setCallback(sm, 'background_upload', selectFile);
     setCallback(sm, 'obscure', () => {
-      console.log(`Obscuring ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
+      // console.log(`Obscuring ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
       obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
       sm.transition('wait');
     });
@@ -179,7 +179,7 @@ const ContentEditor = () => {
       sm.transition('wait');
     });
     setCallback(sm, 'zoomIn', () => {
-      console.log(`Zooming ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
+      // console.log(`Zooming ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
       zoomIn(sm.x1(), sm.y1(), sm.x2(), sm.y2())
     });
     setCallback(sm, 'zoomOut', () => zoomOut());
