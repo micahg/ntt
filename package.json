@@ -1,7 +1,6 @@
 {
   "name": "ntt",
   "version": "0.0.1",
-  "private": true,
   "files": [ "build" ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/@micahg"
