@@ -1,7 +1,8 @@
 {
   "name": "ntt",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
+  "files": [ "build" ],
   "dependencies": {
     "@reduxjs/toolkit": "^1.9.2",
     "@testing-library/jest-dom": "^5.16.5",
