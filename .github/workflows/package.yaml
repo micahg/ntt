@@ -20,7 +20,7 @@ jobs:
       - run: npm pack
       - uses: actions/upload-artifact@v3
         with:
-          name: ntttgs
+          name: ntttgz
           path: ntt-*.tgz
   publish:
     needs: [build]  
@@ -39,7 +39,7 @@ jobs:
           scope: '@micahg'
       - uses: actions/download-artifact@v3
         with:
-          name: serverjs
+          name: ntttgz
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
