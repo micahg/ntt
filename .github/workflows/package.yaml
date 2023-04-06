@@ -21,7 +21,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: ntttgz
-          path: micah-ntt-*.tgz
+          path: micahg-ntt-*.tgz
   publish:
     needs: [build]  
     runs-on: ubuntu-latest
