@@ -55,8 +55,13 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
 
 export function fillToAspect(selection: Rect | null, width: number, height: number) {
   if (!selection) return getRect(0, 0, width, height);
-  if (selection.x === 0 && selection.y === 0 && selection.width === width && selection.height === height) {
-    return getRect(0, 0, width, height);
+  if (selection.x === 0 && selection.y === 0) {
+
+    // TODO this should only apply if the screen is not wide
+    if ((width < height && selection.width === height && selection.height === width) ||
+        (selection.width === width && selection.height === height)) {
+      return getRect(0, 0, width, height);
+    }
   }
 
   let selR = selection.width / selection.height;

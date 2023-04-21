@@ -2,7 +2,7 @@ import { createRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, renderImage } from '../../utils/drawing';
-import { Rect, fillToAspect } from '../../utils/geometry';
+import { Rect, calculateBounds, fillToAspect } from '../../utils/geometry';
 
 import styles from './RemoteDisplayComponent.module.css';
 
@@ -31,9 +31,7 @@ const RemoteDisplayComponent = () => {
     let url = `ws://localhost:3000/`;
     let ws = new WebSocket(url);
     ws.onopen = (event: Event) => {
-      console.log(`MICAH got open event ${JSON.stringify(event)}`);
-      ws.send('hello');
-      return "";
+      console.log(`Got open event ${JSON.stringify(event)}`);
     };
 
     ws.onerror = function(ev: Event) {
@@ -96,15 +94,19 @@ const RemoteDisplayComponent = () => {
             loadImage(overlayUri).then(ovrImg => {
               // need to scale the selection down to the canvas size of the overlay
               // which (typically) considerably smaller than the background image
-              let scale = bgImg.width/ovrImg.width;
-              let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: viewport.width/scale, height: viewport.height/scale};
+              let scale = Math.max(bgImg.width, bgImg.height)/ovrImg.width;
+
+              // TODO consider the orientation of the screen
+              let width = bgImg.width < bgImg.height ? viewport.height : viewport.width;
+              let height = bgImg.width < bgImg.height ? viewport.width : viewport.height;
+              let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: width/scale, height: height/scale};
               olVP = fillToAspect(olVP, ovrImg.width, ovrImg.height);
               renderImage(ovrImg, overlayCtx, true, false, olVP)
                 .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
                 .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
             }).catch(err => console.error(`Error loading overlay iamge ${overlayUri}: ${JSON.stringify(err)}`));
           } else {
-            renderImage(bgImg, contentCtx, true, false, viewport)
+            renderImage(bgImg, contentCtx, true, false, bgVP)
               .catch(err => console.error(`Error rendering background imager: ${JSON.stringify(err)}`));
           }
         }).catch(err => console.error(`Error loading background image: ${JSON.stringify(err)}`))
