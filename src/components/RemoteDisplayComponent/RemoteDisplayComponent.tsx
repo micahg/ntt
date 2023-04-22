@@ -87,30 +87,28 @@ const RemoteDisplayComponent = () => {
        * overlay, then the background. If there is no overlay then just draw
        * background with expanded selection if there is one.
        */
-      loadImage(backgroundUri)
-        .then(bgImg => {
-          let bgVP = fillToAspect(viewport, bgImg.width, bgImg.height);
-          if (overlayUri) {
-            loadImage(overlayUri).then(ovrImg => {
-              // need to scale the selection down to the canvas size of the overlay
-              // which (typically) considerably smaller than the background image
-              let scale = Math.max(bgImg.width, bgImg.height)/ovrImg.width;
+      loadImage(backgroundUri).then(bgImg => {
+        let bgVP = fillToAspect(viewport, bgImg.width, bgImg.height);
+        if (overlayUri) {
+          loadImage(overlayUri).then(ovrImg => {
+            // need to scale the selection down to the canvas size of the overlay
+            // which (typically) considerably smaller than the background image
+            let scale = Math.max(bgImg.width, bgImg.height)/ovrImg.width;
 
-              // TODO consider the orientation of the screen
-              let width = bgImg.width < bgImg.height ? viewport.height : viewport.width;
-              let height = bgImg.width < bgImg.height ? viewport.width : viewport.height;
-              let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: width/scale, height: height/scale};
-              olVP = fillToAspect(olVP, ovrImg.width, ovrImg.height);
-              renderImage(ovrImg, overlayCtx, true, false, olVP)
-                .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
-                .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
-            }).catch(err => console.error(`Error loading overlay iamge ${overlayUri}: ${JSON.stringify(err)}`));
-          } else {
-            renderImage(bgImg, contentCtx, true, false, bgVP)
-              .catch(err => console.error(`Error rendering background imager: ${JSON.stringify(err)}`));
-          }
-        }).catch(err => console.error(`Error loading background image: ${JSON.stringify(err)}`))
-
+            // TODO consider the orientation of the screen
+            let width = bgImg.width < bgImg.height ? viewport.height : viewport.width;
+            let height = bgImg.width < bgImg.height ? viewport.width : viewport.height;
+            let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: width/scale, height: height/scale};
+            olVP = fillToAspect(olVP, ovrImg.width, ovrImg.height);
+            renderImage(ovrImg, overlayCtx, true, false, olVP)
+              .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
+              .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
+          }).catch(err => console.error(`Error loading overlay iamge ${overlayUri}: ${JSON.stringify(err)}`));
+        } else {
+          renderImage(bgImg, contentCtx, true, false, bgVP)
+            .catch(err => console.error(`Error rendering background imager: ${JSON.stringify(err)}`));
+        }
+      }).catch(err => console.error(`Error loading background image: ${JSON.stringify(err)}`))
     }
   }, [apiUrl, contentCtx, overlayCtx]);
 
