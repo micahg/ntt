@@ -2,7 +2,7 @@ import { createRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, renderImage } from '../../utils/drawing';
-import { Rect, calculateBounds, fillToAspect } from '../../utils/geometry';
+import { Rect, calculateBounds, fillToAspect, rotate } from '../../utils/geometry';
 
 import styles from './RemoteDisplayComponent.module.css';
 
@@ -91,18 +91,49 @@ const RemoteDisplayComponent = () => {
         let bgVP = fillToAspect(viewport, bgImg.width, bgImg.height);
         if (overlayUri) {
           loadImage(overlayUri).then(ovrImg => {
-            // need to scale the selection down to the canvas size of the overlay
-            // which (typically) considerably smaller than the background image
-            let scale = Math.max(bgImg.width, bgImg.height)/ovrImg.width;
+            /* REALLY IMPORTANT - base overlay on the BG Viewport as it can shift the
+             * image. If the zoomed selection is so small that we render negative space
+             * (eg beyond the bordres) the viewport shifts to render from the border */
+            
+            // start assuming no rotation (the easy case)
 
-            // TODO consider the orientation of the screen
-            let width = bgImg.width < bgImg.height ? viewport.height : viewport.width;
-            let height = bgImg.width < bgImg.height ? viewport.width : viewport.height;
-            let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: width/scale, height: height/scale};
-            olVP = fillToAspect(olVP, ovrImg.width, ovrImg.height);
-            renderImage(ovrImg, overlayCtx, true, false, olVP)
-              .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
-              .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
+            // TODO detect portrait - ALL OF THIS CODE assumes editor/overlay are landsacpe
+            let rot: boolean = bgVP.width < bgVP.height;
+            if (bgVP.width < bgVP.height) {
+              let [x1, y1] = rotate(90, bgVP.x, bgVP.y, bgImg.width,
+                                    bgImg.height);
+              let [x2, y2] = rotate(90, bgVP.x + bgVP.width, bgVP.y + bgVP.height,
+                                    bgImg.width, bgImg.height);
+              [x1, x2] = [Math.min(x1, x2), Math.max(x1, x2)];
+              [y1, y2] = [Math.min(y1, y2), Math.max(y1, y2)];
+              let w = x2 - x1;
+              let h = y2 - y1;
+              let scale = ovrImg.width/bgImg.height;
+              x1 *= scale;
+              y1 *= scale;
+              w *= scale;
+              h *= scale;
+              let olVP = {x: x1, y: y1, width: w, height: h}
+
+              renderImage(ovrImg, overlayCtx, true, false, olVP)
+                .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
+                .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
+
+              console.log('hi');
+            } else {
+
+              let scale = (rot ? bgImg.height : bgImg.width)/ovrImg.width;
+  
+  
+              // TODO detect portrait - assumes overlay always wide
+              let width = bgImg.width < bgImg.height ? viewport.height : viewport.width;
+              let height = bgImg.width < bgImg.height ? viewport.width : viewport.height;
+              let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: width/scale, height: height/scale};
+              olVP = fillToAspect(olVP, ovrImg.width, ovrImg.height);
+              renderImage(ovrImg, overlayCtx, true, false, olVP)
+                .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
+                .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
+            }
           }).catch(err => console.error(`Error loading overlay iamge ${overlayUri}: ${JSON.stringify(err)}`));
         } else {
           renderImage(bgImg, contentCtx, true, false, bgVP)

@@ -1,3 +1,4 @@
+import { text } from "stream/consumers";
 import { getRect } from "./drawing";
 
 export interface Rect {
@@ -41,34 +42,43 @@ export function calculateBounds(canvasWidth: number, canvasHeight: number, image
   return result;
 }
 
-export function scaleSelection(selection: Rect, viewport: Rect, width: number, height: number) {
-  let rotate: boolean = width < height;
+/**
+ * Rotate a point around the center of a rectangle
+ * @param angle the angle of rotation
+ * @param x the X coordinate of the point
+ * @param y the Y coordinate of the point
+ * @param width the width of the rectangle
+ * @param height the height of the rectangle
+ * @returns an array of length two, containing the rotated X and Y cordinate values
+ */
+export function rotate(angle: number, x: number, y: number, width: number, height: number): number[] {
+  let r = Math.PI * (angle/180);
+  let c_x = width/2;
+  let c_y = height/2;
+  let t_x = x - c_x; // translated x
+  let t_y = y - c_y; // translated y
+  let mcos = Math.cos(r);
+  let msin = Math.sin(r);
+  // any math i can look up says this is wrong. The final addends of each
+  // line are flipped (c_y should be c_x and c_x should be c_y)...
+  let x1 = (mcos * t_x) - (msin * t_y) + c_y;
+  let y1 = (msin * t_x) + (mcos * t_y) + c_x;
+  return [x1, y1]
+}
 
-  if (rotate) {
-    // rotate negative 90
-    let radians = Math.PI/-2
-    let c_x = viewport.width/2;
-    let c_y = viewport.height/2;
-    let x1 = selection.x;
-    let x2 = x1 + selection.width;
-    let y1 = selection.y;
-    let y2 = y1 + selection.height;
-    x1 -= c_x;
-    x2 -= c_x;
-    y1 -= c_y;
-    y2 -= c_y;
-    let mcos = Math.cos(radians);
-    let msin = Math.sin(radians);
-    // any math i can look up says this is wrong. The final addends of each
-    // line are flipped (c_y should be c_x and c_x should be c_y)...
-    let rx1 = (mcos * x1) - (msin * y1) + c_y;
-    let ry1 = (msin * x1) + (mcos * y1) + c_x;
-    let rx2 = (mcos * x2) - (msin * y2) + c_y;
-    let ry2 = (msin * x2) + (mcos * y2) + c_x;
+export function scaleSelection(selection: Rect, viewport: Rect, width: number, height: number) {
+
+  // TODO this shouldn't matter in portrait
+  if (width < height) {
+    let [rx1, ry1] = rotate(-90, selection.x, selection.y,
+                            viewport.width, viewport.height);
+    let [rx2, ry2] = rotate(-90, selection.x + selection.width,
+                            selection.y + selection.height,
+                            viewport.width, viewport.height);
+
     [rx1, rx2] = [Math.min(rx1, rx2), Math.max(rx1, rx2)];
     [ry1, ry2] = [Math.min(ry1, ry2), Math.max(ry1, ry2)];
-    // let v_w = rx2 - rx1;
-    // let v_h = ry2 - ry1;
+
     // swap because viewport not rotated
     let v_w = viewport.height - viewport.y;
     let v_h = viewport.width - viewport.x;
@@ -101,13 +111,20 @@ export function fillToAspect(selection: Rect | null, width: number, height: numb
   let selR = selection.width / selection.height;
   let scrR = width/height;
 
+  // if the selection ratio is greater than the screen ratio it implies
+  // aspect ratio of the selection is wider than the aspect ratio of the
+  // screen, so the height can be scaled up to match the screen/image ratio
   if (selR >= scrR) {
     let newHeight = selection.width / scrR;
     let newY = selection.y + ((selection.height - newHeight)/2)
     return {x: selection.x, y: newY, width: selection.width, height: newHeight};
   }
 
+  // conversly, if the selection ratio is less than the screen ratio, it implies
+  // that the aspect ratio of the selection is less than the aspect ratio of the
+  // screen, so the width can be scaled up to match the screen/image ratio
   let newWidth = scrR * selection.height;
   let newX = selection.x + ((selection.width - newWidth)/2);
+  if (newX < 0) newX = 0;
   return {x: newX, y: selection.y, width: newWidth, height: selection.height}
 }
