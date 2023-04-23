@@ -117,6 +117,11 @@ export function fillToAspect(selection: Rect | null, width: number, height: numb
   if (selR >= scrR) {
     let newHeight = selection.width / scrR;
     let newY = selection.y + ((selection.height - newHeight)/2)
+
+    // these bits ensure we render from the edge rather than show black
+    if (newY < 0) newY = 0;
+    if (newY + newHeight > height) newY = height - newHeight;
+
     return {x: selection.x, y: newY, width: selection.width, height: newHeight};
   }
 
@@ -125,6 +130,10 @@ export function fillToAspect(selection: Rect | null, width: number, height: numb
   // screen, so the width can be scaled up to match the screen/image ratio
   let newWidth = scrR * selection.height;
   let newX = selection.x + ((selection.width - newWidth)/2);
+
+  // these bits ensure we render from the edge rather than show black
   if (newX < 0) newX = 0;
+  if (newX + newWidth > width) newX = width - newWidth;
+
   return {x: newX, y: selection.y, width: newWidth, height: selection.height}
 }

@@ -99,41 +99,32 @@ const RemoteDisplayComponent = () => {
 
             // TODO detect portrait - ALL OF THIS CODE assumes editor/overlay are landsacpe
             let rot: boolean = bgVP.width < bgVP.height;
+            let [x, y, w, h] = [0, 0, 0, 0]
             if (bgVP.width < bgVP.height) {
-              let [x1, y1] = rotate(90, bgVP.x, bgVP.y, bgImg.width,
-                                    bgImg.height);
+              [x, y] = rotate(90, bgVP.x, bgVP.y, bgImg.width,
+                              bgImg.height);
               let [x2, y2] = rotate(90, bgVP.x + bgVP.width, bgVP.y + bgVP.height,
                                     bgImg.width, bgImg.height);
-              [x1, x2] = [Math.min(x1, x2), Math.max(x1, x2)];
-              [y1, y2] = [Math.min(y1, y2), Math.max(y1, y2)];
-              let w = x2 - x1;
-              let h = y2 - y1;
+              [x, x2] = [Math.min(x, x2), Math.max(x, x2)];
+              [y, y2] = [Math.min(y, y2), Math.max(y, y2)];
+              w = x2 - x;
+              h = y2 - y;
               let scale = ovrImg.width/bgImg.height;
-              x1 *= scale;
-              y1 *= scale;
+              x *= scale;
+              y *= scale;
               w *= scale;
               h *= scale;
-              let olVP = {x: x1, y: y1, width: w, height: h}
-
-              renderImage(ovrImg, overlayCtx, true, false, olVP)
-                .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
-                .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
-
-              console.log('hi');
             } else {
-
-              let scale = (rot ? bgImg.height : bgImg.width)/ovrImg.width;
-  
-  
-              // TODO detect portrait - assumes overlay always wide
-              let width = bgImg.width < bgImg.height ? viewport.height : viewport.width;
-              let height = bgImg.width < bgImg.height ? viewport.width : viewport.height;
-              let olVP = {x: viewport.x/scale, y: viewport.y/scale, width: width/scale, height: height/scale};
-              olVP = fillToAspect(olVP, ovrImg.width, ovrImg.height);
-              renderImage(ovrImg, overlayCtx, true, false, olVP)
-                .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
-                .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
+              let scale = bgImg.width/ovrImg.width;
+              x = bgVP.x / scale;
+              y = bgVP.y / scale;
+              w = bgVP.width / scale;
+              h = bgVP.height / scale;
             }
+            let olVP = {x: x, y: y, width: w, height: h};
+            renderImage(ovrImg, overlayCtx, true, false, olVP)
+              .then(() => renderImage(bgImg, contentCtx, true, false, bgVP))
+              .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
           }).catch(err => console.error(`Error loading overlay iamge ${overlayUri}: ${JSON.stringify(err)}`));
         } else {
           renderImage(bgImg, contentCtx, true, false, bgVP)
