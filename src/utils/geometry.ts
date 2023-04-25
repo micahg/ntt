@@ -66,31 +66,16 @@ export function rotate(angle: number, x: number, y: number, width: number, heigh
   return [x1, y1]
 }
 
+export function rotateRect(angle: number, rect: Rect, width: number, height: number) {
+  let [x1, y1] = rotate(-90, rect.x, rect.y, width, height);
+  let [x2, y2] = rotate(-90, rect.x + rect.width, rect.y + rect.height, width, height);
+  [x1, x2] = [Math.min(x1, x2), Math.max(x1, x2)];
+  [y1, y2] = [Math.min(y1, y2), Math.max(y1, y2)];
+  let r: Rect = {x: x1, y: y1, width: x2 - x1, height: y2 - y1};
+  return r;
+}
+
 export function scaleSelection(selection: Rect, viewport: Rect, width: number, height: number) {
-
-  // TODO this shouldn't matter in portrait
-  if (width < height) {
-    let [rx1, ry1] = rotate(-90, selection.x, selection.y,
-                            viewport.width, viewport.height);
-    let [rx2, ry2] = rotate(-90, selection.x + selection.width,
-                            selection.y + selection.height,
-                            viewport.width, viewport.height);
-
-    [rx1, rx2] = [Math.min(rx1, rx2), Math.max(rx1, rx2)];
-    [ry1, ry2] = [Math.min(ry1, ry2), Math.max(ry1, ry2)];
-
-    // swap because viewport not rotated
-    let v_w = viewport.height - viewport.y;
-    let v_h = viewport.width - viewport.x;
-    let h_scale = width / v_w;
-    let v_scale = height / v_h;
-    // swap selection as its not rotated
-    let res: Rect = {
-      x: rx1 * h_scale, y: ry1 * v_scale,
-      width: selection.height * h_scale, height: selection.width * v_scale,
-    }
-    return res;
-  }
   let v_w = viewport.width - viewport.x;
   let v_h = viewport.height - viewport.y;
   let h_scale = width/v_w;
