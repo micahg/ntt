@@ -4,7 +4,18 @@ on:
     branches-ignore:
       - main
 jobs:
+  floop:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "$GITHUB_ACTOR@steakholdermeating.com"
   build:
+    needs: [floop]
     runs-on: ubuntu-latest
     permissions:
       contents: read
