@@ -27,8 +27,8 @@ jobs:
       version: ${{ steps.version.outputs.value}}
     steps:
       - id: version
-        uses: actions/checkout@v3
-        run: |
+      - uses: actions/checkout@v3
+      - run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
   print_version:
@@ -39,7 +39,7 @@ jobs:
     steps:
       - env:
           pkg_ver: ${{ needs.set-version.outputs.version}}
-        run: echo "Package version is $pkg_ver"
+      - run: echo "Package version is $pkg_ver"
   # build:
   #   # needs: [bump]
   #   runs-on: ubuntu-latest
