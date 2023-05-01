@@ -25,9 +25,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v3
-      - run: VERSION=$(node -p "require('./package.json').version")
-      - run: echo "PACKAGE_VERSION=$VERSION >> $GITHUB_ENV"
-      - run: cat $GITHUB_ENV
+      - run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
+      - run: echo "$GITHUB_ENV"
+      - run: cat "$GITHUB_ENV"
   print_version:
     needs: [version]
     runs-on: ubuntu-latest
