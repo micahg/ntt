@@ -19,17 +19,18 @@ jobs:
   #         echo "Checking out $BRANCH"
   #         git checkout -b "$BRANCH"
   #         git push --set-upstream origin "$BRANCH"
-  version:
+  set-version:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      version: ${{ steps.version.outputs.value}}
     steps:
-      - uses: actions/checkout@v3
-      - run: |
+      - id: version
+        uses: actions/checkout@v3
+        run: |
           VERSION=$(node -p "require('./package.json').version")
-          echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
-      - run: echo "$GITHUB_ENV"
-      - run: cat "$GITHUB_ENV"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
   print_version:
     needs: [version]
     runs-on: ubuntu-latest
@@ -37,7 +38,7 @@ jobs:
       contents: read
     steps:
       - env:
-          pkg_ver: ${{ env.PACKAGE_VERSION}}
+          pkg_ver: ${{ needs.set-version.outputs.version}}
         run: echo "Package version is $pkg_ver"
   # build:
   #   # needs: [bump]
