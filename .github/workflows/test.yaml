@@ -17,8 +17,8 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           BRANCH="release/$VERSION"
           echo "Checking out $BRANCH"
-          git checkout -b "$BRANCH"
-          git push --set-upstream origin "$BRANCH"
+          echo git checkout -b "$BRANCH"
+          echo git push --set-upstream origin "$BRANCH"
   # set-version:
   #   runs-on: ubuntu-latest
   #   permissions:
