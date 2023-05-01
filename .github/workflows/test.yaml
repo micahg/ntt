@@ -36,8 +36,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - run: env
-      - run: echo "Package version is $PACKAGE_VERSION"
+      - env:
+          pkg_ver: ${{ env.PACKAGE_VERSION}}
+        run: echo "Package version is $pkg_ver"
   # build:
   #   # needs: [bump]
   #   runs-on: ubuntu-latest
