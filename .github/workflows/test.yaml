@@ -39,7 +39,7 @@ jobs:
       contents: read
     steps:
       - env:
-          pkg_ver: ${{ needs.set-version.outputs.version}}
+          pkg_ver: ${{ needs.set-version.outputs.package_version}}
         run: echo "Package version is $pkg_ver"
   # build:
   #   # needs: [bump]
