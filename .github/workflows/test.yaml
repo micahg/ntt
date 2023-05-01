@@ -15,9 +15,10 @@ jobs:
           git config --global user.email "$GITHUB_ACTOR@github.com"
           npm version patch
           VERSION=$(node -p "require('./package.json').version")
-          echo "Checking out $VERSION release branch"
-          git checkout -b release/$VERSION
-          git push origin
+          BRANCH="release/$VERSION"
+          echo "Checking out $BRANCH"
+          git checkout -b "$BRANCH"
+          git push --set-upstream origin "$BRANCH"
   build:
     needs: [bump]
     runs-on: ubuntu-latest
