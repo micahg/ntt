@@ -32,15 +32,15 @@ jobs:
       - run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
-  print_version:
-    needs: [version]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - env:
-          pkg_ver: ${{ needs.set-version.outputs.version}}
-        run: echo "Package version is $pkg_ver"
+  # print_version:
+  #   needs: [version]
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #   steps:
+  #     - env:
+  #         pkg_ver: ${{ needs.set-version.outputs.version}}
+  #       run: echo "Package version is $pkg_ver"
   # build:
   #   # needs: [bump]
   #   runs-on: ubuntu-latest
