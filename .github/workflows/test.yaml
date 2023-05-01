@@ -24,6 +24,7 @@ jobs:
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@v3
       - run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "PACKAGE_VERSION=$VERSION >> $GITHUB_ENV"
