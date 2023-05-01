@@ -34,7 +34,7 @@ jobs:
           echo "package_version=$VERSION"
           echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
   print_version:
-    needs: [set-version]
+    needs: set-version
     runs-on: ubuntu-latest
     permissions:
       contents: read
