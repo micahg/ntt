@@ -24,7 +24,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      version: ${{ steps.version.outputs.value}}
+      version: ${{ steps.version.outputs.value }}
     steps:
       - id: version
         uses: actions/checkout@v3
