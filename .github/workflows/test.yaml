@@ -27,7 +27,10 @@ jobs:
     steps:
       - id: get_version
         uses: actions/checkout@v3
-      - run: VERSION=$(node -p "require('./package.json').version") && echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
+      - run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "MICAH VERSION IS $VERSION"
+          echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
     # outputs:
     #   package_version: ${{ steps.get_version.outputs.package_version }}
   # print_version:
