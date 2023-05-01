@@ -19,19 +19,20 @@ jobs:
           echo "Checking out $BRANCH"
           echo git checkout -b "$BRANCH"
           echo git push --set-upstream origin "$BRANCH"
-  # set-version:
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #   outputs:
-  #     version: ${{ steps.get_version.outputs.package_version }}
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       id: get_version
-  #       run: |
-  #         echo "I dont get it this should work"
-  #         VERSION=$(node -p "require('./package.json').version")
-  #         echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
+  set-version:
+    needs: [bump]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.get_version.outputs.package_version }}
+    steps:
+      - uses: actions/checkout@v3
+        id: get_version
+        run: |
+          echo "I dont get it this should work"
+          VERSION=$(node -p "require('./package.json').version")
+          echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
   # print_version:
   #   needs: [version]
   #   runs-on: ubuntu-latest
