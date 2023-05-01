@@ -4,7 +4,22 @@ on:
     branches-ignore:
       - main
 jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "$GITHUB_ACTOR@github.com"
+          npm version patch
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Checking out $VERSION release branch"
+          git checkout -b release/$VERSION
+          git push origin
   build:
+    needs: [bump]
     runs-on: ubuntu-latest
     permissions:
       contents: read
