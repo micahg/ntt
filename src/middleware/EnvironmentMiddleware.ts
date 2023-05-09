@@ -4,7 +4,6 @@ import axios from 'axios';
 export const EnvironmentMiddleware: Middleware = storeAPI => next => action => {
   if (action.type === 'environment/config') {
     console.log(`Requesting config`);
-    const currentHost = `${window.location.protocol}//${window.location.hostname}`;
     axios.get('/env.json').then(data => {
       action.payload = data;
 
