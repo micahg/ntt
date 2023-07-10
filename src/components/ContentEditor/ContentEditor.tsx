@@ -17,7 +17,8 @@ const ContentEditor = () => {
   const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [backgroundLoaded, setBackgroundLoaded] = useState<boolean>(false);
-  const [showMenu, setShowMenu] = useState<boolean>(false);
+  const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
+  const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [canObscure, setCanObscure] = useState<boolean>(false);
   const [canLink, setCanLink] = useState<boolean>(false);
   const [link, setLink] = useState<string>('');
@@ -153,25 +154,27 @@ const ContentEditor = () => {
     setCallback(sm, 'wait', () => {
       sm.resetCoordinates();
       setLink('');
-      setShowMenu(false);
+      setShowBackgroundMenu(false);
+      setShowOpacityMenu(false);
       setCanLink(false);
       setCanObscure(false);
       clearOverlaySelection.bind(overlayCtx)();
     });
     
     setCallback(sm, 'record', () => {
-      setShowMenu(false)
+      setShowBackgroundMenu(false)
+      setShowOpacityMenu(false);
       setCanObscure(true);
     });
     setCallback(sm, 'background_select', () => {
       clearOverlaySelection.bind(overlayCtx)();
       sm.resetCoordinates();
       setCanObscure(false);
-      setShowMenu(true);
+      setShowBackgroundMenu(true);
     });
     setCallback(sm, 'background_link', () => {
       setCanLink(true);
-      setShowMenu(false);
+      setShowBackgroundMenu(false);
     });
     setCallback(sm, 'background_upload', selectFile);
     setCallback(sm, 'obscure', () => {
@@ -197,6 +200,12 @@ const ContentEditor = () => {
         sm.transition('wait');
       }
     });
+    setCallback(sm, 'opacity_select', () => {
+      clearOverlaySelection.bind(overlayCtx)();
+      sm.resetCoordinates();
+      setCanObscure(false);
+      setShowOpacityMenu(true);
+    });
     sm.setMoveCallback(selectOverlay.bind(overlayCtx));
     sm.setStartCallback(storeOverlay.bind(overlayCtx));
     setCallback(sm, 'push', () => dispatch({type: 'content/push'}));
@@ -204,7 +213,7 @@ const ContentEditor = () => {
       clearOverlay(overlayCtx);
       updateOverlay();
       sm.transition('done');
-    })
+    });
 
     overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => {
       sm.transition('down', evt)
@@ -278,11 +287,18 @@ const ContentEditor = () => {
         <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
         <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
       </div>
-      {showMenu && <div className={styles.BackgroundMenu}>
+      {showBackgroundMenu && <div className={styles.BackgroundMenu}>
         <button onClick={() => sm.transition('upload')}>Upload</button>
         <button onClick={() => sm.transition('link')}>Link</button>
+        <button onClick={() => sm.transition('done')}>Cancel</button>
+      </div>}
+      {showOpacityMenu && <div className={styles.BackgroundMenu}>
+        <button onClick={() => sm.transition('display')}>Display Opacity</button>
+        <button onClick={() => sm.transition('render')}>Render Opacity</button>
+        <button onClick={() => sm.transition('done')}>Cancel</button>
       </div>}
       <div className={styles.ControlsContainer}>
+        <button disabled={canObscure} onClick={() => sm.transition('opacity')}>Opacity</button>
         <button hidden={zoomedIn} disabled={!canObscure} onClick={() => sm.transition('zoomIn')}>Zoom In</button>
         <button hidden={!zoomedIn} onClick={() => sm.transition('zoomOut')}>Zoom Out</button>
         <button disabled={!canObscure} onClick={() => sm.transition('obscure')}>Obscure</button>

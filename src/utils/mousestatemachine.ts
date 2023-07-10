@@ -21,6 +21,7 @@ export class MouseStateMachine implements StateMachine {
         'push': 'push',
         'zoomOut': 'zoomOut',
         'clear': 'clear',
+        'opacity': 'opacity_select',
       },
       'push': {
         'done': 'wait',
@@ -64,6 +65,17 @@ export class MouseStateMachine implements StateMachine {
         'done': 'wait',
       },
       'clear': {
+        'done': 'wait',
+      },
+      'opacity_select': {
+        'display': 'opacity_display',
+        'render': 'opacity_render',
+        'done': 'wait',
+      },
+      'opacity_display': {
+        'done': 'wait',
+      },
+      'opacity_render': {
         'done': 'wait',
       }
     };
