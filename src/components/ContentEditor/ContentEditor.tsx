@@ -290,12 +290,10 @@ const ContentEditor = () => {
       {showBackgroundMenu && <div className={styles.BackgroundMenu}>
         <button onClick={() => sm.transition('upload')}>Upload</button>
         <button onClick={() => sm.transition('link')}>Link</button>
-        <button onClick={() => sm.transition('done')}>Cancel</button>
       </div>}
       {showOpacityMenu && <div className={styles.BackgroundMenu}>
         <button onClick={() => sm.transition('display')}>Display Opacity</button>
         <button onClick={() => sm.transition('render')}>Render Opacity</button>
-        <button onClick={() => sm.transition('done')}>Cancel</button>
       </div>}
       <div className={styles.ControlsContainer}>
         <button disabled={canObscure} onClick={() => sm.transition('opacity')}>Opacity</button>

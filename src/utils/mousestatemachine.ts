@@ -56,7 +56,6 @@ export class MouseStateMachine implements StateMachine {
         'link': 'background_link',
         'upload': 'background_upload',
         'down': 'record_mouse',
-        'cancel': 'wait',
       },
       'background_link': {
         'done': 'wait',
@@ -70,7 +69,7 @@ export class MouseStateMachine implements StateMachine {
       'opacity_select': {
         'display': 'opacity_display',
         'render': 'opacity_render',
-        'done': 'wait',
+        'down': 'record_mouse',
       },
       'opacity_display': {
         'done': 'wait',
