@@ -287,11 +287,11 @@ const ContentEditor = () => {
         <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
         <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
       </div>
-      {showBackgroundMenu && <div className={styles.BackgroundMenu}>
+      {showBackgroundMenu && <div className={`${styles.Menu} ${styles.BackgroundMenu}`}>
         <button onClick={() => sm.transition('upload')}>Upload</button>
         <button onClick={() => sm.transition('link')}>Link</button>
       </div>}
-      {showOpacityMenu && <div className={styles.BackgroundMenu}>
+      {showOpacityMenu && <div className={`${styles.Menu} ${styles.OpacityMenu}`}>
         <button onClick={() => sm.transition('display')}>Display Opacity</button>
         <button onClick={() => sm.transition('render')}>Render Opacity</button>
       </div>}

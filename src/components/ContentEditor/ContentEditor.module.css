@@ -25,13 +25,20 @@
 }
 
 .BackgroundMenu {
-  z-index: 3;
-  position: absolute;
   right: 2.25em;
-  bottom: 3em;
 }
 
-.BackgroundMenu button {
+.OpacityMenu {
+  right: 37.5em;
+}
+
+.Menu {
+  bottom: 3em;
+  z-index: 3;
+  position: absolute;
+}
+
+.Menu button {
   background-color: gray;
   color: black;
   display: block;
@@ -42,12 +49,12 @@
   border: 1px solid black;
 }
 
-.BackgroundMenu button:hover {
+.Menu button:hover {
   background-color: lightgray;
   color: black;
 }
 
-.BackgroundMenu button:active {
+.Menu button:active {
   background-color: whitesmoke;
   color: black;
 }
