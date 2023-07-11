@@ -1,7 +1,7 @@
 import { createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection, revealOverlay, getRect, clearOverlay} from '../../utils/drawing';
+import { loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection, revealOverlay, getRect, clearOverlay, setOverlayOpacity} from '../../utils/drawing';
 import { rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
@@ -222,6 +222,8 @@ const ContentEditor = () => {
         overlayCanvasRef.current.style.opacity=opacity;
       }
     });
+    setCallback(sm, 'update_render_opacity', (args) => setOverlayOpacity(args[0]));
+
     sm.setMoveCallback(selectOverlay.bind(overlayCtx));
     sm.setStartCallback(storeOverlay.bind(overlayCtx));
     setCallback(sm, 'push', () => dispatch({type: 'content/push'}));

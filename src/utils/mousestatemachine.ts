@@ -77,11 +77,16 @@ export class MouseStateMachine implements StateMachine {
       },
       'update_display_opacity': {
         'down': 'record_mouse',
-        'change': 'update_display_opacity'
+        'change': 'update_display_opacity',
       },
       'opacity_render': {
         'down': 'record_mouse',
-      }
+        'change': 'update_render_opacity',
+      },
+      'update_render_opacity': {
+        'down': 'record_mouse',
+        'change': 'update_render_opacity',
+      },
     };
     setCallback(this, 'record_mouse', this.doRecord);
   }

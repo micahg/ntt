@@ -2,6 +2,7 @@ import { calculateBounds, ImageBound, Rect } from "./geometry";
 
 export const CONTROLS_HEIGHT = 46;
 let baseData: ImageData | null = null;
+let opacity: string = '1';
 
 export function getRect(x1: number, y1: number, x2: number, y2: number): Rect {
   let x: number;
@@ -119,10 +120,12 @@ export function setupOverlayCanvas(bounds: ImageBound, ctx: CanvasRenderingConte
   return Promise.resolve();
 }
 
+export function setOverlayOpacity(overlayOpacity: string) { opacity = overlayOpacity; }
+
 export function obscureOverlay(this: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
   if (baseData === null) return;
   this.putImageData(baseData, 0, 0);
-  this.fillStyle = "rgba(255, 0, 0, 1)";
+  this.fillStyle = `rgba(255, 0, 0, ${opacity})`;
   this.fillRect(x1,y1,x2-x1,y2-y1);
   baseData = this.getImageData(0, 0, this.canvas.width, this.canvas.height);
 }
