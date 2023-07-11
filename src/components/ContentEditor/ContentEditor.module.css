@@ -77,7 +77,13 @@
   z-index: 1;
 }
 
-.ControlsContainer input {
+.ControlsContainer input[type=color]{
+  margin: 0.5em;
+  padding: 0;
+  height: 2.5em;
+}
+
+.ControlsContainer input[type=text] {
   margin: 0.5em;
   padding: 0.5em;
   height: 1em;

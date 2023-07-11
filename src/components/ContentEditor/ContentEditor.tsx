@@ -1,7 +1,10 @@
 import { createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, obscureOverlay, renderImage, setupOverlayCanvas, selectOverlay, storeOverlay, clearOverlaySelection, revealOverlay, getRect, clearOverlay, setOverlayOpacity} from '../../utils/drawing';
+import { loadImage, obscureOverlay, renderImage, setupOverlayCanvas,
+         selectOverlay, storeOverlay, clearOverlaySelection, revealOverlay,
+         getRect, clearOverlay, setOverlayOpacity,
+         setOverlayColour } from '../../utils/drawing';
 import { rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
@@ -319,6 +322,7 @@ const ContentEditor = () => {
         </input>
       </div>}
       <div className={styles.ControlsContainer}>
+        <input type='color' defaultValue='#ff0000' onChange={(evt) => setOverlayColour(evt.target.value)}/>
         <button disabled={canObscure} onClick={() => sm.transition('opacity')}>Opacity</button>
         <button hidden={zoomedIn} disabled={!canObscure} onClick={() => sm.transition('zoomIn')}>Zoom In</button>
         <button hidden={!zoomedIn} onClick={() => sm.transition('zoomOut')}>Zoom Out</button>
