@@ -330,6 +330,7 @@ const ContentEditor = () => {
         <button disabled={!canObscure} onClick={() => sm.transition('reveal')}>Reveal</button>
         <button disabled={canObscure} onClick={() => sm.transition('clear')}>Clear</button>
         <input
+          type="text"
           value={link}
           disabled={!canLink}
           onChange={(e) => setLink(e.target.value)}
