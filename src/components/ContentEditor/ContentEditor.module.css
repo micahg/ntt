@@ -24,6 +24,14 @@
   left: 0;
 }
 
+.OpacitySlider {
+  right: 37.5em;
+  bottom: 3em;
+  z-index: 3;
+  position: absolute;
+  background-color: gray;
+}
+
 .BackgroundMenu {
   right: 2.25em;
 }

@@ -19,6 +19,7 @@ const ContentEditor = () => {
   const [backgroundLoaded, setBackgroundLoaded] = useState<boolean>(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
+  const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
   const [canObscure, setCanObscure] = useState<boolean>(false);
   const [canLink, setCanLink] = useState<boolean>(false);
   const [link, setLink] = useState<string>('');
@@ -165,6 +166,7 @@ const ContentEditor = () => {
       setShowBackgroundMenu(false)
       setShowOpacityMenu(false);
       setCanObscure(true);
+      setShowOpacitySlider(false);
     });
     setCallback(sm, 'background_select', () => {
       clearOverlaySelection.bind(overlayCtx)();
@@ -205,6 +207,20 @@ const ContentEditor = () => {
       sm.resetCoordinates();
       setCanObscure(false);
       setShowOpacityMenu(true);
+    });
+    setCallback(sm, 'opacity_display', () => {
+      setShowOpacityMenu(false);
+      setShowOpacitySlider(true);
+    });
+    setCallback(sm, 'opacity_render', () => {
+      setShowOpacityMenu(false);
+      setShowOpacitySlider(true);
+    });
+    setCallback(sm, 'update_display_opacity', (args) => {
+      const opacity: string = args[0];
+      if (overlayCanvasRef.current) {
+        overlayCanvasRef.current.style.opacity=opacity;
+      }
     });
     sm.setMoveCallback(selectOverlay.bind(overlayCtx));
     sm.setStartCallback(storeOverlay.bind(overlayCtx));
@@ -294,6 +310,11 @@ const ContentEditor = () => {
       {showOpacityMenu && <div className={`${styles.Menu} ${styles.OpacityMenu}`}>
         <button onClick={() => sm.transition('display')}>Display Opacity</button>
         <button onClick={() => sm.transition('render')}>Render Opacity</button>
+      </div>}
+      {showOpacitySlider && <div className={styles.OpacitySlider}>
+        <input type="range" min="0" max="1" defaultValue="1" step="0.01"
+          onChange={(evt) => sm.transition('change', evt.target.value)}>
+        </input>
       </div>}
       <div className={styles.ControlsContainer}>
         <button disabled={canObscure} onClick={() => sm.transition('opacity')}>Opacity</button>
