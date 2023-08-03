@@ -1,4 +1,4 @@
-import { createRef, useEffect, useState } from 'react';
+import React, { createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, obscureOverlay, renderImage, setupOverlayCanvas,
@@ -9,10 +9,15 @@ import { rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
+import { Box } from '@mui/material';
 
 const sm = new MouseStateMachine();
 
-const ContentEditor = () => {
+interface ContentEditorProps {
+  actionGenerator: (element: React.ReactElement) => void;
+}
+
+const ContentEditor = (props: ContentEditorProps) => {
   const dispatch = useDispatch();
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
