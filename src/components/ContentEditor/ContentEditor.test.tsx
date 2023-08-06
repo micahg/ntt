@@ -5,7 +5,7 @@ import ContentEditor from './ContentEditor';
 
 describe('<ContentEditor />', () => {
   test('it should mount', () => {
-    render(<ContentEditor actionGenerator={(element: React.ReactElement) => element}/>);
+    render(<ContentEditor/>);
     
     const contentEditor = screen.getByTestId('ContentEditor');
 
