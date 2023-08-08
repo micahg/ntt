@@ -20,7 +20,8 @@ interface ContentEditorProps {
   redrawToolbar?: () => void;
 }
 
-// hack around rerendering
+// hack around rerendering -- keep one object in state and update properties
+// so that the object itself remains unchanged.
 interface InternalState {
   color: RefObject<HTMLInputElement>;
   obscure: boolean;
@@ -176,7 +177,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
       { icon: Visibility,    tooltip: "Reveal",                    hidden: () => false,               disabled: () => !internalState.obscure, callback: () => sm.transition('reveal')},
       { icon: ZoomIn,        tooltip: "Zoom In",                   hidden: () => internalState.zoom,  disabled: () => !internalState.obscure, callback: () => sm.transition('zoomIn')},
       { icon: ZoomOut,       tooltip: "Zoom Out",                  hidden: () => !internalState.zoom, disabled: () => false,                  callback: () => sm.transition('zoomOut')},
-      { icon: Opacity,       tooltip: "Opacity",                   hidden: () => false,               disabled: () => !internalState.obscure,                  callback: (evt) => gmSelectOpacityMenu(evt)}
+      { icon: Opacity,       tooltip: "Opacity",                   hidden: () => false,               disabled: () => internalState.obscure,  callback: (evt) => gmSelectOpacityMenu(evt)}
     ];
     populateToolbar(actions);
   }, []);// eslint-disable-line react-hooks/exhaustive-deps
@@ -221,7 +222,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
       updateObscure(false);
       clearOverlaySelection.bind(overlayCtx)();
     });
-    
+
     setCallback(sm, 'record', () => {
       setShowBackgroundMenu(false)
       setShowOpacityMenu(false);
@@ -381,7 +382,10 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
       >
         <Box sx={{width: "10em", mt: "3em", mb: "1em", mx: "2em"}}>
           <Slider
-            defaultValue={100}
+            min={0}
+            max={1}
+            step={0.01}
+            defaultValue={1}
             aria-label="Default"
             valueLabelDisplay="auto"
             onChange={gmSetOpacity}

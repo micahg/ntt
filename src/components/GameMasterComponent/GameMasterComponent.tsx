@@ -77,10 +77,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
 
   const handlePopulateToolbar = (actions: GameMasterAction[]) => setActions(actions);
 
-  const handleRedrawToolbar = () => {
-    console.log(`MICAH time to redraw`);
-    setDoot(doot + 1);
-  }
+  const handleRedrawToolbar = () => setDoot(doot + 1);
 
   return (
     <Box sx={{ display: 'flex' }}>
