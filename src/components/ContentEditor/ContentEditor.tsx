@@ -1,10 +1,11 @@
 import React, { RefObject, createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, obscureOverlay, renderImage, setupOverlayCanvas,
+import { loadImage, obscureOverlay, setupOverlayCanvas,
          selectOverlay, storeOverlay, clearOverlaySelection, revealOverlay,
          getRect, clearOverlay, setOverlayOpacity,
-         setOverlayColour } from '../../utils/drawing';
+         setOverlayColour, 
+         renderImageInContainer} from '../../utils/drawing';
 import { rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
@@ -320,7 +321,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
         return img;
       })
       // MICAH fix render image to use the container height and width
-      .then(img => renderImage(img, contentCtx, true))
+      .then(img => renderImageInContainer(img, contentCtx, true))
       .then(bounds => {
         setBackgroundLoaded(true);
         setupOverlayCanvas(bounds, overlayCtx);
@@ -350,7 +351,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
 
     let overlayImg: string = overlay as string;
     loadImage(`${apiUrl}/${overlayImg}?`)
-      .then(img => renderImage(img, overlayCtx))
+      .then(img => renderImageInContainer(img, overlayCtx))
       .catch(err => console.error(err));
   }, [apiUrl, overlay, backgroundLoaded, overlayCtx])
 
