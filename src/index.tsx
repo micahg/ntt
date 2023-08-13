@@ -12,6 +12,7 @@ import RemoteDisplayComponent from './components/RemoteDisplayComponent/RemoteDi
 import GameMasterComponent from './components/GameMasterComponent/GameMasterComponent.lazy';
 // import ContentEditor from './components/ContentEditor/ContentEditor.lazy';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { Auth0Provider } from '@auth0/auth0-react';
 
 let routes: Object[] = [];
 routes.push({path: '/',        element: <LandingComponent/>,    errorElement: null})
@@ -34,9 +35,17 @@ const root = ReactDOM.createRoot(
 );
 root.render(
   <React.StrictMode>
-    <Provider store={store}>
-      <RouterProvider router={router} />
-    </Provider>
+    <Auth0Provider
+      domain="nttdev.us.auth0.com"
+      clientId="blFghGfwUHOlKwDZzOELBFmxOTkxCeQr"
+      authorizationParams={{
+        redirect_uri: window.location.origin
+      }}
+    >
+      <Provider store={store}>
+        <RouterProvider router={router} />
+      </Provider>
+    </Auth0Provider>
   </React.StrictMode>
 );
 
