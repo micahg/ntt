@@ -8,7 +8,8 @@ import MailIcon from '@mui/icons-material/Mail';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ContentEditor from '../ContentEditor/ContentEditor';
 import GameMasterActionComponent, { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppReducerState } from '../../reducers/AppReducer';
 
 interface GameMasterComponentProps {}
 
@@ -69,6 +70,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const [open, setOpen] = useState(false);
   const [actions, setActions] = useState<GameMasterAction[]>([]);
   const [doot, setDoot] = useState<number>(0);
+  const auth = useSelector((state: AppReducerState) => state.environment.auth);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -85,9 +87,9 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const handleRedrawToolbar = () => setDoot(doot + 1);
 
   useEffect(() => {
-    if (!dispatch || !actions || actions.length === 0) return;
-    dispatch({type: 'environment/token'})
-  }, [dispatch, actions])
+    if (!dispatch) return;
+    if (!auth) dispatch({type: 'environment/authenticate'});
+  }, [dispatch, auth])
 
   return (
     <Box sx={{ display: 'flex' }}>

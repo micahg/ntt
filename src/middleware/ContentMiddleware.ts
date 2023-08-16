@@ -2,6 +2,7 @@ import { Middleware, MiddlewareAPI } from 'redux';
 import axios, { AxiosResponse } from 'axios';
 import { AppReducerState } from '../reducers/AppReducer';
 import { Rect } from '../utils/geometry';
+import { getToken } from '../utils/auth';
 
 function isBlob(payload: URL | Blob): payload is File {
   return (payload as Blob).type !== undefined;
@@ -52,16 +53,25 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         return;
       }
 
-      let url: string = `${state.environment.api}/state`;
+      if (!state.environment.auth || !state.environment.client) {
+        // TODO MICAH display error
+        console.error(`Unable to call API without authentication`);
+        return;
+      }
 
-      axios.put(url).then(() => {
-        action.payload = (new Date()).getTime();
-        next(action);  
-      }).catch(err => {
-        // TODO MICAH DISPLAY ERROR
-        console.error(`Unable to update state: ${JSON.stringify(err)}`);
-        next(action);
+      let url: string = `${state.environment.api}/state`;
+      getToken(state.environment.client).then(token => {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        axios.put(url, {headers: headers}).then(() => {
+          action.payload = (new Date()).getTime();
+          next(action);  
+        }).catch(err => {
+          // TODO MICAH DISPLAY ERROR
+          console.error(`Unable to update state: ${JSON.stringify(err)}`);
+          next(action);
+        });
       });
+
       break;
     case 'content/pull': {
       let state: AppReducerState = storeAPI.getState();
@@ -71,12 +81,23 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         return;
       }
 
+      if (!state.environment.auth || !state.environment.client) {
+        // TODO MICAH display error
+        console.error(`Unable to call API without authentication`);
+        return;
+      }
+
       let url: string = `${state.environment.api}/state`;
-      axios.get(url).then((value) => next({...action, payload: value.data}))
-        .catch(err => {
-          // TODO MICAH display error
-          console.error(`Unable to get state: ${JSON.stringify(err)}`);
-        });
+
+      getToken(state.environment.client).then(token => {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        axios.get(url, {headers: headers}).then((value) => next({...action, payload: value.data}))
+          .catch(err => {
+            // TODO MICAH display error
+            console.error(`Unable to get state: ${JSON.stringify(err)}`);
+          });
+      });
+
     }
     break;
     case 'content/background':

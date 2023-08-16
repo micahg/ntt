@@ -1,15 +1,19 @@
 import { PayloadAction } from "@reduxjs/toolkit";
+import { AuthState } from "../utils/auth";
+import { Auth0Client } from "@auth0/auth0-spa-js";
 
 export type EnvironmentReducerState = {
   readonly api: string | undefined;
   readonly ws: string | undefined;
-  readonly token: string | undefined;
+  readonly client: Auth0Client | undefined
+  readonly auth: boolean;
 };
 
 const initialState: EnvironmentReducerState = {
   api: undefined,
   ws: undefined,
-  token: undefined,
+  client: undefined,
+  auth: false,
 }
 
 export const EnvironmentReducer = (state = initialState, action: PayloadAction) => {
@@ -24,9 +28,10 @@ export const EnvironmentReducer = (state = initialState, action: PayloadAction) 
 			}
 			return state;
 		}
-    case 'environment/token': {
-      console.log(`MICAH GOT TOKEN ${action.payload}`);
-      return {...state, auth: action.payload};
+    case 'environment/authenticate': {
+      if (action.payload === null) return state;
+      const authState: AuthState = (action.payload as unknown) as AuthState;
+      return {...state, auth: authState.auth, client: authState.client};
     }
 		default:
 			return state;

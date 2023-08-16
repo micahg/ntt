@@ -2,6 +2,11 @@ import { Auth0Client, createAuth0Client } from "@auth0/auth0-spa-js";
 import { AnyAction, Dispatch, MiddlewareAPI } from "@reduxjs/toolkit";
 import axios from "axios";
 
+export interface AuthState {
+  client: Auth0Client;
+  auth: boolean;
+}
+
 /**
  * Step 1 - get your authentication configuraiton
  * @param store 
@@ -31,28 +36,28 @@ export function getAuthClient(data: any): Promise<Auth0Client> {
   })
 }
 
-/**
- * Step 3 - trigger login OR handle callback
- * @param client 
- * @returns 
- */
-export function authenticateClient(client: Auth0Client): Promise<Auth0Client> {
+export function getAuthState(client: Auth0Client): Promise<AuthState> {
   return new Promise((resolve, reject) => {
     client.isAuthenticated().then(authn => {
       const query = window.location.search;
 
       // if we're alread authenticated we can just go get a token
-      if (authn) return resolve(client);
+      if (authn) return resolve({client: client, auth: true});
 
       // if we have a auth code callback handle it
-      if (query.includes("code=") && query.includes("state="))
+      if (query.includes("code=") && query.includes("state=")) {
         return client.handleRedirectCallback(window.location.href)
-          .then(() => resolve(client))
+          .then(() => {
+            const href = window.location.href.split('?')[0];
+            window.history.replaceState({}, document.title, href);
+            resolve({client: client, auth: true})
+          })
           .catch(reason => reject(reason));
+      }
 
       // force redirect to log in
       const options = {authorizationParams: {redirect_uri: window.location.href}};
-      return client.loginWithRedirect(options).then(() => resolve(client))
+      return client.loginWithRedirect(options).then(() => resolve({client: client, auth: false}))
         .catch(reason => reject(reason));
     });
   });
@@ -63,7 +68,7 @@ export function authenticateClient(client: Auth0Client): Promise<Auth0Client> {
  * @param client 
  * @returns 
  */
-export function getToken(client: Auth0Client) {
+export function getToken(client: Auth0Client): Promise<string> {
   return new Promise((resolve, reject) => {
     client.getTokenSilently().then(value => resolve(value))
       .catch(err => reject(err));

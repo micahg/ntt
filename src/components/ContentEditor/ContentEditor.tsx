@@ -55,6 +55,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
    */
   const [toolbarPopulated, setToolbarPopulated] = React.useState<boolean>(false);
 
+  const auth = useSelector((state: AppReducerState) => state.environment.auth);
   const background = useSelector((state: AppReducerState) => state.content.background);
   const overlay = useSelector((state: AppReducerState) => state.content.overlay);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
@@ -350,9 +351,9 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
   // but not before we have loaded the toolbar (otherwise we just get
   // rendered and do it again)
   useEffect(() => {
-    if (!apiUrl || !dispatch || !toolbarPopulated) return;
+    if (!apiUrl || !dispatch || !toolbarPopulated || !auth) return;
     dispatch({type: 'content/pull'});
-  }, [apiUrl, dispatch, toolbarPopulated]);
+  }, [apiUrl, dispatch, toolbarPopulated, auth]);
 
   useEffect(() => {
     // if the background isn't loaded yet, no point rendering the overlay
