@@ -1,9 +1,9 @@
 import { Middleware } from 'redux';
 import axios from 'axios';
+import { authenticateClient, getAuthClient, getAuthConfig, getToken } from '../utils/auth';
 
 export const EnvironmentMiddleware: Middleware = storeAPI => next => action => {
   if (action.type === 'environment/config') {
-    console.log(`Requesting config`);
     axios.get('/env.json').then(data => {
       action.payload = data;
 
@@ -26,8 +26,26 @@ export const EnvironmentMiddleware: Middleware = storeAPI => next => action => {
       return next(action);
     }).catch(reason => {
       // TODO trigger an error
-      console.error(`FAILED TO FETCH ${JSON.stringify(reason)}`)
+      console.error(`FAILED TO ENV CONFIG FETCH ${JSON.stringify(reason)}`)
     });
+  } else if (action.type === 'environment/logout') {
+    getAuthConfig(storeAPI, next)
+      .then(data => getAuthClient(data))
+      .then(client => client.logout())
+      .then(() => console.log('Successfully logged out'))
+      .catch(err => console.error(`UNABLE TO LOG OUT: ${JSON.stringify(err)}`));
+  } else if (action.type === 'environment/token') {
+    // OI DO NOT CHANGE THIS - getToken *silently* gets the token, which includes
+    // refreshing when old ones expire
+    getAuthConfig(storeAPI, next)
+      .then(data => getAuthClient(data))
+      .then(client => authenticateClient(client))
+      .then(client => getToken(client))
+      .then(token => next({type:'environment/token', payload:token}))
+      .catch(reason => {
+        console.error(`UNABLE TO LOG IN: ${JSON.stringify(reason)}`)
+        next(action);
+      });
   } else {
     return next(action);
   }

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { AppBar, AppBarProps, Box, Button, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, styled, useTheme } from '@mui/material';
+import { AppBar, AppBarProps, Box, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, styled, useTheme } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailIcon from '@mui/icons-material/Mail';
+import LogoutIcon from '@mui/icons-material/Logout';
 import ContentEditor from '../ContentEditor/ContentEditor';
 import GameMasterActionComponent, { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
-
-import { useAuth0 } from "@auth0/auth0-react";
+import { useDispatch } from 'react-redux';
 
 interface GameMasterComponentProps {}
 
@@ -65,7 +65,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 
 const GameMasterComponent = (props: GameMasterComponentProps) => {
   const theme = useTheme();
-  const { isLoading, isAuthenticated, loginWithRedirect, logout } = useAuth0(); // 
+  const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [actions, setActions] = useState<GameMasterAction[]>([]);
   const [doot, setDoot] = useState<number>(0);
@@ -78,19 +78,16 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
     setOpen(false);
   };
 
-  const handlePopulateToolbar = (actions: GameMasterAction[]) => setActions(actions);
+  const handleLogout = () => dispatch({type: 'environment/logout'});
+
+  const handlePopulateToolbar = (newActions: GameMasterAction[]) => setActions(newActions);
 
   const handleRedrawToolbar = () => setDoot(doot + 1);
 
   useEffect(() => {
-    if (isLoading) return;
-    console.log(`Micah auth = ${isAuthenticated}`);
-    if (!isAuthenticated) {
-      loginWithRedirect();
-    } else {
-      console.log(`TIME TO REQ ACCESS TOKEN`);
-    }
-  }, [isLoading, isAuthenticated]);
+    if (!dispatch || !actions || actions.length === 0) return;
+    dispatch({type: 'environment/token'})
+  }, [dispatch, actions])
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -109,11 +106,6 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
           <Typography variant="h6" noWrap component="div">
             Persistent drawer
           </Typography>
-          {/* |
-          <Button onClick={() => loginWithRedirect()}>Log In</Button> */}
-          |
-          <Button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>Log Out</Button>
-          |
           <GameMasterActionComponent actions={actions}/>
         </Toolbar>
       </GameMasterAppBar>
@@ -160,6 +152,17 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
               </ListItemButton>
             </ListItem>
           ))}
+        </List>
+        <Divider />
+        <List>
+          <ListItem key="Log Out" disablePadding onClick={handleLogout}>
+            <ListItemButton>
+              <ListItemIcon>
+                <LogoutIcon/>
+              </ListItemIcon>
+              <ListItemText primary="Log Out"/>
+            </ListItemButton>
+          </ListItem>
         </List>
       </Drawer>
       <Main open={open}>

@@ -3,11 +3,13 @@ import { PayloadAction } from "@reduxjs/toolkit";
 export type EnvironmentReducerState = {
   readonly api: string | undefined;
   readonly ws: string | undefined;
+  readonly token: string | undefined;
 };
 
 const initialState: EnvironmentReducerState = {
   api: undefined,
   ws: undefined,
+  token: undefined,
 }
 
 export const EnvironmentReducer = (state = initialState, action: PayloadAction) => {
@@ -22,6 +24,10 @@ export const EnvironmentReducer = (state = initialState, action: PayloadAction) 
 			}
 			return state;
 		}
+    case 'environment/token': {
+      console.log(`MICAH GOT TOKEN ${action.payload}`);
+      return {...state, auth: action.payload};
+    }
 		default:
 			return state;
 	}
