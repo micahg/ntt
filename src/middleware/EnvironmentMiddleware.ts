@@ -1,4 +1,4 @@
-import { getAuthClient, getAuthConfig, getAuthState } from '../utils/auth';
+import { AuthState, getAuthClient, getAuthConfig, getAuthState } from '../utils/auth';
 import { Middleware } from 'redux';
 import axios from 'axios';
 
@@ -29,15 +29,20 @@ export const EnvironmentMiddleware: Middleware = storeAPI => next => action => {
       console.error(`FAILED TO ENV CONFIG FETCH ${JSON.stringify(reason)}`)
     });
   } else if (action.type === 'environment/authenticate') {
-    // OI DO NOT CHANGE THIS - getToken *silently* gets the token, which includes
-    // refreshing when old ones expire
+      // OI DO NOT CHANGE THIS - getToken *silently* gets the token, which includes
+      // refreshing when old ones expire
     getAuthConfig(storeAPI, next)
       .then(data => getAuthClient(data))
       .then(client => getAuthState(client))
       .then(state => next({type: action.type, payload: state}))
       .catch(err => {
+        if (err === "noauth") {
+          console.warn('Authentication explicitly disabled at server');
+          const authState: AuthState = {auth: false, noauth: true};
+          return next({type: action.type, payload: authState})
+        }
         console.error(`UNABLE TO AUTHENTICATE: ${JSON.stringify(err)}`);
-        next(action);
+        return next(action);
       });
   } else if (action.type === 'environment/logout') {
     getAuthConfig(storeAPI, next)

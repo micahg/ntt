@@ -1,10 +1,18 @@
 import { Auth0Client, createAuth0Client } from "@auth0/auth0-spa-js";
 import { AnyAction, Dispatch, MiddlewareAPI } from "@reduxjs/toolkit";
 import axios from "axios";
+import { AppReducerState } from "../reducers/AppReducer";
 
+/**
+ * Authorization state
+ */
 export interface AuthState {
-  client: Auth0Client;
+  // auth client if auth already done
+  client?: Auth0Client;
+  // flag indicating if authorization is complete
   auth: boolean;
+  // flag indicating if authorization explicitly disabled
+  noauth?: boolean;
 }
 
 /**
@@ -15,11 +23,21 @@ export interface AuthState {
  */
 export function getAuthConfig(store: MiddlewareAPI<Dispatch<AnyAction>>, next: Dispatch<AnyAction>): Promise<any> {
   return new Promise((resolve, reject) => {
+
+    // ensure we have an authorization state
     const auth = store.getState().auth;
     if (auth) return resolve(auth);
-    axios.get("/auth.json").then(data => {
-      next({type: 'environment/auth', paylaod: data.data});
-      return resolve(data.data);
+
+    // get the client auth.json and hte server noauth setting. If the server is
+    // running in auth disabled mode, /noauth will return {"noauth": true}
+    // indicating that it wont even look at the Authorization header.
+    const noauthUrl = `${store.getState().environment.api}/noauth`;
+    Promise.all([axios.get("/auth.json"), axios.get(noauthUrl)]).then(([auth, noauth]) => {
+      // combine the auth config into a single state
+      const data = auth.data;
+      if (noauth.data.noauth) return reject("noauth");
+      data.noauth = noauth.data.noauth;
+      return resolve(data);
     }).catch(err => reject(err));
   });
 }
@@ -31,6 +49,7 @@ export function getAuthConfig(store: MiddlewareAPI<Dispatch<AnyAction>>, next: D
  */
 export function getAuthClient(data: any): Promise<Auth0Client> {
   return new Promise((resolve, reject) => {
+    if (data.noauth) reject('noauth');
     createAuth0Client(data).then(client => resolve(client))
       .catch(reason => reject(reason));
   })
@@ -68,9 +87,24 @@ export function getAuthState(client: Auth0Client): Promise<AuthState> {
  * @param client 
  * @returns 
  */
-export function getToken(client: Auth0Client): Promise<string> {
+export function getToken(state: AppReducerState, headers?: any): Promise<any> {
+  if (!headers) headers = {};
+
+  if (state.environment.noauth) {
+    headers['Authorization'] = `Bearer NOAUTH`;
+    return Promise.resolve(headers);
+  }
+
+  const client = state.environment.client;
+  
+  if (!client) return Promise.reject('No auth0 client');
+
   return new Promise((resolve, reject) => {
-    client.getTokenSilently().then(value => resolve(value))
+    client.getTokenSilently()
+      .then(value => {
+        headers['Authorization'] = `Bearer ${value}`;
+        resolve(headers);
+      })
       .catch(err => reject(err));
   });
 }

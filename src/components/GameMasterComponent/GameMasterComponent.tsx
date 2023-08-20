@@ -88,7 +88,9 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
 
   useEffect(() => {
     if (!dispatch) return;
-    if (!auth) dispatch({type: 'environment/authenticate'});
+
+    // undefined implies we haven't attempted auth yet, so we must attempt it
+    if (auth === undefined) dispatch({type: 'environment/authenticate'});
   }, [dispatch, auth])
 
   return (

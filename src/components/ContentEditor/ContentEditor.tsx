@@ -351,7 +351,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
   // but not before we have loaded the toolbar (otherwise we just get
   // rendered and do it again)
   useEffect(() => {
-    if (!apiUrl || !dispatch || !toolbarPopulated || !auth) return;
+    // bail if we haven't attempted authorization
+    if (auth === undefined) return;
+
+    // otherwise wait until we have populated the toolbar before we get our state
+    if (!apiUrl || !dispatch || !toolbarPopulated) return;
     dispatch({type: 'content/pull'});
   }, [apiUrl, dispatch, toolbarPopulated, auth]);
 
