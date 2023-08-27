@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - auth
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -40,30 +39,30 @@ jobs:
         with:
           name: ntttgz
           path: micahg-ntt-${{ env.package_version }}.tgz
-  # publish:
-  #   needs: [build]  
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #     packages: write
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     # Setup .npmrc file to publish to GitHub Packages
-  #     - uses: actions/setup-node@v3
-  #       with:
-  #         node-version: '18.x'
-  #         registry-url: 'https://npm.pkg.github.com'
-  #         # Defaults to the user or organization that owns the workflow file
-  #         scope: '@micahg'
-  #     - uses: actions/download-artifact@v3
-  #       with:
-  #         name: ntttgz
-  #     - env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #         PACKAGE_FILE: ${{needs.package.outputs.package_file}}
-  #       # Using the package file explicitly prevents NPM from rebuilding
-  #       # the tgz without any contents
-  #       run: npm publish "./$PACKAGE_FILE"
+  publish:
+    needs: [build]  
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+      # Setup .npmrc file to publish to GitHub Packages
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          registry-url: 'https://npm.pkg.github.com'
+          # Defaults to the user or organization that owns the workflow file
+          scope: '@micahg'
+      - uses: actions/download-artifact@v3
+        with:
+          name: ntttgz
+      - env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_FILE: ${{needs.package.outputs.package_file}}
+        # Using the package file explicitly prevents NPM from rebuilding
+        # the tgz without any contents
+        run: npm publish "./$PACKAGE_FILE"
   package:
     needs: [build]
     runs-on: ubuntu-latest
@@ -106,22 +105,22 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: false
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-  # version:
-  #   needs: [publish, package]
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: write
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - run: |
-  #         git config --global user.name "$GITHUB_ACTOR"
-  #         git config --global user.email "$GITHUB_ACTOR@github.com"
-  #         npm version patch
-  #         VERSION=$(node -p "require('./package.json').version")
-  #         BRANCH="release/$VERSION"
-  #         echo "Checking out $BRANCH"
-  #         git checkout -b "$BRANCH"
-  #         git push --set-upstream origin "$BRANCH"
+  version:
+    needs: [publish, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          git config --global user.name "$GITHUB_ACTOR"
+          git config --global user.email "$GITHUB_ACTOR@github.com"
+          npm version patch
+          VERSION=$(node -p "require('./package.json').version")
+          BRANCH="release/$VERSION"
+          echo "Checking out $BRANCH"
+          git checkout -b "$BRANCH"
+          git push --set-upstream origin "$BRANCH"
