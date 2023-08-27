@@ -8,4 +8,4 @@ WORKDIR /var/www/
 COPY package/build/ /var/www/
 COPY k8s/nginx-custom.conf /etc/nginx/conf.d/default.conf
 
-CMD ["/bin/sh",  "-c",  "envsubst < /var/www/env.template.json > /var/www/env.json && exec nginx -g 'daemon off;'"]
+CMD ["/bin/sh",  "-c",  "envsubst < /var/www/env.template.json > /var/www/env.json && envsubst < /var/www/auth.template.json > /var/www/auth.json && exec nginx -g 'daemon off;'"]
