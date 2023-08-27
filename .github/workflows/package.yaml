@@ -80,7 +80,7 @@ jobs:
         run: |
           ls -lt
           tar xvf "./$PACKAGE_FILE"
-          lt -lt
+          ls -lt package/build
   # version:
   #   needs: [publish, package]
   #   runs-on: ubuntu-latest
