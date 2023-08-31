@@ -108,3 +108,15 @@ export function getToken(state: AppReducerState, headers?: any): Promise<any> {
       .catch(err => reject(err));
   });
 }
+
+export function getDeviceCode(data: any) {
+  return new Promise((resolve, reject) => {
+    const params: URLSearchParams = new URLSearchParams({
+      'client_id': data.clientId,
+      'audience': data.authorizationParams.audience,
+    });
+    axios.post(`https://${data.domain}/oauth/device/code`, params)
+      .then(data => resolve(data.data))
+      .catch(err => reject(err));
+  });
+}

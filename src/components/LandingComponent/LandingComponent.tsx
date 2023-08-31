@@ -39,6 +39,10 @@ const LandingComponent = (props: LandingComponentProps) => {
         <p>For convenience we will redirect to the remote <a href="/display">display</a> mode shortly!</p>
         <p>If you are running a session, you can use the <a href="/edit">editor</a> instead.</p>
       </Paper>
+      <Paper sx={{padding: '1em', margin: '1em 0'}} elevation={6}>
+        <Typography variant="h5" gutterBottom>Device Code</Typography>
+        <p>Test device code stuff <a href="/device">here</a>. </p>
+      </Paper>
     </Box>
   );
 };

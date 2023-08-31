@@ -1,4 +1,4 @@
-import { AuthState, getAuthClient, getAuthConfig, getAuthState } from '../utils/auth';
+import { AuthState, getAuthClient, getAuthConfig, getAuthState, getDeviceCode } from '../utils/auth';
 import { Middleware } from 'redux';
 import axios from 'axios';
 
@@ -50,6 +50,11 @@ export const EnvironmentMiddleware: Middleware = storeAPI => next => action => {
       .then(client => client.logout())
       .then(() => console.log('Successfully logged out'))
       .catch(err => console.error(`UNABLE TO LOG OUT: ${JSON.stringify(err)}`));
+  } else if (action.type === 'environment/devicecode') {
+    getAuthConfig(storeAPI, next)
+      .then(data => getDeviceCode(data))
+      .then(value => next({'type': action.type, 'payload': value}))
+      .catch(err => console.error(`Device Code Authentication Failed: ${JSON.stringify(err)}`))
   } else {
     return next(action);
   }
