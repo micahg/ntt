@@ -1,4 +1,4 @@
-import React, { FC, useEffect } from 'react';
+import { useEffect } from 'react';
 import styles from './DeviceCodeComponent.module.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
