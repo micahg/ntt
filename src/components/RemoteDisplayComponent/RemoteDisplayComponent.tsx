@@ -42,10 +42,15 @@ const RemoteDisplayComponent = () => {
       console.log('WakeLock unavailable');
     }
 
-    let ws = new WebSocket(wsUrl);
+    const fullUrl = `${wsUrl}?bearer=floop`;
+    const ws = new WebSocket(fullUrl);
     ws.onopen = (event: Event) => {
       console.log(`Got open event ${JSON.stringify(event)}`);
     };
+
+    ws.onclose = (event: Event) => {
+      console.log(`Got closed event: ${JSON.stringify(event)}`);
+    }
 
     ws.onerror = function(ev: Event) {
       console.error(`MICAH got error ${JSON.stringify(ev)}`);

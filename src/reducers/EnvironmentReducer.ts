@@ -14,6 +14,7 @@ export type EnvironmentReducerState = {
   readonly auth: boolean | undefined;
   readonly noauth: boolean; // is authorization disabled
   readonly deviceCode?: any;
+  readonly deviceCodeToken?: any;
 };
 
 const initialState: EnvironmentReducerState = {
@@ -43,6 +44,12 @@ export const EnvironmentReducer = (state = initialState, action: PayloadAction) 
     }
     case 'environment/devicecode': {
       return {...state, deviceCode: action.payload};
+    }
+    case 'environment/devicecodepoll': {
+      if (action.payload === undefined || action.payload === null) return state;
+      const authResult: any = (action.payload as unknown) as any;
+      if (!authResult.hasOwnProperty('access_token')) return state;
+      return {...state, auth: true, deviceCode: undefined, deviceCodeToken: authResult.access_token};
     }
 		default:
 			return state;
