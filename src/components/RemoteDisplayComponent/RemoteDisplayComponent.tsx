@@ -5,12 +5,15 @@ import { loadImage, renderImageFullScreen } from '../../utils/drawing';
 import { Rect, fillToAspect, rotate } from '../../utils/geometry';
 
 import styles from './RemoteDisplayComponent.module.css';
+import { useNavigate } from 'react-router-dom';
 
 const RemoteDisplayComponent = () => {
+  const navigate = useNavigate();
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
   const apiUrl: string | undefined = useSelector((state: AppReducerState) => state.environment.api);
   const wsUrl: string | undefined = useSelector((state: AppReducerState) => state.environment.ws);
+  const authorized: boolean | undefined = useSelector((state: AppReducerState) => state.environment.auth);
   const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
 
@@ -23,6 +26,12 @@ const RemoteDisplayComponent = () => {
     if (!overlayCanvasRef.current || overlayCtx != null) return;
     setOverlayCtx(overlayCanvasRef.current.getContext('2d', { alpha: true }));
   }, [overlayCanvasRef, overlayCtx]);
+
+  useEffect(() => {
+    if (!authorized) {
+      navigate(`/device`);
+    }
+  }, [navigate, authorized])
 
   useEffect(() => {
     if (!overlayCtx) return;
