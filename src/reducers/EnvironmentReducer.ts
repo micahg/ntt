@@ -14,7 +14,7 @@ export type EnvironmentReducerState = {
   readonly auth: boolean | undefined;
   readonly noauth: boolean; // is authorization disabled
   readonly deviceCode?: any;
-  readonly deviceCodeToken?: any;
+  readonly deviceCodeToken?: string;
 };
 
 const initialState: EnvironmentReducerState = {
