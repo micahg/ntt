@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { useNavigate } from 'react-router-dom';
 import { Box, Paper, Typography } from '@mui/material';
-
+import * as QRCode from 'qrcode';
 interface DeviceCodeComponentProps {}
 
 const DeviceCodeComponent = (props: DeviceCodeComponentProps) => {
@@ -17,9 +17,11 @@ const DeviceCodeComponent = (props: DeviceCodeComponentProps) => {
   // object changes -- we rely on the fact that the polling/expiration values dont change.
   const deviceCodeInterval = useSelector((state: AppReducerState) => state.environment.deviceCode?.interval);
   const deviceCodeExpiry = useSelector((state: AppReducerState) => state.environment.deviceCode?.expires_in);
+  const deviceCodeFullUrl = useSelector((state: AppReducerState) => state.environment.deviceCode?.verification_uri_complete);
 
   const [expired, setExpired] = useState<boolean>(false);
 
+  const qrCanvasRef = createRef<HTMLCanvasElement>();
   
   useEffect(() => {
     dispatch({type: 'environment/devicecode'});
@@ -53,14 +55,37 @@ const DeviceCodeComponent = (props: DeviceCodeComponentProps) => {
   useEffect(() => {
     if (!authorized) return;
     navigate('/display');
-  }, [navigate, authorized])
+  }, [navigate, authorized]);
+
+  /**
+   * Render the QR code
+   */
+  useEffect(() => {
+    if (!qrCanvasRef.current) return;
+    if (!deviceCodeFullUrl) return;
+
+    const canvas: HTMLCanvasElement = qrCanvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+
+    // why 64? IDFK! <paper> padding and margins and just a little extra for safety
+    const height = window.innerHeight - rect.top - 64;
+
+    // double the left to ensure we have a semi-centered qr if the width is less than height
+    const width = window.innerWidth - (2*rect.left);
+    const size = Math.floor(Math.min(width, height));
+    
+
+    QRCode.toCanvas(canvas, deviceCodeFullUrl, {errorCorrectionLevel: 'H', width: size}, err => {
+      console.error(`Unable to render QR code: ${JSON.stringify(err)}`);
+    });
+
+  }, [deviceCodeFullUrl, qrCanvasRef]);
 
   return (
-    <Box sx={{padding: '1em', width: '100%', maxWidth: 500}}>
-      <Typography variant="h4" gutterBottom>Network Table Top</Typography>
+    <Box sx={{padding: '1em' }}>
+      <Typography variant="h3" align="center" gutterBottom>Network Table Top</Typography>
       <Paper sx={{padding: '1em', margin: '1em 0'}} elevation={6}>
-
-        <Typography variant="h5" gutterBottom>Authentication Required</Typography>
+        <Typography variant="h4" align="center" gutterBottom>Authentication Required</Typography>
         <br/>
         {expired && <Box>
           <Typography variant="h6">The request has timed out.<br/>Please refresh and try again.</Typography>
@@ -73,8 +98,11 @@ const DeviceCodeComponent = (props: DeviceCodeComponentProps) => {
             <b>Fetching...</b>}
           <br/><br/>
           Enter Code <b>{deviceCode  ? deviceCode.user_code : "Fetching..."}</b>
-        </Typography>
-        }
+          <br/><br/>
+          ... or scan ...
+          <br/>
+          <canvas ref={qrCanvasRef}/>
+        </Typography>}
       </Paper>
     </Box>
   );
