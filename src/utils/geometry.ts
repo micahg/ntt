@@ -88,6 +88,7 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
 
 export function fillToAspect(selection: Rect | null, width: number, height: number) {
   if (!selection) return getRect(0, 0, width, height);
+  // MICAH THIS IS NOT RELIABLE because silk is shrinking the image automatically on you
   if (selection.x === 0 && selection.y === 0 && selection.width === width && selection.height === height) {
     return getRect(0, 0, width, height);
   }
