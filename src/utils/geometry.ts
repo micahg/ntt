@@ -86,10 +86,13 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
   return res;
 }
 
-export function fillToAspect(selection: Rect | null, width: number, height: number) {
+export function fillToAspect(selection: Rect | null, bg: Rect, width: number, height: number) {
   if (!selection) return getRect(0, 0, width, height);
   // MICAH THIS IS NOT RELIABLE because silk is shrinking the image automatically on you
-  if (selection.x === 0 && selection.y === 0 && selection.width === width && selection.height === height) {
+  // We need to remember that some browsers (looking at you Amazon Silk on a
+  // firestick) MAY shrink your image without telling you (probably due to ram
+  // constraints on big images). In such situations
+  if (selection.x === 0 && selection.y === 0 && selection.width === bg.width && selection.height === bg.height) {
     return getRect(0, 0, width, height);
   }
 

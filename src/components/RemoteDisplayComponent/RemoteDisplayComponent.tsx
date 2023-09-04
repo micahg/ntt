@@ -93,6 +93,12 @@ const RemoteDisplayComponent = () => {
       }
       let viewport: Rect = js.state.viewport;
 
+      if (!js.state.backgroundSize) {
+        console.error('Unable to render without background size');
+        return;
+      }
+      let bgSize: Rect = js.state.backgroundSize;
+
       let ts: number = new Date().getTime();
       let overlayUri: string | null = null;
       if ('overlay' in js.state && js.state.overlay) {
@@ -118,7 +124,12 @@ const RemoteDisplayComponent = () => {
        * background with expanded selection if there is one.
        */
       loadImage(backgroundUri).then(bgImg => {
-        let bgVP = fillToAspect(viewport, bgImg.width, bgImg.height);
+        // const h = bgImg.height, w = bgImg.width;
+        // bgImg.height = h/2;
+        // bgImg.width = w/2;
+        // bgImg.style.height = `${h/2}px`;
+        // bgImg.style.width = `${w/2}px`;
+        let bgVP = fillToAspect(viewport, bgSize, bgImg.width, bgImg.height);
         if (overlayUri) {
           loadImage(overlayUri).then(ovrImg => {
             /* REALLY IMPORTANT - base overlay on the BG Viewport as it can shift the

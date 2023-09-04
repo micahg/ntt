@@ -27,6 +27,7 @@
             "cwd": "${workspaceFolder}",
             "runtimeExecutable": "npm",
             "env": {
+                "HOST": "localhost",
                 "PORT": "4200",
                 "BROWSER": "none"
             },
