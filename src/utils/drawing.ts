@@ -37,7 +37,7 @@ export function loadImage(uri: string): Promise<HTMLImageElement> {
   const img = new Image();
   return new Promise((resolve, reject) => {
     img.onload = function() {
-      // just to mess with stuff silk (amazon browser) will rezie us here,
+      // just to mess with stuff silk (amazon browser) will resize us here,
       // to 1.599905190803508 smaller, screwing up our viewports. Its
       // probably a ram constraint...
       resolve(this as HTMLImageElement);

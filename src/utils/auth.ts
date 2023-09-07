@@ -35,7 +35,7 @@ export function getAuthConfig(store: MiddlewareAPI<Dispatch<AnyAction>>): Promis
     Promise.all([axios.get("/auth.json"), axios.get(noauthUrl)]).then(([auth, noauth]) => {
       // combine the auth config into a single state
       const data = auth.data;
-      if (noauth.data.noauth) return reject("noauth");
+      // if (noauth.data.noauth) return reject("noauth");
       data.noauth = noauth.data.noauth;
       return resolve(data);
     }).catch(err => reject(err));
