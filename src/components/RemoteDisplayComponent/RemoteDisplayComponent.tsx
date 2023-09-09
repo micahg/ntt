@@ -125,11 +125,6 @@ const RemoteDisplayComponent = () => {
        * background with expanded selection if there is one.
        */
       loadImage(backgroundUri).then(bgImg => {
-        // const h = bgImg.height, w = bgImg.width;
-        // bgImg.height = h/2;
-        // bgImg.width = w/2;
-        // bgImg.style.height = `${h/2}px`;
-        // bgImg.style.width = `${w/2}px`;
         let bgVP = fillToAspect(viewport, bgSize, bgImg.width, bgImg.height);
         if (overlayUri) {
           loadImage(overlayUri).then(ovrImg => {
