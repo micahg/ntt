@@ -54,7 +54,7 @@ const RemoteDisplayComponent = () => {
       console.error('Unable to render without background size');
       return;
     }
-    let bgSize: Rect = js.state.backgroundSize;
+    let tableBGSize: Rect = js.state.backgroundSize;
 
     let ts: number = new Date().getTime();
     let overlayUri: string | null = null;
@@ -81,7 +81,7 @@ const RemoteDisplayComponent = () => {
      * background with expanded selection if there is one.
      */
     loadImage(backgroundUri).then(bgImg => {
-      let bgVP = fillToAspect(viewport, bgSize, bgImg.width, bgImg.height);
+      const bgVP = fillToAspect(viewport, tableBGSize, bgImg.width, bgImg.height);
       if (overlayUri) {
         loadImage(overlayUri).then(ovrImg => {
           /* REALLY IMPORTANT - base overlay on the BG Viewport as it can shift the
@@ -92,7 +92,7 @@ const RemoteDisplayComponent = () => {
 
           // TODO detect portrait - ALL OF THIS CODE assumes editor/overlay are landsacpe
           let [x, y, w, h] = [0, 0, 0, 0]
-          if (bgVP.width < bgVP.height) {
+          if (bgImg.width < bgImg.height) {
             [x, y] = rotate(90, bgVP.x, bgVP.y, bgImg.width,
                             bgImg.height);
             let [x2, y2] = rotate(90, bgVP.x + bgVP.width, bgVP.y + bgVP.height,
