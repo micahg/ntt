@@ -7,7 +7,8 @@ export type EnvironmentReducerState = {
   readonly ws: string | undefined;
   readonly noauth: boolean; // is authorization disabled
   /**
-   * Indicates if auth was attempted
+   * Indicates if auth was attempted. This is here because of react strict mode
+   * that renders things twice to mess with your life and elicit your errors.
    */
   readonly authStarted: boolean;
   /**
