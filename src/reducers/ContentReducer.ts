@@ -8,11 +8,24 @@ interface TableState {
   viewport?: Rect;
 }
 
+export interface Scene {
+  _id?: string,
+  user: string;
+  description: string;
+  overlayContent?: string;
+  userContent?: string;
+  tableContent?: string;
+  viewport?: Rect;
+  backgroundSize?: Rect;
+}
+
 export type ContentReducerState = {
   readonly overlay: string | Blob | undefined;
   readonly background: string | undefined;
   readonly viewport: Rect | undefined;
   readonly pushTime: number | undefined;
+  readonly currentScene?: Scene;
+  readonly scenes: Scene[];
 };
 
 const initialState: ContentReducerState = {
@@ -20,6 +33,8 @@ const initialState: ContentReducerState = {
   background: undefined,
   pushTime: undefined,
   viewport: undefined,
+  currentScene: undefined,
+  scenes: [],
 }
 
 export const ContentReducer = (state = initialState, action: PayloadAction) => {
@@ -35,6 +50,16 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
       return {...state, background: action.payload};
     case 'content/zoom':
       return {...state, viewport: action.payload };
+    case 'content/scenes':
+      const scenes: Scene[] = (action.payload as unknown) as Scene[];
+      // TODO DONT SET DEFUALT
+      return {...state, scenes: scenes, currentScene: scenes[0]};
+    case 'content/scene':
+      const scene: Scene = (action.payload as unknown) as Scene;
+      const idx = state.scenes.findIndex(s => s._id === scene._id);
+      const newScenes = state.scenes;
+      newScenes.splice(idx, 1, scene);
+      return {...state, scenes: newScenes, currentScene: scene};
     default:
       return state;
     }

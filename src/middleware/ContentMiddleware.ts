@@ -2,6 +2,7 @@ import { Middleware } from 'redux';
 import axios, { AxiosResponse } from 'axios';
 import { AppReducerState } from '../reducers/AppReducer';
 import { getToken } from '../utils/auth';
+import { Scene } from '../reducers/ContentReducer';
 
 function isBlob(payload: URL | Blob): payload is File {
   return (payload as Blob).type !== undefined;
@@ -9,8 +10,9 @@ function isBlob(payload: URL | Blob): payload is File {
 
 function sendFile(state: AppReducerState, blob: File | URL, layer: string): Promise<AxiosResponse> {
   return new Promise((resolve, reject) => {
-
-    let url: string = `${state.environment.api}/asset`;
+    if (!state.content.currentScene) return reject('No scene selected');
+    let scene: Scene = state.content.currentScene;
+    let url: string = `${state.environment.api}/scene/${scene._id}/content`;
     let formData = new FormData();
     let contentType: string = isBlob(blob) ? blob.type : 'multipart/form-data';
     let content: Blob | string = isBlob(blob) ? blob as Blob : blob.toString();
@@ -65,9 +67,10 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
     break;
     case 'background':
       sendFile(state, action.payload, 'background').then((value) => {
-        let ts: number = (new Date()).getTime();
-        action.payload = `${value.data.path}?${ts}`;
-        return next(action);
+        const ts: number = (new Date()).getTime();
+        const scene: Scene = value.data;
+        scene.tableContent = `${scene.tableContent}?${ts}`
+        return next({type: 'content/scene', payload: scene})
       }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;
     case 'overlay':
@@ -89,6 +92,14 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
           next(action);
         })
         .catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
+      break;
+    }
+    case 'scenes': {
+      const url: string = `${state.environment.api}/scene`;
+      getToken(state)
+        .then(headers => axios.get(url, {headers: headers}))
+        .then(value => next({type: action.type, payload: value.data}))
+        .catch(err => console.error(`Unable to fetch scenes: ${JSON.stringify(err)}`));
       break;
     }
     default:

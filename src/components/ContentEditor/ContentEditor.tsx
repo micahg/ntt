@@ -58,7 +58,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
 
   const auth = useSelector((state: AppReducerState) => state.environment.auth);
   const noauth = useSelector((state: AppReducerState) => state.environment.noauth);
-  const background = useSelector((state: AppReducerState) => state.content.background);
+  const background = useSelector((state: AppReducerState) => state.content.currentScene?.tableContent);
   const overlay = useSelector((state: AppReducerState) => state.content.overlay);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
