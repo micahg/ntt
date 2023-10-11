@@ -59,7 +59,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
   const auth = useSelector((state: AppReducerState) => state.environment.auth);
   const noauth = useSelector((state: AppReducerState) => state.environment.noauth);
   const background = useSelector((state: AppReducerState) => state.content.currentScene?.tableContent);
-  const overlay = useSelector((state: AppReducerState) => state.content.overlay);
+  const overlay = useSelector((state: AppReducerState) => state.content.currentScene?.overlayContent);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
   const viewport = useSelector((state: AppReducerState) => state.content.viewport);
@@ -369,7 +369,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
     if (!backgroundLoaded) return;
     // if the overlay is a string, then load it. This should only be the case on init
     if (!overlay) return;
-    if ((overlay as Blob).type !== undefined) return;
+    if (((overlay as unknown) as Blob).type !== undefined) return;
     if (!overlayCtx) return;
 
     let overlayImg: string = overlay as string;

@@ -40,10 +40,11 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
 
   switch (actionType) {
     case 'push': {
+      const scene: Scene = state.content.currentScene;
+      if (!scene) return next(action);
       const url: string = `${state.environment.api}/state`;
       getToken(state)
-        // why PUT {}? data is already up, just signaling sync to table
-        .then(headers => axios.put(url, {}, {headers: headers}))
+        .then(headers => axios.put(url, {scene: scene._id}, {headers: headers}))
         .then(() => {
           action.payload = (new Date()).getTime();
           next(action);  
@@ -84,7 +85,9 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       break;
     case 'zoom': {
       if (action.payload === undefined) return;
-      const url: string = `${state.environment.api}/viewport`;
+      const scene = state.content.currentScene;
+      if (!scene) return next(action);
+      const url: string = `${state.environment.api}/scene/${scene._id}/viewport`;
       getToken(state)
         .then(headers => axios.put(url, action.payload, {headers: headers}))
         .then(value => {
