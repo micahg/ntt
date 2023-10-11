@@ -2,6 +2,8 @@ import { PayloadAction } from "@reduxjs/toolkit";
 import { Rect } from "../utils/geometry";
 
 // TODO THIS IS COPIED ..> FIND A BETTER WAY
+// ALSO MICAH THIS DOESN'T SEEM TO BE USED NOW THAT
+// SCENE HAS VIEWPORT, BG and OVERLAY
 interface TableState {
   overlay?: string;
   background?: string;
@@ -20,9 +22,9 @@ export interface Scene {
 }
 
 export type ContentReducerState = {
-  readonly overlay: string | Blob | undefined;
-  readonly background: string | undefined;
-  readonly viewport: Rect | undefined;
+  readonly overlay: string | Blob | undefined; // MICAH UNUSED?
+  readonly background: string | undefined; // MICAH UNUSED?
+  readonly viewport: Rect | undefined; // MICAH UNUSED?
   readonly pushTime: number | undefined;
   readonly currentScene?: Scene;
   readonly scenes: Scene[];
@@ -49,7 +51,8 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
     case 'content/background':
       return {...state, background: action.payload};
     case 'content/zoom':
-      return {...state, viewport: action.payload };
+      const x = {...state, scene: ((action.payload as unknown) as Scene) };
+      return x;
     case 'content/scenes':
       const scenes: Scene[] = (action.payload as unknown) as Scene[];
       // TODO DONT SET DEFUALT

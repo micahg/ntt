@@ -90,10 +90,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       const url: string = `${state.environment.api}/scene/${scene._id}/viewport`;
       getToken(state)
         .then(headers => axios.put(url, action.payload, {headers: headers}))
-        .then(value => {
-          action.payload = value.data;
-          next(action);
-        })
+        .then(value => next({type: 'content/scene', payload: value.data}))
         .catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
       break;
     }
