@@ -99,7 +99,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
 
   useEffect(() => {
     if (!dispatch) return;
-    if (!authClient) return;
+    if (!noauth && !authClient) return;
     if (noauth || auth) {
       dispatch({type: 'content/scenes'});
       return;
