@@ -1,4 +1,8 @@
-import { Rect, calculateBounds, scaleSelection } from "./geometry";
+/**
+ * @jest-environment jsdom
+ */
+
+import { Rect, calculateBounds, scaleSelection, fillToAspect} from "../src/utils/geometry";
 
 describe('Geometry', () => {
   describe('Calculate Bounds', () => {
@@ -118,4 +122,51 @@ describe('Geometry', () => {
       expect(result.height).toEqual(2);
     });
   });
+
+  describe('Fill to Aspect Ratio', () => {
+    beforeAll(() => {
+      global.innerWidth = 960;
+      global.innerHeight = 540;
+      jest.spyOn(document.documentElement, 'clientWidth', 'get').mockImplementation(() => global.innerWidth)
+      jest.spyOn(document.documentElement, 'clientHeight', 'get').mockImplementation(() => global.innerHeight)
+      jest.spyOn(document.documentElement, 'offsetWidth', 'get').mockImplementation(() => global.innerWidth)
+      jest.spyOn(document.documentElement, 'offsetHeight', 'get').mockImplementation(() => global.innerHeight)
+    })
+    it('Should fill a square selection', () => {
+      const selection: Rect = {x: 2000, y: 1000, width: 1000, height: 500}
+      const table: Rect = { x: 0, y:0, width: 6750, height: 4950};
+      const filled = fillToAspect(selection, table, table.width, table.height);
+      expect(filled).not.toBeNull();
+      expect(filled.x).toBe(2000);
+      expect(filled.width).toBe(1000);
+      expect(filled.height).toBe(562.5)
+      expect(filled.y).toBe(968.75)
+    });
+
+    it('Should Scale Horizontally With A Reduced Image Size', () => {
+      const width = 5063;
+      const height = 3713;
+      const selection: Rect = {x: 5316, y: 4010, width: 1422, height: 939}
+      const table: Rect = { x: 0, y:0, width: 6750, height: 4950};
+      const filled = fillToAspect(selection, table, width, height);
+      expect(filled).not.toBeNull();
+      expect(Math.round(filled.x)).toBe(3811);
+      expect(Math.round(filled.width)).toBe(1252);
+      expect(Math.round(filled.height)).toBe(704)
+      expect(Math.round(filled.y)).toBe(3008)
+    });
+
+    it('Should Scale Vertically With A Reduced Image Size', () => {
+      const width = 5063;
+      const height = 3713;
+      const selection: Rect = {x: 5316, y: 4449, width: 1422, height: 500}
+      const table: Rect = { x: 0, y:0, width: 6750, height: 4950};
+      const filled = fillToAspect(selection, table, width, height);
+      expect(filled).not.toBeNull();
+      expect(Math.round(filled.x)).toBe(3987);
+      expect(Math.round(filled.width)).toBe(1067);
+      expect(Math.round(filled.height)).toBe(600)
+      expect(Math.round(filled.y)).toBe(3113)
+    });
+  })
 });
