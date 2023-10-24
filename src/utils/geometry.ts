@@ -131,7 +131,9 @@ export function fillToAspect(selection: Rect | null, tableBGRect: Rect, width: n
   let scrR = (tableBGRect.width > tableBGRect.height) ? screenWidth/screenHeight : screenHeight/screenWidth;
 
   // calculate coefficient for browser-resized images
-  const silkScale = (tableBGRect.width !== width) ? width / tableBGRect.width : 1;
+  // const silkScale2 = (tableBGRect.width !== width) ? width / tableBGRect.width : 1;
+  // const silkScale = silkScale2 * silkScale2;
+  const silkScale =  (width  * width)/(tableBGRect.width * tableBGRect.width);
 
   // if the selection ratio is greater than the screen ratio it implies
   // aspect ratio of the selection is wider than the aspect ratio of the
