@@ -105,6 +105,13 @@ const RemoteDisplayComponent = () => {
           
           // start assuming no rotation (the easy case)
 
+          // HACK_SILK_SCALE since we have to double up the silk scale to work around
+          // the rendering bug in geometry.ts (search in that file for HACK_SILK_SCALE)
+          // we have to undo it when working out the ratio here for the overaly.
+          // TODO the right fix is to use offscreen canvas that is the same size as the
+          // background image, then calculate the viewport with the same function. In
+          // such a case, we would shrink it down after the fact in the editors visible overlay canvas.
+          const silkScaleAdustment = (tableBGSize.width === bgImg.width) ? 1 : tableBGSize.width/bgImg.width;
           // TODO detect portrait - ALL OF THIS CODE assumes editor/overlay are landsacpe
           let [x, y, w, h] = [0, 0, 0, 0]
           if (bgImg.width < bgImg.height) {
@@ -116,13 +123,15 @@ const RemoteDisplayComponent = () => {
             [y, y2] = [Math.min(y, y2), Math.max(y, y2)];
             w = x2 - x;
             h = y2 - y;
-            let scale = ovrImg.width/bgImg.height;
+            // HACK_SILK_SCALE it should not be multiplied by silkScaleAdjustment
+            let scale = ovrImg.width/bgImg.height * silkScaleAdustment;
             x *= scale;
             y *= scale;
             w *= scale;
             h *= scale;
           } else {
-            let scale = bgImg.width/ovrImg.width;
+            // HACK_SILK_SCALE it should not be multiplied by silkScaleAdjustment
+            let scale = bgImg.width/ovrImg.width * silkScaleAdustment;
             x = bgVP.x / scale;
             y = bgVP.y / scale;
             w = bgVP.width / scale;
