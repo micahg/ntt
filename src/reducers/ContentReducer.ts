@@ -50,12 +50,17 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
       const scenes: Scene[] = (action.payload as unknown) as Scene[];
       // TODO DONT SET DEFUALT
       return {...state, scenes: scenes, currentScene: scenes[0]};
-    case 'content/scene':
+    case 'content/scene': {// load an updated or new scene
       const scene: Scene = (action.payload as unknown) as Scene;
       const idx = state.scenes.findIndex(s => s._id === scene._id);
       const newScenes = state.scenes;
       newScenes.splice(idx, 1, scene);
       return {...state, scenes: newScenes, currentScene: scene};
+    }
+    case 'content/currentscene':{
+      const scene: Scene = (action.payload as unknown) as Scene;
+      return { ...state, currentScene: scene};
+    }
     default:
       return state;
     }
