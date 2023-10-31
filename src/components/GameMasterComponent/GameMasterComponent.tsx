@@ -10,7 +10,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import ContentEditor from '../ContentEditor/ContentEditor';
 import GameMasterActionComponent, { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
-import { useDispatch, useSelector } from 'react-redux';
+import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import SceneComponent from '../SceneComponent/SceneComponent.lazy';
@@ -85,7 +85,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const auth = useSelector((state: AppReducerState) => state.environment.auth);
   const noauth = useSelector((state: AppReducerState) => state.environment.noauth);
   const authClient = useSelector((state: AppReducerState) => state.environment.authClient);
-  const scenes = useSelector((state: AppReducerState) => state.content.scenes);
+  const scenes = useSelector((state: AppReducerState) => state.content.scenes, {equalityFn: shallowEqual});
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -102,6 +102,10 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const handleEditScene = (scene: Scene) => {
     dispatch({type: 'content/currentscene', payload: scene});
     setFocusedComponent(FocusedComponent.ContentEditor);
+  }
+
+  const handleDeleteScene = (scene: Scene) => {
+    dispatch({type: 'content/deletescene', payload: scene});
   }
 
   const handleLogout = () => dispatch({type: 'environment/logout'});
@@ -192,23 +196,12 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
             </ListSubheader>
             {scenes.map((scene, index) => (
               <ListItem key={index} secondaryAction={
-                <IconButton edge="end" aria-label="delete">
+                <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteScene(scene)}>
                   <DeleteIcon />
                 </IconButton>
               }>
                 <ListItemButton onClick={() => handleEditScene(scene)}>
                   <ListItemText primary={scene.description} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-            {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'].map((value, index) => (
-              <ListItem key={index} secondaryAction={
-                <IconButton edge="end" aria-label="delete">
-                  <DeleteIcon />
-                </IconButton>
-                }>
-                <ListItemButton>
-                  <ListItemText primary={value} />
                 </ListItemButton>
               </ListItem>
             ))}

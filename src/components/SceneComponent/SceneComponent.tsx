@@ -1,22 +1,23 @@
 // import styles from './SceneComponent.module.css';
 import { Box, Button, TextField, Tooltip } from '@mui/material';
 import { createRef, useState } from 'react';
-import PhotoIcon from '@mui/icons-material/Photo';
+import { useDispatch } from 'react-redux';
 
-const NAME_REGEX = /^[\w\s]+$/;
+const NAME_REGEX = /^[\w\s]{1,64}$/;
 
 interface SceneComponentProps {}
 
 // TODO use destructuring
 const SceneComponent = (props: SceneComponentProps) => {
-
+  const dispatch = useDispatch();
   const [table, setTable] = useState<File|undefined>();
   const [user, setUser] = useState<File|undefined>();
   const [name, setName] = useState<string>();
+  const [creating, setCreating] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>();
   const tableImageRef = createRef<HTMLImageElement>();
   const userImageRef = createRef<HTMLImageElement>();
-  const disabledCreate = !name || !!nameError || table === undefined;
+  const disabledCreate = creating || !name || !!nameError || table === undefined;
 
   const handleNameChange = (event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     setName(event.target.value);
@@ -45,6 +46,12 @@ const SceneComponent = (props: SceneComponentProps) => {
       else console.error('Invalid layer');
     }
     input.click();
+  }
+
+  const createScene = () => {
+    setCreating(true);
+    const data = { description: name }
+    dispatch({type: 'content/createscene', payload: data});
   }
 
   return (
@@ -115,7 +122,7 @@ const SceneComponent = (props: SceneComponentProps) => {
       <Box sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '1em'}}>
         <Tooltip title="Create the scene">
           <span>
-            <Button variant="contained" disabled={disabledCreate}>Create</Button>
+            <Button variant="contained" disabled={disabledCreate} onClick={() => createScene()}>Create</Button>
           </span>
         </Tooltip>
       </Box>

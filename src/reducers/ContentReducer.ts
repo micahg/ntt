@@ -54,7 +54,11 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
       const scene: Scene = (action.payload as unknown) as Scene;
       const idx = state.scenes.findIndex(s => s._id === scene._id);
       const newScenes = state.scenes;
-      newScenes.splice(idx, 1, scene);
+      if (idx < 0) {
+        // this is an add if you use length -- google it
+        newScenes.splice(newScenes.length, 0, scene);
+      }
+      else newScenes.splice(idx, 1, scene);
       return {...state, scenes: newScenes, currentScene: scene};
     }
     case 'content/currentscene':{

@@ -28,18 +28,14 @@ function sendFile(state: AppReducerState, blob: File | URL, layer: string): Prom
 
 export const ContentMiddleware: Middleware = storeAPI => next => action=> {
 
-  // only care about content
-  if (!(action.type as string).startsWith('content/')) return next(action);
-
-  const actionType: string = (action.type as string).substring(8);
   const state = storeAPI.getState();
   if (!state.environment.api) {
     console.error('No API URL in environment state.')
     return next(action);
   }
 
-  switch (actionType) {
-    case 'push': {
+  switch (action.type) {
+    case 'content/push': {
       const scene: Scene = state.content.currentScene;
       if (!scene) return next(action);
       const url: string = `${state.environment.api}/state`;
@@ -55,7 +51,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         });
     }
       break;
-    case 'pull': {
+    case 'content/pull': {
       const url: string = `${state.environment.api}/state`;
       getToken(state)
         .then(headers => axios.get(url, {headers: headers}))
@@ -66,7 +62,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         });
     }
     break;
-    case 'background':
+    case 'content/background':
       sendFile(state, action.payload, 'background').then((value) => {
         const ts: number = (new Date()).getTime();
         const scene: Scene = value.data;
@@ -74,7 +70,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         return next({type: 'content/scene', payload: scene})
       }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;
-    case 'overlay':
+    case 'content/overlay':
       // undefined means we're wiping the canvas... probably a new background
       if (action.payload === undefined) return next(action);
 
@@ -83,7 +79,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         .then((value) => next({type: 'content/scene', payload: value.data}))
         .catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;
-    case 'zoom': {
+    case 'content/zoom': {
       if (action.payload === undefined) return;
       const scene = state.content.currentScene;
       if (!scene) return next(action);
@@ -94,12 +90,30 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         .catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
       break;
     }
-    case 'scenes': {
+    case 'content/scenes': {
       const url: string = `${state.environment.api}/scene`;
       getToken(state)
         .then(headers => axios.get(url, {headers: headers}))
         .then(value => next({type: action.type, payload: value.data}))
         .catch(err => console.error(`Unable to fetch scenes: ${JSON.stringify(err)}`));
+      break;
+    }
+    case 'content/createscene': {
+      const url: string = `${state.environment.api}/scene`;
+      getToken(state)
+        .then(headers => axios.put(url, action.payload, {headers: headers}))
+        .then(data => next({type: 'content/scene', payload: data.data}))
+      break;
+    }
+    case 'content/deletescene': {
+      const url: string = `${state.environment.api}/scene/${action.payload._id}`;
+      getToken(state)
+        .then(headers => axios.delete(url, {headers: headers}))
+        .then(value => {
+          // TODO pass to reducer
+          console.log('MICAH HANDLE DELETE BY REMOVING IN REDUCER');
+        })
+        .catch(err => console.error(`Unable to delet scene: ${JSON.stringify(err)}`));
       break;
     }
     default:
