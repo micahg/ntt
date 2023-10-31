@@ -13,10 +13,17 @@ import GameMasterActionComponent, { GameMasterAction } from '../GameMasterAction
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
+import SceneComponent from '../SceneComponent/SceneComponent.lazy';
+import { Scene } from '../../reducers/ContentReducer';
 
 interface GameMasterComponentProps {}
 
 const drawerWidth = 240;
+
+enum FocusedComponent {
+  ContentEditor,
+  Scene,
+}
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
@@ -74,6 +81,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const [scenesOpen, setScenesOpen] = useState<boolean>(false);
   const [actions, setActions] = useState<GameMasterAction[]>([]);
   const [doot, setDoot] = useState<number>(0);
+  const [focusedComponent, setFocusedComponent] = useState<FocusedComponent>(FocusedComponent.ContentEditor)
   const auth = useSelector((state: AppReducerState) => state.environment.auth);
   const noauth = useSelector((state: AppReducerState) => state.environment.noauth);
   const authClient = useSelector((state: AppReducerState) => state.environment.authClient);
@@ -86,6 +94,15 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const handleDrawerClose = () => {
     setOpen(false);
   };
+
+  const handleCreateScene = (/*event: React.MouseEvent<HTMLElement>*/) => {
+    setFocusedComponent(FocusedComponent.Scene);
+  }
+
+  const handleEditScene = (scene: Scene) => {
+    dispatch({type: 'content/currentscene', payload: scene});
+    setFocusedComponent(FocusedComponent.ContentEditor);
+  }
 
   const handleLogout = () => dispatch({type: 'environment/logout'});
 
@@ -122,7 +139,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            Persistent drawer
+            Network Table Top
           </Typography>
           <GameMasterActionComponent actions={actions}/>
         </Toolbar>
@@ -166,7 +183,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
           </ListItem>
           <Collapse in={scenesOpen} timeout="auto" unmountOnExit>
             <ListSubheader>
-              <ListItemButton>
+              <ListItemButton onClick={() => handleCreateScene()}>
                 <ListItemIcon>
                   <AddIcon/>
                 </ListItemIcon>
@@ -178,8 +195,8 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
                 <IconButton edge="end" aria-label="delete">
                   <DeleteIcon />
                 </IconButton>
-                }>
-                <ListItemButton>
+              }>
+                <ListItemButton onClick={() => handleEditScene(scene)}>
                   <ListItemText primary={scene.description} />
                 </ListItemButton>
               </ListItem>
@@ -205,34 +222,15 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
             </ListItemButton>
           </ListItem>
         </List>
-        {/* <Divider />
-        <List>
-          {scenes.map((scene, index) => (
-            <ListItem key={index}>
-              <ListItemButton>
-                <ListItemText primary={scene.description} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-          {['All mail', 'Trash', 'Spam'].map((text, index) => (
-            <ListItem key={text} disablePadding>
-              <ListItemButton>
-                <ListItemIcon>
-                  {index % 2 === 0 ? <InboxIcon /> : <MailIcon />}
-                </ListItemIcon>
-                <ListItemText primary={text} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-        <Divider /> */}
       </Drawer>
       <Main open={open}>
         <DrawerHeader />
-        <ContentEditor
+        {focusedComponent === FocusedComponent.ContentEditor && <ContentEditor
           populateToolbar={handlePopulateToolbar}
           redrawToolbar={handleRedrawToolbar}
-        />
+        />}
+        {focusedComponent === FocusedComponent.Scene && <SceneComponent>
+        </SceneComponent>}
       </Main>
     </Box>
   );
