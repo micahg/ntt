@@ -10,7 +10,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import ContentEditor from '../ContentEditor/ContentEditor';
 import GameMasterActionComponent, { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
-import { shallowEqual, useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import SceneComponent from '../SceneComponent/SceneComponent.lazy';
@@ -86,6 +86,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const noauth = useSelector((state: AppReducerState) => state.environment.noauth);
   const authClient = useSelector((state: AppReducerState) => state.environment.authClient);
   const scenes = useSelector((state: AppReducerState) => state.content.scenes);
+  const currentScene = useSelector((state: AppReducerState) => state.content.currentScene);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -96,12 +97,17 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   };
 
   const handleCreateScene = (/*event: React.MouseEvent<HTMLElement>*/) => {
+    dispatch({type: 'content/currentscene'});
     setFocusedComponent(FocusedComponent.Scene);
   }
 
-  const handleEditScene = (scene: Scene) => {
-    dispatch({type: 'content/currentscene', payload: scene});
+  const handleEditScene = (scene?: Scene) => {
+    if (scene) dispatch({type: 'content/currentscene', payload: scene});
     setFocusedComponent(FocusedComponent.ContentEditor);
+  }
+
+  const handleManageScene = () => {
+    setFocusedComponent(FocusedComponent.Scene);
   }
 
   const handleDeleteScene = (scene: Scene) => {
@@ -200,8 +206,8 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
                   <DeleteIcon />
                 </IconButton>
               }>
-                <ListItemButton>
-                  {/* onClick={() => handleEditScene(scene)}> */}
+                <ListItemButton
+                  onClick={() => handleEditScene(scene)}>
                   <ListItemText primary={scene.description} />
                 </ListItemButton>
               </ListItem>
@@ -222,9 +228,12 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
         {focusedComponent === FocusedComponent.ContentEditor && <ContentEditor
           populateToolbar={handlePopulateToolbar}
           redrawToolbar={handleRedrawToolbar}
+          manageScene={handleManageScene}
         />}
-        {focusedComponent === FocusedComponent.Scene && <SceneComponent>
-        </SceneComponent>}
+        {focusedComponent === FocusedComponent.Scene && <SceneComponent
+          scene={currentScene}
+          editScene={handleEditScene}
+        />}
       </Main>
     </Box>
   );

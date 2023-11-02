@@ -3,13 +3,17 @@ import { Box, Button, TextField, Tooltip } from '@mui/material';
 import { createRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { NewSceneBundle } from '../../middleware/ContentMiddleware';
+import { Scene } from '../../reducers/ContentReducer';
 
 const NAME_REGEX = /^[\w\s]{1,64}$/;
 
-interface SceneComponentProps {}
+interface SceneComponentProps {
+  scene?: Scene, // scene to manage should be undefined for new
+  editScene?: () => void, // callback to trigger content editor
+}
 
 // TODO use destructuring
-const SceneComponent = (props: SceneComponentProps) => {
+const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
   const dispatch = useDispatch();
   const [player, setPlayer] = useState<File|undefined>();
   const [detail, setDetail] = useState<File|undefined>();
@@ -18,7 +22,7 @@ const SceneComponent = (props: SceneComponentProps) => {
   const [nameError, setNameError] = useState<string>();
   const tableImageRef = createRef<HTMLImageElement>();
   const userImageRef = createRef<HTMLImageElement>();
-  const disabledCreate = creating || !name || !!nameError || player === undefined;
+  const disabledCreate = creating || (!name && !scene) || !!nameError || player === undefined;
 
   const handleNameChange = (event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     setName(event.target.value);
@@ -49,10 +53,20 @@ const SceneComponent = (props: SceneComponentProps) => {
     input.click();
   }
 
-  const createScene = () => {
+  const updateScene = () => {
+    setCreating(true);
+    if (scene) {
+      // TODO clear overlay
+      dispatch({type: 'content/background', payload: player})
+
+      // TODO send detail -- when you get back to it, maybe its best to keep
+      // all image assets a bundle -- payload could be a dict with background
+      // overlay and detail, and we can easily wipe overlay here without actually
+      if (editScene) editScene();
+      return;
+    }
     if (!name) return; // TODO ERROR
     if (!player) return; // TODO ERROR
-    setCreating(true);
     const data: NewSceneBundle = { description: name, player: player, detail: detail};
     dispatch({type: 'content/createscene', payload: data});
   }
@@ -66,9 +80,11 @@ const SceneComponent = (props: SceneComponentProps) => {
       flexDirection: 'column',
     }}>
       <TextField
+        disabled={!!scene}
         id="standard-basic"
         label="Scene Name"
         variant="standard"
+        defaultValue={scene?.description}
         helperText={nameError}
         error={!!nameError}
         onChange={event => handleNameChange(event)}
@@ -125,7 +141,7 @@ const SceneComponent = (props: SceneComponentProps) => {
       <Box sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '1em'}}>
         <Tooltip title="Create the scene">
           <span>
-            <Button variant="contained" disabled={disabledCreate} onClick={() => createScene()}>Create</Button>
+            <Button variant="contained" disabled={disabledCreate} onClick={() => updateScene()}>Create</Button>
           </span>
         </Tooltip>
       </Box>

@@ -11,7 +11,7 @@ import { rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
-import { Opacity, ZoomIn, ZoomOut, LayersClear, Sync, FileUpload, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
+import { Opacity, ZoomIn, ZoomOut, LayersClear, Sync, Map, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
 import { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
 import { Box, Menu, MenuItem, Popover, Slider } from '@mui/material';
 
@@ -20,6 +20,7 @@ const sm = new MouseStateMachine();
 interface ContentEditorProps {
   populateToolbar?: (actions: GameMasterAction[]) => void;
   redrawToolbar?: () => void;
+  manageScene?: () => void;
 }
 
 // hack around rerendering -- keep one object in state and update properties
@@ -30,7 +31,7 @@ interface InternalState {
   zoom: boolean;
 }
 
-const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => {
+const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEditorProps) => {
   const dispatch = useDispatch();
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
@@ -64,17 +65,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
   const viewport = useSelector((state: AppReducerState) => state.content.currentScene?.viewport);
 
-  const updateBackground = (data: URL | File) => {
-    // send without payload to wipe overlay
-    dispatch({type: 'content/overlay'});
-
-    // update our internal state to indicate we have no background... yet
-    setBackgroundLoaded(false);
-
-    // send the new background
-    dispatch({type: 'content/background', payload: data});
-  }
-
   const updateOverlay = () => {
     overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
       if (!blob) {
@@ -103,17 +93,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
     updateOverlay();
   }
 
-  const selectFile = () => {
-    let input = document.createElement('input');
-    input.type='file';
-    input.multiple = false;
-    input.onchange = () => {
-      if (!input.files) return sm.transition('done');
-      updateBackground(input.files[0]);
-      sm.transition('done');
-    }
-    input.click();
-  }
+  const sceneManager = () => {if (manageScene) manageScene(); }
 
   const zoomIn = (x1: number, y1: number, x2: number, y2: number) => {
     if (!backgroundSize) return;
@@ -185,7 +165,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
 
     const actions: GameMasterAction[] = [
       { icon: Sync,          tooltip: "Sync Remote Display",       hidden: () => false,               disabled: () => false,                  callback: () => sm.transition('push') },
-      { icon: FileUpload,    tooltip: "Upload or Link Background", hidden: () => false,               disabled: () => false,                  callback: selectFile },
+      { icon: Map,           tooltip: "Scene Backgrounds",         hidden: () => false,               disabled: () => false,                  callback: sceneManager },
       { icon: Palette,       tooltip: "Color Palette",             hidden: () => false,               disabled: () => false,                  callback: gmSelectColor },
       { icon: LayersClear,   tooltip: "Clear Overlay",             hidden: () => false,               disabled: () => internalState.obscure,  callback: () => sm.transition('clear')},
       { icon: VisibilityOff, tooltip: "Obscure",                   hidden: () => false,               disabled: () => !internalState.obscure, callback: () => sm.transition('obscure')},
@@ -254,7 +234,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar}: ContentEditorProps) => 
     setCallback(sm, 'background_link', () => {
       setShowBackgroundMenu(false);
     });
-    setCallback(sm, 'background_upload', selectFile);
+    setCallback(sm, 'background_upload', sceneManager);
     setCallback(sm, 'obscure', () => {
       // console.log(`Obscuring ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
       obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
