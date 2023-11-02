@@ -85,7 +85,7 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
   const auth = useSelector((state: AppReducerState) => state.environment.auth);
   const noauth = useSelector((state: AppReducerState) => state.environment.noauth);
   const authClient = useSelector((state: AppReducerState) => state.environment.authClient);
-  const scenes = useSelector((state: AppReducerState) => state.content.scenes, {equalityFn: shallowEqual});
+  const scenes = useSelector((state: AppReducerState) => state.content.scenes);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -194,13 +194,14 @@ const GameMasterComponent = (props: GameMasterComponentProps) => {
                 <ListItemText primary="Create Scene"/>
               </ListItemButton>
             </ListSubheader>
-            {scenes.map((scene, index) => (
-              <ListItem key={index} secondaryAction={
+            {scenes.map(scene => (
+              <ListItem key={scene._id} secondaryAction={
                 <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteScene(scene)}>
                   <DeleteIcon />
                 </IconButton>
               }>
-                <ListItemButton onClick={() => handleEditScene(scene)}>
+                <ListItemButton>
+                  {/* onClick={() => handleEditScene(scene)}> */}
                   <ListItemText primary={scene.description} />
                 </ListItemButton>
               </ListItem>

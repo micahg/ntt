@@ -4,15 +4,22 @@ import { AppReducerState } from '../reducers/AppReducer';
 import { getToken } from '../utils/auth';
 import { Scene } from '../reducers/ContentReducer';
 
+export interface NewSceneBundle {
+  description: string,
+  player: File,
+  detail?: File,
+}
+
 function isBlob(payload: URL | Blob): payload is File {
   return (payload as Blob).type !== undefined;
 }
 
-function sendFile(state: AppReducerState, blob: File | URL, layer: string): Promise<AxiosResponse> {
+// function sendFile(state: AppReducerState, blob: File | URL, layer: string): Promise<AxiosResponse> {
+  function sendFile(state: AppReducerState, scene: Scene, blob: File | URL, layer: string): Promise<AxiosResponse> {
   return new Promise((resolve, reject) => {
-    if (!state.content.currentScene) return reject('No scene selected');
-    let scene: Scene = state.content.currentScene;
-    let url: string = `${state.environment.api}/scene/${scene._id}/content`;
+    // if (!state.content.currentScene) return reject('No scene selected');
+    // let scene: Scene = state.content.currentScene;
+    const url: string = `${state.environment.api}/scene/${scene._id}/content`;
     let formData = new FormData();
     let contentType: string = isBlob(blob) ? blob.type : 'multipart/form-data';
     let content: Blob | string = isBlob(blob) ? blob as Blob : blob.toString();
@@ -63,22 +70,25 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
     }
     break;
     case 'content/background':
-      sendFile(state, action.payload, 'background').then((value) => {
+      const scene: Scene = state.content.currentScene;
+      sendFile(state, scene, action.payload, 'background').then((value) => {
         const ts: number = (new Date()).getTime();
         const scene: Scene = value.data;
         scene.tableContent = `${scene.tableContent}?${ts}`
         return next({type: 'content/scene', payload: scene})
       }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;
-    case 'content/overlay':
+    case 'content/overlay': {
       // undefined means we're wiping the canvas... probably a new background
       if (action.payload === undefined) return next(action);
 
+      const scene: Scene = state.content.currentScene;
       // if we have an overlay payload then send it
-      sendFile(state, action.payload, 'overlay')
+      sendFile(state, scene, action.payload, 'overlay')
         .then((value) => next({type: 'content/scene', payload: value.data}))
         .catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;
+    }
     case 'content/zoom': {
       if (action.payload === undefined) return;
       const scene = state.content.currentScene;
@@ -100,19 +110,21 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
     }
     case 'content/createscene': {
       const url: string = `${state.environment.api}/scene`;
+      const bundle: NewSceneBundle = action.payload;
       getToken(state)
-        .then(headers => axios.put(url, action.payload, {headers: headers}))
-        .then(data => next({type: 'content/scene', payload: data.data}))
+        .then(headers => axios.put(url, bundle, {headers: headers}))
+        .then(data => {
+          next({type: 'content/scene', payload: data.data});
+          return sendFile(state, data.data, bundle.player, 'background'); // TODO rename 'background' to player
+        })
+        .then(data => next({type: 'content/scene', payload: data.data})); // TODO send detailed if it is there
       break;
     }
     case 'content/deletescene': {
       const url: string = `${state.environment.api}/scene/${action.payload._id}`;
       getToken(state)
         .then(headers => axios.delete(url, {headers: headers}))
-        .then(value => {
-          // TODO pass to reducer
-          console.log('MICAH HANDLE DELETE BY REMOVING IN REDUCER');
-        })
+        .then(() => next(action))
         .catch(err => console.error(`Unable to delet scene: ${JSON.stringify(err)}`));
       break;
     }

@@ -46,20 +46,23 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
       return  {...state, currentScene: state.scenes[tableSceneIdx]}
     case 'content/zoom':
       return {...state, scene: ((action.payload as unknown) as Scene) };
-    case 'content/scenes':
+    case 'content/scenes': {
       const scenes: Scene[] = (action.payload as unknown) as Scene[];
       // TODO DONT SET DEFUALT
       return {...state, scenes: scenes, currentScene: scenes[0]};
+    }
     case 'content/scene': {// load an updated or new scene
       const scene: Scene = (action.payload as unknown) as Scene;
       const idx = state.scenes.findIndex(s => s._id === scene._id);
-      const newScenes = state.scenes;
-      if (idx < 0) {
-        // this is an add if you use length -- google it
-        newScenes.splice(newScenes.length, 0, scene);
-      }
-      else newScenes.splice(idx, 1, scene);
-      return {...state, scenes: newScenes, currentScene: scene};
+      if (idx < 0) return {...state, scenes: [...state.scenes, scene], currentScene: scene};
+      state.scenes.splice(idx, 1, scene); // remember this changes inline, hence absense from return
+      // we don't want to rerender if we are just swappign in new contents
+      return {...state, scenes: state.scenes, currentScene: scene};
+    }
+    case 'content/deletescene': {
+      const scene: Scene = (action.payload as unknown) as Scene;
+      const scenes = state.scenes.filter(s => s._id !== scene._id);
+      return {...state, scenes: scenes, currentScene: scene};
     }
     case 'content/currentscene':{
       const scene: Scene = (action.payload as unknown) as Scene;

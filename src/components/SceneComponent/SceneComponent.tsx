@@ -2,6 +2,7 @@
 import { Box, Button, TextField, Tooltip } from '@mui/material';
 import { createRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
+import { NewSceneBundle } from '../../middleware/ContentMiddleware';
 
 const NAME_REGEX = /^[\w\s]{1,64}$/;
 
@@ -10,14 +11,14 @@ interface SceneComponentProps {}
 // TODO use destructuring
 const SceneComponent = (props: SceneComponentProps) => {
   const dispatch = useDispatch();
-  const [table, setTable] = useState<File|undefined>();
-  const [user, setUser] = useState<File|undefined>();
+  const [player, setPlayer] = useState<File|undefined>();
+  const [detail, setDetail] = useState<File|undefined>();
   const [name, setName] = useState<string>();
   const [creating, setCreating] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>();
   const tableImageRef = createRef<HTMLImageElement>();
   const userImageRef = createRef<HTMLImageElement>();
-  const disabledCreate = creating || !name || !!nameError || table === undefined;
+  const disabledCreate = creating || !name || !!nameError || player === undefined;
 
   const handleNameChange = (event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     setName(event.target.value);
@@ -36,11 +37,11 @@ const SceneComponent = (props: SceneComponentProps) => {
     input.onchange = () => {
       if (!input.files) return;
       if (layer === 'user') {
-        setUser(input.files[0]);
+        setDetail(input.files[0]);
         if (userImageRef.current) userImageRef.current.src = URL.createObjectURL(input.files[0]);
       }
       else if (layer === 'table') {
-        setTable(input.files[0]);
+        setPlayer(input.files[0]);
         if (tableImageRef.current) tableImageRef.current.src = URL.createObjectURL(input.files[0]);
       }
       else console.error('Invalid layer');
@@ -49,8 +50,10 @@ const SceneComponent = (props: SceneComponentProps) => {
   }
 
   const createScene = () => {
+    if (!name) return; // TODO ERROR
+    if (!player) return; // TODO ERROR
     setCreating(true);
-    const data = { description: name }
+    const data: NewSceneBundle = { description: name, player: player, detail: detail};
     dispatch({type: 'content/createscene', payload: data});
   }
 
