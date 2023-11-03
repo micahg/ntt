@@ -320,7 +320,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       .then(img => renderImageInContainer(img, contentCtx, true))
       .then(bounds => {
         setBackgroundLoaded(true);
-        setupOverlayCanvas(bounds, overlayCtx);
+        setupOverlayCanvas(bounds, overlayCtx); // MICAH THIS IS SCREWING UP SWITCHING BETWEEN
       })
       .catch(err => {
         // TODO SIGNAL ERROR

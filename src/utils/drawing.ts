@@ -126,8 +126,8 @@ function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
 }
 
 export function setupOverlayCanvas(bounds: ImageBound, ctx: CanvasRenderingContext2D): Promise<void> {
-  let width = bounds.rotate ? bounds.height : bounds.width;
-  let height = bounds.rotate ? bounds.width : bounds.height;
+  const width = bounds.rotate ? bounds.height : bounds.width;
+  const height = bounds.rotate ? bounds.width : bounds.height;
 
   ctx.canvas.width = width;
   ctx.canvas.height = height;
@@ -135,7 +135,7 @@ export function setupOverlayCanvas(bounds: ImageBound, ctx: CanvasRenderingConte
   ctx.canvas.style.height = `${height}px`;
   ctx.canvas.style.top = `${bounds.top}px`;
   ctx.canvas.style.left = `${bounds.left}px`;
-  clearOverlay(ctx);
+  clearOverlay(ctx);  
   return Promise.resolve();
 }
 
