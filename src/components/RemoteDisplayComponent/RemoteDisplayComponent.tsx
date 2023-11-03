@@ -133,13 +133,11 @@ const RemoteDisplayComponent = () => {
             h = bgVPnoTaint.height / scale;
           }
           let olVP = {x: x, y: y, width: w, height: h};
-          renderImageFullScreen(ovrImg, overlay, olVP)
-            .then(() => renderImageFullScreen(bgImg, content, bgVP))
-            .catch(err => console.error(`Error rendering background or overlay image: ${JSON.stringify(err)}`));
+          renderImageFullScreen(ovrImg, overlay, olVP);
+          renderImageFullScreen(bgImg, content, bgVP);
         }).catch(err => console.error(`Error loading overlay iamge ${overlayUri}: ${JSON.stringify(err)}`));
       } else {
-        renderImageFullScreen(bgImg, content, bgVP)
-          .catch(err => console.error(`Error rendering background imager: ${JSON.stringify(err)}`));
+        renderImageFullScreen(bgImg, content, bgVP);
       }
     }).catch(err => console.error(`Error loading background image: ${JSON.stringify(err)}`));
   }, []);

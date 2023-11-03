@@ -59,8 +59,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
 
   const auth = useSelector((state: AppReducerState) => state.environment.auth);
   const noauth = useSelector((state: AppReducerState) => state.environment.noauth);
-  const background = useSelector((state: AppReducerState) => state.content.currentScene?.tableContent);
-  const overlay = useSelector((state: AppReducerState) => state.content.currentScene?.overlayContent);
+  const scene = useSelector((state: AppReducerState) => state.content.currentScene);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
   const viewport = useSelector((state: AppReducerState) => state.content.currentScene?.viewport);
@@ -307,26 +306,23 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
    * before we get the background and we can't really sequence these events.
    */
   useEffect(() => {
-    if (!apiUrl || !background || !contentCtx || !overlayCtx) return;
-    let bgImg = `${apiUrl}/${background}`;
-    loadImage(bgImg)
-      .then(img => {
-        setBackgroundSize([img.width, img.height]);
-        let imgRect = getRect(0, 0, img.width, img.height);
-        dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});    
-        return img;
-      })
-      // MICAH fix render image to use the container height and width
-      .then(img => renderImageInContainer(img, contentCtx, true))
-      .then(bounds => {
-        setBackgroundLoaded(true);
-        setupOverlayCanvas(bounds, overlayCtx); // MICAH THIS IS SCREWING UP SWITCHING BETWEEN
-      })
-      .catch(err => {
-        // TODO SIGNAL ERROR
-        console.log(`Unable to load image: ${JSON.stringify(err)}`);
+    if (!apiUrl || !scene || !scene.tableContent || !contentCtx || !overlayCtx) return;
+    const ovPromise = scene.overlayContent ? loadImage(`${apiUrl}/${scene.overlayContent}`) : Promise.resolve(null);
+
+    let bgImg = `${apiUrl}/${scene.tableContent}`;
+    Promise.all([loadImage(bgImg),ovPromise])
+      .then(([bg, ov]) => {
+        setBackgroundSize([bg.width, bg.height]);
+        const imgRect = getRect(0, 0, bg.width, bg.height);
+        dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
+        const bounds = renderImageInContainer(bg, contentCtx, true)
+        setupOverlayCanvas(bounds, overlayCtx);
+        if (ov) {
+          renderImageInContainer(ov, overlayCtx)
+          setOverlayAsBaseData(overlayCtx)
+        }
       });
-  }, [apiUrl, background, contentCtx, overlayCtx, dispatch])
+  }, [apiUrl, scene, contentCtx, overlayCtx, dispatch])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
@@ -343,21 +339,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (!apiUrl || !dispatch || !toolbarPopulated) return;
     dispatch({type: 'content/pull'});
   }, [apiUrl, dispatch, toolbarPopulated, auth, noauth]);
-
-  useEffect(() => {
-    // if the background isn't loaded yet, no point rendering the overlay
-    if (!backgroundLoaded) return;
-    // if the overlay is a string, then load it. This should only be the case on init
-    if (!overlay) return;
-    if (((overlay as unknown) as Blob).type !== undefined) return;
-    if (!overlayCtx) return;
-
-    let overlayImg: string = overlay as string;
-    loadImage(`${apiUrl}/${overlayImg}?`)
-      .then(img => renderImageInContainer(img, overlayCtx))
-      .then(() => setOverlayAsBaseData(overlayCtx))
-      .catch(err => console.error(err));
-  }, [apiUrl, overlay, backgroundLoaded, overlayCtx])
 
   return (
     <div className={styles.ContentEditor}

@@ -60,7 +60,6 @@ export function loadImage(uri: string): Promise<HTMLImageElement> {
 
 export function renderImageInContainer(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
   resizeCanvas: boolean = false) {
-  if (!ctx) return Promise.reject(`Unable to get canvas context`);
 
   if (resizeCanvas) {
     const [windowWidth, windowHeight] = getWidthAndHeight();
@@ -100,9 +99,7 @@ export function renderImageFullScreen(image: HTMLImageElement, ctx: CanvasRender
 }
 
 function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
-  viewport: Rect | null = null): Promise<ImageBound> {
-
-  if (!ctx) return Promise.reject(`Unable to get canvas context`);
+  viewport: Rect | null = null): ImageBound {
 
   // if we're zoomed we should use viewport width and height (not image)
   const [width, height] = viewport ? [viewport.width, viewport.height] : [image.width, image.height];
@@ -121,8 +118,7 @@ function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
     ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
   }
   ctx.restore();
-
-  return Promise.resolve(bounds);
+  return bounds;
 }
 
 export function setupOverlayCanvas(bounds: ImageBound, ctx: CanvasRenderingContext2D): Promise<void> {
