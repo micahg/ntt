@@ -40,7 +40,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef()});
   const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
-  const [backgroundLoaded, setBackgroundLoaded] = useState<boolean>(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
@@ -102,7 +101,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     // the viewport (vp) in this case is not relative to the background image
     // size, but the size of the canvas upon which it is painted
     let vp = getRect(0,0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-    let [w, h] = backgroundSize;
+    const [w, h] = backgroundSize;
 
     // rotate the selection
     // TODO this doesn't need rotation in portrait
@@ -110,14 +109,14 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       sel = rotateRect(-90, sel, vp.width, vp.height);
       vp = getRect(0,0, overlayCtx.canvas.height, overlayCtx.canvas.width);
     }
-    let selection = scaleSelection(sel, vp, w, h);
-        dispatch({type: 'content/zoom', payload: {'viewport': selection}});
+    const selection = scaleSelection(sel, vp, w, h);
+    dispatch({type: 'content/zoom', payload: {'viewport': selection}});
     sm.transition('wait');
   }
 
   const zoomOut = () => {
     if (!backgroundSize) return;
-    let imgRect = getRect(0, 0, backgroundSize[0], backgroundSize[1]);
+    const imgRect = getRect(0, 0, backgroundSize[0], backgroundSize[1]);
     dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
   }
 
@@ -192,9 +191,9 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (!viewport) return;
     if (!backgroundSize) return;
     if (!redrawToolbar) return;
-    let v = viewport;
-        let [w, h] = backgroundSize;
-    let zoomedOut: boolean = (v.x === 0 && v.y === 0 && w === v.width && h === v.height);
+    const v = viewport;
+    const [w, h] = backgroundSize;
+    const zoomedOut: boolean = (v.x === 0 && v.y === 0 && w === v.width && h === v.height);
     // if zoomed out and in then state changed.... think about it man...
     // if (zoomedOut !== zoomedIn) return;
     // setZoomedIn(!zoomedOut);
@@ -309,7 +308,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (!apiUrl || !scene || !scene.tableContent || !contentCtx || !overlayCtx) return;
     const ovPromise = scene.overlayContent ? loadImage(`${apiUrl}/${scene.overlayContent}`) : Promise.resolve(null);
 
-    let bgImg = `${apiUrl}/${scene.tableContent}`;
+    const bgImg = `${apiUrl}/${scene.tableContent}`;
     Promise.all([loadImage(bgImg),ovPromise])
       .then(([bg, ov]) => {
         setBackgroundSize([bg.width, bg.height]);
