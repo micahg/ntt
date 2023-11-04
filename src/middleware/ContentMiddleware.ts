@@ -19,10 +19,10 @@ function isBlob(payload: URL | Blob): payload is File {
   return new Promise((resolve, reject) => {
     // if (!state.content.currentScene) return reject('No scene selected');
     // let scene: Scene = state.content.currentScene;
-    const url: string = `${state.environment.api}/scene/${scene._id}/content`;
-    let formData = new FormData();
-    let contentType: string = isBlob(blob) ? blob.type : 'multipart/form-data';
-    let content: Blob | string = isBlob(blob) ? blob as Blob : blob.toString();
+    const url = `${state.environment.api}/scene/${scene._id}/content`;
+    const formData = new FormData();
+    const contentType: string = isBlob(blob) ? blob.type : 'multipart/form-data';
+    const content: Blob | string = isBlob(blob) ? blob as Blob : blob.toString();
     formData.append('layer', layer);
     formData.append('image', content);
 
@@ -45,7 +45,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
     case 'content/push': {
       const scene: Scene = state.content.currentScene;
       if (!scene) return next(action);
-      const url: string = `${state.environment.api}/state`;
+      const url = `${state.environment.api}/state`;
       getToken(state)
         .then(headers => axios.put(url, {scene: scene._id}, {headers: headers}))
         .then(() => {
@@ -59,7 +59,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
     }
       break;
     case 'content/pull': {
-      const url: string = `${state.environment.api}/state`;
+      const url = `${state.environment.api}/state`;
       getToken(state)
         .then(headers => axios.get(url, {headers: headers}))
         .then(value => next({...action, payload: value.data}))
@@ -69,7 +69,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         });
     }
     break;
-    case 'content/background':
+    case 'content/background':{
       const scene: Scene = state.content.currentScene;
       sendFile(state, scene, action.payload, 'background').then((value) => {
         const ts: number = (new Date()).getTime();
@@ -78,6 +78,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
         return next({type: 'content/scene', payload: scene})
       }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;
+    }
     case 'content/overlay': {
       // undefined means we're wiping the canvas... probably a new background
       if (action.payload === undefined) return next(action);
@@ -93,7 +94,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       if (action.payload === undefined) return;
       const scene = state.content.currentScene;
       if (!scene) return next(action);
-      const url: string = `${state.environment.api}/scene/${scene._id}/viewport`;
+      const url = `${state.environment.api}/scene/${scene._id}/viewport`;
       getToken(state)
         .then(headers => axios.put(url, action.payload, {headers: headers}))
         .then(value => next({type: 'content/scene', payload: value.data}))
@@ -101,7 +102,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       break;
     }
     case 'content/scenes': {
-      const url: string = `${state.environment.api}/scene`;
+      const url = `${state.environment.api}/scene`;
       getToken(state)
         .then(headers => axios.get(url, {headers: headers}))
         .then(value => next({type: action.type, payload: value.data}))
@@ -109,7 +110,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       break;
     }
     case 'content/createscene': {
-      const url: string = `${state.environment.api}/scene`;
+      const url = `${state.environment.api}/scene`;
       const bundle: NewSceneBundle = action.payload;
       getToken(state)
         .then(headers => axios.put(url, bundle, {headers: headers}))
@@ -121,7 +122,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       break;
     }
     case 'content/deletescene': {
-      const url: string = `${state.environment.api}/scene/${action.payload._id}`;
+      const url = `${state.environment.api}/scene/${action.payload._id}`;
       getToken(state)
         .then(headers => axios.delete(url, {headers: headers}))
         .then(() => next(action))

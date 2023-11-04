@@ -188,6 +188,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   }, [overlayCanvasRef, overlayCtx]);
 
   useEffect(() => {
+    const x = scene;
+    console.log(`MICAH SCENE CHANGED ${JSON.stringify(x)}`);
+  }, [scene]);
+
+  useEffect(() => {
     if (!viewport) return;
     if (!backgroundSize) return;
     if (!redrawToolbar) return;
@@ -234,7 +239,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     });
     setCallback(sm, 'background_upload', sceneManager);
     setCallback(sm, 'obscure', () => {
-      // console.log(`Obscuring ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
       obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
       sm.transition('wait');
     });
@@ -243,7 +247,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       sm.transition('wait');
     });
     setCallback(sm, 'zoomIn', () => {
-      // console.log(`Zooming ${sm.x1()}, ${sm.y1()}, ${sm.x2()}, ${sm.y2()}`);
       zoomIn(sm.x1(), sm.y1(), sm.x2(), sm.y2())
     });
     setCallback(sm, 'zoomOut', () => zoomOut());
@@ -312,8 +315,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     Promise.all([loadImage(bgImg),ovPromise])
       .then(([bg, ov]) => {
         setBackgroundSize([bg.width, bg.height]);
-        const imgRect = getRect(0, 0, bg.width, bg.height);
-        dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
+        // if the scene hasn't set a viewport, default to entire background
+        if (!scene.viewport) {
+          const imgRect = getRect(0, 0, bg.width, bg.height);
+          dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
+        }
         const bounds = renderImageInContainer(bg, contentCtx, true)
         setupOverlayCanvas(bounds, overlayCtx);
         if (ov) {

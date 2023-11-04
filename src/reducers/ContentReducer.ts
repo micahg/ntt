@@ -36,7 +36,7 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
   switch(action.type) {
     case 'content/push':
       return { ...state, pushTime: action.payload };
-    case 'content/pull':
+    case 'content/pull': {
       const table: TableTop = (action.payload as unknown) as TableTop;
       const tableSceneIdx = state.scenes.findIndex(s => s._id === table.scene);
       if (tableSceneIdx < 0) {
@@ -44,6 +44,7 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
         return state;
       }
       return  {...state, currentScene: state.scenes[tableSceneIdx]}
+    }
     case 'content/zoom':
       return {...state, scene: ((action.payload as unknown) as Scene) };
     case 'content/scenes': {
@@ -54,10 +55,14 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
     case 'content/scene': {// load an updated or new scene
       const scene: Scene = (action.payload as unknown) as Scene;
       const idx = state.scenes.findIndex(s => s._id === scene._id);
+      console.log(`Scene ${scene._id} updated ${JSON.stringify(scene.viewport)}`);
       if (idx < 0) return {...state, scenes: [...state.scenes, scene]};
       state.scenes.splice(idx, 1, scene); // remember this changes inline, hence absense from return
-      // we don't want to rerender if we are just swappign in new contents
-      return {...state, scenes: state.scenes};
+      // historically there was some notion that we don't want to rerender if
+      // we are just swappign in new contents. But we an image or viewport of
+      // the current scene is updated we do need to rerender.
+      if (scene._id !== state.currentScene?._id) return {...state, scenes: state.scenes};
+      return {...state, currentScene: scene, scenes: state.scenes};
     }
     case 'content/deletescene': {
       const scene: Scene = (action.payload as unknown) as Scene;
