@@ -131,7 +131,7 @@ export function setupOverlayCanvas(bounds: ImageBound, ctx: CanvasRenderingConte
   ctx.canvas.style.height = `${height}px`;
   ctx.canvas.style.top = `${bounds.top}px`;
   ctx.canvas.style.left = `${bounds.left}px`;
-  clearOverlay(ctx);  
+  clearOverlay(ctx);
   return Promise.resolve();
 }
 

@@ -14,11 +14,8 @@ function isBlob(payload: URL | Blob): payload is File {
   return (payload as Blob).type !== undefined;
 }
 
-// function sendFile(state: AppReducerState, blob: File | URL, layer: string): Promise<AxiosResponse> {
   function sendFile(state: AppReducerState, scene: Scene, blob: File | URL, layer: string): Promise<AxiosResponse> {
   return new Promise((resolve, reject) => {
-    // if (!state.content.currentScene) return reject('No scene selected');
-    // let scene: Scene = state.content.currentScene;
     const url = `${state.environment.api}/scene/${scene._id}/content`;
     const formData = new FormData();
     const contentType: string = isBlob(blob) ? blob.type : 'multipart/form-data';
