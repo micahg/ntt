@@ -16,8 +16,6 @@ import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import SceneComponent from '../SceneComponent/SceneComponent.lazy';
 import { Scene } from '../../reducers/ContentReducer';
 
-interface GameMasterComponentProps {}
-
 const drawerWidth = 240;
 
 enum FocusedComponent {
@@ -74,7 +72,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'flex-end',
 }));
 
-const GameMasterComponent = (props: GameMasterComponentProps) => {
+const GameMasterComponent = () => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const [open, setOpen] = useState<boolean>(false);
