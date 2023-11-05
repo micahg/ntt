@@ -45,6 +45,9 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
   const [backgroundSize, setBackgroundSize] = useState<number[]|null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [bgRev, setBgRev] = useState<number>(0);
+  const [ovRev, setOvRev] = useState<number>(0);
+  const [sceneId, setSceneId] = useState<string>(); // used to track flipping between scenes
 
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
@@ -61,7 +64,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const scene = useSelector((state: AppReducerState) => state.content.currentScene);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
-  const viewport = useSelector((state: AppReducerState) => state.content.currentScene?.viewport);
 
   const updateOverlay = () => {
     overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
@@ -70,6 +72,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
         return;
       }
       dispatch({type: 'content/overlay', payload: blob})
+      setOvRev(ovRev + 1);
     }, 'image/png', 1);
   }
 
@@ -188,15 +191,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   }, [overlayCanvasRef, overlayCtx]);
 
   useEffect(() => {
-    const x = scene;
-    console.log(`MICAH SCENE CHANGED ${JSON.stringify(x)}`);
-  }, [scene]);
-
-  useEffect(() => {
-    if (!viewport) return;
+    if (!scene || !scene.viewport) return;
+    // if (!viewport) return;
     if (!backgroundSize) return;
     if (!redrawToolbar) return;
-    const v = viewport;
+    const v = scene.viewport;
     const [w, h] = backgroundSize;
     const zoomedOut: boolean = (v.x === 0 && v.y === 0 && w === v.width && h === v.height);
     // if zoomed out and in then state changed.... think about it man...
@@ -207,7 +206,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     redrawToolbar();
 
     sm.transition('wait');
-  }, [viewport, backgroundSize, internalState, redrawToolbar]);
+  }, [scene, backgroundSize, internalState, redrawToolbar]);
 
 
   useEffect(() => {
@@ -308,26 +307,50 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
    * before we get the background and we can't really sequence these events.
    */
   useEffect(() => {
-    if (!apiUrl || !scene || !scene.tableContent || !contentCtx || !overlayCtx) return;
-    const ovPromise = scene.overlayContent ? loadImage(`${apiUrl}/${scene.overlayContent}`) : Promise.resolve(null);
+    /**
+     * THIS CAN BE BETTER
+     * 
+     * if you put a breakpoint inside the `if (bg) {` block down below, we hit
+     * that breakpoint twice on a scene flip... something is triggering a needless
+     * rerender
+     */
+    if (!apiUrl || !scene || !scene.playerContent || !contentCtx || !overlayCtx) return;
 
-    const bgImg = `${apiUrl}/${scene.tableContent}`;
-    Promise.all([loadImage(bgImg),ovPromise])
+    // if the scene has changed, reset our revisions so we properly redraw any updated assets
+    // also because the setter from useState (setBgRev/setOvRev) don't take effect until next
+    // render we need localized up-to-date values to avoid needless rerendering.
+    // SOMETHING IS OFF about that comment above... logically the scene id should also stay
+    // changed until the next render
+    const curBgRev = (sceneId !== scene._id) ? 0 : bgRev;
+    const curOvRev = (sceneId !== scene._id) ? 0 : ovRev;
+    if (sceneId !== scene._id) {
+      setSceneId(scene._id);
+      setBgRev(0);
+      setOvRev(0);
+    }
+
+    const ovPromise = (scene.overlayContentRev && scene.overlayContentRev > curOvRev) ? loadImage(`${apiUrl}/${scene.overlayContent}`) : Promise.resolve(null);
+    const bgPromise = (scene.playerContentRev && scene.playerContentRev > curBgRev) ? loadImage(`${apiUrl}/${scene.playerContent}`) : Promise.resolve(null);
+    Promise.all([bgPromise,ovPromise])
       .then(([bg, ov]) => {
-        setBackgroundSize([bg.width, bg.height]);
-        // if the scene hasn't set a viewport, default to entire background
-        if (!scene.viewport) {
-          const imgRect = getRect(0, 0, bg.width, bg.height);
-          dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
+        if (bg) {
+          if (scene.playerContentRev) setBgRev(scene.playerContentRev);
+          setBackgroundSize([bg.width, bg.height]);
+          // if the scene hasn't set a viewport, default to entire background
+          if (!scene.viewport) {
+            const imgRect = getRect(0, 0, bg.width, bg.height);
+            dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
+          }
+          const bounds = renderImageInContainer(bg, contentCtx, true)
+          setupOverlayCanvas(bounds, overlayCtx);
         }
-        const bounds = renderImageInContainer(bg, contentCtx, true)
-        setupOverlayCanvas(bounds, overlayCtx);
         if (ov) {
+          if (scene.overlayContentRev) setOvRev(scene.overlayContentRev);
           renderImageInContainer(ov, overlayCtx)
           setOverlayAsBaseData(overlayCtx)
         }
       });
-  }, [apiUrl, scene, contentCtx, overlayCtx, dispatch])
+  }, [apiUrl, scene, sceneId, contentCtx, overlayCtx, dispatch, ovRev, bgRev])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])

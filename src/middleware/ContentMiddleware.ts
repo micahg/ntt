@@ -74,7 +74,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       sendFile(state, scene, action.payload, 'background').then((value) => {
         const ts: number = (new Date()).getTime();
         const scene: Scene = value.data;
-        scene.tableContent = `${scene.tableContent}?${ts}`
+        scene.playerContent = `${scene.playerContent}?${ts}`
         return next({type: 'content/scene', payload: scene})
       }).catch(err => console.error(`Unable to update overlay: ${JSON.stringify(err)}`));
       break;

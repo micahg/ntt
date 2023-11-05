@@ -123,7 +123,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
               variant="outlined"
               onClick={() => selectFile('table')}
             >
-              Table Background
+              Player Background
             </Button>
           </span>
         </Tooltip>
@@ -133,7 +133,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
               variant="outlined"
               onClick={() => selectFile('user')}
             >
-              User Background
+              Detailed Background
             </Button>
           </span>
         </Tooltip>

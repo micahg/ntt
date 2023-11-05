@@ -7,8 +7,11 @@ export interface Scene {
   user: string;
   description: string;
   overlayContent?: string;
-  userContent?: string;
-  tableContent?: string;
+  overlayContentRev?: number;
+  detailContent?: string;
+  detailContentRev?: number;
+  playerContent?: string;
+  playerContentRev?: number;
   viewport?: Rect;
   backgroundSize?: Rect;
 }
@@ -55,7 +58,6 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
     case 'content/scene': {// load an updated or new scene
       const scene: Scene = (action.payload as unknown) as Scene;
       const idx = state.scenes.findIndex(s => s._id === scene._id);
-      console.log(`Scene ${scene._id} updated ${JSON.stringify(scene.viewport)}`);
       if (idx < 0) return {...state, scenes: [...state.scenes, scene]};
       state.scenes.splice(idx, 1, scene); // remember this changes inline, hence absense from return
       // historically there was some notion that we don't want to rerender if
