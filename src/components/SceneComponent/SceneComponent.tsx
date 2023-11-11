@@ -1,10 +1,10 @@
 // import styles from './SceneComponent.module.css';
-import { Box, Button, TextField, Tooltip } from '@mui/material';
-import { createRef, useEffect, useState } from 'react';
+import { Alert, Box, Button, TextField, Tooltip } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { NewSceneBundle } from '../../middleware/ContentMiddleware';
 import { Scene } from '../../reducers/ContentReducer';
 import { AppReducerState } from '../../reducers/AppReducer';
+import { NewSceneBundle } from '../../middleware/ContentMiddleware';
 
 const NAME_REGEX = /^[\w\s]{1,64}$/;
 
@@ -17,18 +17,23 @@ interface SceneComponentProps {
 const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
   const dispatch = useDispatch();
   
-  const [player, setPlayer] = useState<File|undefined>();
-  const [detail, setDetail] = useState<File|undefined>();
+  const [player, setPlayer] = useState<string|undefined>();
+  const [detail, setDetail] = useState<string|undefined>();
+  const [playerFile, setPlayerFile] = useState<File|undefined>();
+  const [detailFile, setDetailFile] = useState<File|undefined>();
   const [playerUpdated, setPlayerUpdated] = useState<boolean>(false);
   const [detailUpdated, setDetailUpdated] = useState<boolean>(false);
   const [resolutionMismatch, setResolutionMismatch] = useState<boolean>(false)
   const [name, setName] = useState<string>();
   const [creating, setCreating] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>();
-  const playerImageRef = createRef<HTMLImageElement>();
-  const detailImageRef = createRef<HTMLImageElement>();
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
-  const disabledCreate = creating || (!name && !scene) || !!nameError || player === undefined || resolutionMismatch;
+  const disabledCreate = creating || // currently already creating or updating
+                          (!name && !scene) || // neither name nor scene (existing scene would have name)
+                          !!nameError || // dont' create with name error
+                          !(playerUpdated || detailUpdated) || // don't send if neither updated
+                          resolutionMismatch; // for now, don't send on resolution mismatch
+                          // we should probably send if resolution is different but aspect ratio same
 
   const handleNameChange = (event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     setName(event.target.value);
@@ -48,15 +53,17 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
       if (!input.files) return;
       if (layer === 'detail') {
         // TODO compare against other resolution
-        setDetail(input.files[0]);
+        const file = input.files[0];
+        setDetailFile(file);
+        setDetail(URL.createObjectURL(file));
         setDetailUpdated(true);
-        if (detailImageRef.current) detailImageRef.current.src = URL.createObjectURL(input.files[0]);
       }
       else if (layer === 'player') {
         // TODO comapre against other resolution
-        setPlayer(input.files[0]);
+        const file = input.files[0];
+        setPlayerFile(file);
+        setPlayer(URL.createObjectURL(file));
         setPlayerUpdated(true);
-        if (playerImageRef.current) playerImageRef.current.src = URL.createObjectURL(input.files[0]);
       }
       else console.error('Invalid layer');
     }
@@ -67,33 +74,38 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
     setCreating(true);
     if (scene) {
       // TODO clear overlay
-      if (player && playerUpdated) dispatch({type: 'content/player', payload: player})
-      if (detail && detailUpdated) dispatch({type: 'content/detail', payload: detail})
+      if (player && playerUpdated) {
+        dispatch({type: 'content/player', payload: playerFile});
+        setPlayerUpdated(false);
+      }
+      if (detail && detailUpdated) {
+        dispatch({type: 'content/detail', payload: detailFile});
+        setDetailUpdated(false);
+      }
       if (editScene) editScene();
       return;
     }
     if (!name) return; // TODO ERROR
-    if (!player) return; // TODO ERROR
-    const data: NewSceneBundle = { description: name, player: player, detail: detail};
+    if (!playerFile) return; // TODO ERROR
+    const data: NewSceneBundle = { description: name, player: playerFile, detail: detailFile};
     dispatch({type: 'content/createscene', payload: data});
   }
 
   const imageLoaded = () => {
-    if (playerImageRef.current && detailImageRef.current) {
-      if (playerImageRef.current.naturalWidth !== detailImageRef.current.naturalWidth ||
-          playerImageRef.current.naturalHeight !== detailImageRef.current.naturalHeight) {
-          setResolutionMismatch(true);
-      } else setResolutionMismatch(false);
-    }
+    // if (playerImageRef.current?.src && detailImageRef.current?.src) {
+    //   console.log(playerImageRef.current.src);
+    //   console.log(detailImageRef.current.src);
+    //   if (playerImageRef.current.naturalWidth !== detailImageRef.current.naturalWidth ||
+    //       playerImageRef.current.naturalHeight !== detailImageRef.current.naturalHeight) {
+    //       setResolutionMismatch(true);
+    //   } else setResolutionMismatch(false);
+    // }
   }
 
   useEffect(() => {
-    if (scene?.detailContent && detailImageRef?.current)
-      detailImageRef.current.src = `${apiUrl}/${scene.detailContent}`;
-
-    if (scene?.playerContent && playerImageRef?.current)
-      playerImageRef.current.src = `${apiUrl}/${scene.playerContent}`;
-  }, [apiUrl, scene, playerImageRef, detailImageRef]);
+    if (scene?.detailContent) setDetail(`${apiUrl}/${scene.detailContent}`);
+    if (scene?.playerContent) setPlayer(`${apiUrl}/${scene.playerContent}`);
+  }, [apiUrl, scene]);
 
   return (
     <Box sx={{
@@ -103,6 +115,11 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
       display: 'flex',
       flexDirection: 'column',
     }}>
+      { resolutionMismatch && 
+        <Alert severity='error'>
+          Image resolution does not match (they must match).
+        </Alert>
+      }
       <TextField
         disabled={!!scene}
         id="standard-basic"
@@ -125,7 +142,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
           minHeight: '25vh',
           width: '25vw'}}
         >
-          <Box component="img" ref={playerImageRef} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
+          <Box component="img" src={player} onClick={() => selectFile('player')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
         </Box>
         <Box sx={{
           display: 'flex',
@@ -137,7 +154,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
           minHeight: '25vh',
           width: '25vw'}}
         >
-          <Box component="img" ref={detailImageRef} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
+          <Box component="img" src={detail} onClick={() => selectFile('detail')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
         </Box>
       </Box>
       <Box sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '1em'}}>
