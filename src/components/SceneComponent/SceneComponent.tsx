@@ -17,8 +17,8 @@ interface SceneComponentProps {
 const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
   const dispatch = useDispatch();
   
-  const [player, setPlayer] = useState<string|undefined>();
-  const [detail, setDetail] = useState<string|undefined>();
+  const [playerUrl, setPlayerUrl] = useState<string|undefined>();
+  const [detailUrl, setDetailUrl] = useState<string|undefined>();
   const [playerFile, setPlayerFile] = useState<File|undefined>();
   const [detailFile, setDetailFile] = useState<File|undefined>();
   const [playerUpdated, setPlayerUpdated] = useState<boolean>(false);
@@ -55,14 +55,14 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
         // TODO compare against other resolution
         const file = input.files[0];
         setDetailFile(file);
-        setDetail(URL.createObjectURL(file));
+        setDetailUrl(URL.createObjectURL(file));
         setDetailUpdated(true);
       }
       else if (layer === 'player') {
         // TODO comapre against other resolution
         const file = input.files[0];
         setPlayerFile(file);
-        setPlayer(URL.createObjectURL(file));
+        setPlayerUrl(URL.createObjectURL(file));
         setPlayerUpdated(true);
       }
       else console.error('Invalid layer');
@@ -74,11 +74,11 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
     setCreating(true);
     if (scene) {
       // TODO clear overlay
-      if (player && playerUpdated) {
+      if (playerUrl && playerUpdated) {
         dispatch({type: 'content/player', payload: playerFile});
         setPlayerUpdated(false);
       }
-      if (detail && detailUpdated) {
+      if (detailUrl && detailUpdated) {
         dispatch({type: 'content/detail', payload: detailFile});
         setDetailUpdated(false);
       }
@@ -92,6 +92,10 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
   }
 
   const imageLoaded = () => {
+    if (!playerFile) return;
+    if (!detailFile) return;
+    // shoot still need file as image because you need natural width and height :(
+
     // if (playerImageRef.current?.src && detailImageRef.current?.src) {
     //   console.log(playerImageRef.current.src);
     //   console.log(detailImageRef.current.src);
@@ -102,9 +106,29 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
     // }
   }
 
+  const syncSceneAsset = (url: string) => {
+    return fetch(url)
+      .then(value => value.blob())
+      .then(blob => new File([blob], url, {type: blob.type}))
+  }
+
+  /**
+   * If the scene comes with image assets already (it should have a player
+   * visible image) then set the URL so that the <Box> image can pick it up.
+   */
   useEffect(() => {
-    if (scene?.detailContent) setDetail(`${apiUrl}/${scene.detailContent}`);
-    if (scene?.playerContent) setPlayer(`${apiUrl}/${scene.playerContent}`);
+    if (scene?.detailContent) {
+      setDetailUrl(`${apiUrl}/${scene.detailContent}`);
+      syncSceneAsset(scene.detailContent)
+        .then(file => setDetailFile(file))
+        .catch(err => console.error(`Unable to sync detail contenet: ${JSON.stringify(err)}`));
+    }
+    if (scene?.playerContent) {
+      setPlayerUrl(`${apiUrl}/${scene.playerContent}`);
+      syncSceneAsset(scene.playerContent)
+        .then(file => setPlayerFile(file))
+        .catch(err => console.error(`Unable to sync player content: ${JSON.stringify(err)}`));
+    }
   }, [apiUrl, scene]);
 
   return (
@@ -142,7 +166,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
           minHeight: '25vh',
           width: '25vw'}}
         >
-          <Box component="img" src={player} onClick={() => selectFile('player')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
+          <Box component="img" src={playerUrl} onClick={() => selectFile('player')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
         </Box>
         <Box sx={{
           display: 'flex',
@@ -154,7 +178,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
           minHeight: '25vh',
           width: '25vw'}}
         >
-          <Box component="img" src={detail} onClick={() => selectFile('detail')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
+          <Box component="img" src={detailUrl} onClick={() => selectFile('detail')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
         </Box>
       </Box>
       <Box sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '1em'}}>
