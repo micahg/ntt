@@ -329,8 +329,10 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       setOvRev(0);
     }
 
+    const [rev, content] = scene.detailContentRev ? [scene.detailContentRev, scene.detailContent] : [scene.playerContentRev, scene.playerContent];
     const ovPromise = (scene.overlayContentRev && scene.overlayContentRev > curOvRev) ? loadImage(`${apiUrl}/${scene.overlayContent}`) : Promise.resolve(null);
-    const bgPromise = (scene.playerContentRev && scene.playerContentRev > curBgRev) ? loadImage(`${apiUrl}/${scene.playerContent}`) : Promise.resolve(null);
+    // const bgPromise = (scene.playerContentRev && scene.playerContentRev > curBgRev) ? loadImage(`${apiUrl}/${scene.playerContent}`) : Promise.resolve(null);
+    const bgPromise = (rev && rev > curBgRev) ? loadImage(`${apiUrl}/${content}`) : Promise.resolve(null);
     Promise.all([bgPromise,ovPromise])
       .then(([bg, ov]) => {
         if (bg) {
