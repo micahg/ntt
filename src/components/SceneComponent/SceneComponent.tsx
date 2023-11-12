@@ -17,10 +17,19 @@ interface SceneComponentProps {
 const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
   const dispatch = useDispatch();
   
-  const [playerUrl, setPlayerUrl] = useState<string|undefined>();
-  const [detailUrl, setDetailUrl] = useState<string|undefined>();
-  const [playerFile, setPlayerFile] = useState<File|undefined>();
-  const [detailFile, setDetailFile] = useState<File|undefined>();
+  /**
+   * Regarding *Url, *File and *WH below, I do not love storing basically the
+   * same thing three times, but there doesn't seem to be one object that holds
+   * this well at thes same time. Why do we need each? URL is so we pickup the
+   * changed image when the display repaints. File is for when we upload when 
+   * the user submits, WH is so we can show an error if the sizes don't match.
+   */
+  const [playerUrl, setPlayerUrl] = useState<string|undefined>(); // img src
+  const [detailUrl, setDetailUrl] = useState<string|undefined>(); // img src
+  const [playerFile, setPlayerFile] = useState<File|undefined>(); // upload data
+  const [detailFile, setDetailFile] = useState<File|undefined>(); // upload data
+  const [playerWH, setPlayerWH] = useState<number[]>([]); // img width, height
+  const [detailWH, setDetailWH] = useState<number[]>([]); // img width, height
   const [playerUpdated, setPlayerUpdated] = useState<boolean>(false);
   const [detailUpdated, setDetailUpdated] = useState<boolean>(false);
   const [resolutionMismatch, setResolutionMismatch] = useState<boolean>(false)
@@ -74,11 +83,11 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
     setCreating(true);
     if (scene) {
       // TODO clear overlay
-      if (playerUrl && playerUpdated) {
+      if (playerFile && playerUpdated) {
         dispatch({type: 'content/player', payload: playerFile});
         setPlayerUpdated(false);
       }
-      if (detailUrl && detailUpdated) {
+      if (detailFile && detailUpdated) {
         dispatch({type: 'content/detail', payload: detailFile});
         setDetailUpdated(false);
       }
@@ -91,19 +100,24 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
     dispatch({type: 'content/createscene', payload: data});
   }
 
-  const imageLoaded = () => {
-    if (!playerFile) return;
-    if (!detailFile) return;
-    // shoot still need file as image because you need natural width and height :(
+  const imageLoaded = (name: string, event?: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const img: HTMLImageElement = event?.currentTarget as HTMLImageElement;
+    // to avoid waiting for set{Detail,Player}WH to rerender AND THEN compare them, just get
+    // what we know NOW to do the comparison so we can also set the mismatch flag
+    let a: number[], b:number[];
+    if (name === 'detail') {
+      a = [img.naturalWidth, img.naturalHeight];
+      b = playerWH;
+      setDetailWH(a);
+    } else if (name === 'player') {
+      a = [img.naturalWidth, img.naturalHeight];
+      b = detailWH;
+      setPlayerWH(a);
+    } else return;
 
-    // if (playerImageRef.current?.src && detailImageRef.current?.src) {
-    //   console.log(playerImageRef.current.src);
-    //   console.log(detailImageRef.current.src);
-    //   if (playerImageRef.current.naturalWidth !== detailImageRef.current.naturalWidth ||
-    //       playerImageRef.current.naturalHeight !== detailImageRef.current.naturalHeight) {
-    //       setResolutionMismatch(true);
-    //   } else setResolutionMismatch(false);
-    // }
+    if (!detailWH.length || !playerWH.length) return;
+
+    setResolutionMismatch(a[0] !== b[0] || a[1] !== b[1]);
   }
 
   const syncSceneAsset = (url: string) => {
@@ -166,7 +180,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
           minHeight: '25vh',
           width: '25vw'}}
         >
-          <Box component="img" src={playerUrl} onClick={() => selectFile('player')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
+          <Box component="img" src={playerUrl} onClick={() => selectFile('player')} sx={{width: '100%'}} onLoad={(e) => imageLoaded('player', e)}/>
         </Box>
         <Box sx={{
           display: 'flex',
@@ -178,7 +192,7 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
           minHeight: '25vh',
           width: '25vw'}}
         >
-          <Box component="img" src={detailUrl} onClick={() => selectFile('detail')} sx={{width: '100%'}} onLoad={() => imageLoaded()}/>
+          <Box component="img" src={detailUrl} onClick={() => selectFile('detail')} sx={{width: '100%'}} onLoad={(e) => imageLoaded('detail', e)}/>
         </Box>
       </Box>
       <Box sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '1em'}}>
@@ -206,7 +220,9 @@ const SceneComponent = ({scene, editScene}: SceneComponentProps) => {
       <Box sx={{display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '1em'}}>
         <Tooltip title="Create the scene">
           <span>
-            <Button variant="contained" disabled={disabledCreate} onClick={() => updateScene()}>Create</Button>
+            <Button variant="contained" disabled={disabledCreate} onClick={() => updateScene()}>
+              {scene ? "Update" : "Create"}
+            </Button>
           </span>
         </Tooltip>
       </Box>
