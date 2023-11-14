@@ -1,12 +1,16 @@
 import React, { RefObject, createRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, obscureOverlay, setupOverlayCanvas,
-         selectOverlay, storeOverlay, clearOverlaySelection, revealOverlay,
+import { loadImage, obscureOverlay,
+         selectOverlay, storeOverlay, revealOverlay,
          getRect, clearOverlay, setOverlayOpacity,
          setOverlayColour, 
          renderImageInContainer,
-         setOverlayAsBaseData} from '../../utils/drawing';
+         setOverlayAsBaseData,
+         setupOffscreenCanvas,
+         selectOverlayEnd,
+         clearSelection,
+         loadOverlay} from '../../utils/drawing';
 import { rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
@@ -35,11 +39,13 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const dispatch = useDispatch();
   const contentCanvasRef = createRef<HTMLCanvasElement>();
   const overlayCanvasRef = createRef<HTMLCanvasElement>();
+  const fullCanvasRef = createRef<HTMLCanvasElement>();
   const colorInputRef = createRef<HTMLInputElement>();
   
   const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef()});
   const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
-  const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
+  // const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
+  // const [overlayCtx, setOverlayCtx] = useState<ImageBitmapRenderingContext|null>(null);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
@@ -66,7 +72,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
 
   const updateOverlay = () => {
-    overlayCanvasRef.current?.toBlob((blob: Blob | null) => {
+    fullCanvasRef.current?.toBlob((blob: Blob | null) => {
       if (!blob) {
         // TODO SIGNAL ERROR
         return;
@@ -82,45 +88,33 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       redrawToolbar();
     }
   }
-  const obscure = (x1: number, y1: number, x2: number, y2: number) => {
-    if (!overlayCtx) return;
-    obscureOverlay.bind(overlayCtx)(x1, y1, x2, y2);
-    updateOverlay();
-  }
-
-  const reveal = (x1: number, y1: number, x2: number, y2: number) => {
-    if (!overlayCtx) return;
-    revealOverlay.bind(overlayCtx)(x1, y1, x2, y2);
-    updateOverlay();
-  }
+  // const obscure = (x1: number, y1: number, x2: number, y2: number) => {
+  //   // if (!overlayCtx) return;
+  //   // obscureOverlay.bind(overlayCtx)(x1, y1, x2, y2);
+  //   obscureOverlay();
+  //   // updateOverlay();
+  // }
 
   const sceneManager = () => {if (manageScene) manageScene(); }
 
-  const zoomIn = (x1: number, y1: number, x2: number, y2: number) => {
-    if (!backgroundSize) return;
-    if (!overlayCtx) return;
-    if (!overlayCtx.canvas) return;
+  const zoomIn = (canvas: HTMLCanvasElement, bgSize: number[],
+                  x1: number, y1: number, x2: number, y2: number) => {
     let sel = getRect(x1, y1, x2, y2);
     // the viewport (vp) in this case is not relative to the background image
     // size, but the size of the canvas upon which it is painted
-    let vp = getRect(0,0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-    const [w, h] = backgroundSize;
+    let vp = getRect(0,0, canvas.width, canvas.height);
+    const [w, h] = bgSize;
 
     // rotate the selection
     // TODO this doesn't need rotation in portrait
     if (w < h) {
       sel = rotateRect(-90, sel, vp.width, vp.height);
-      vp = getRect(0,0, overlayCtx.canvas.height, overlayCtx.canvas.width);
+      vp = getRect(0,0, canvas.height, canvas.width);
     }
     const selection = scaleSelection(sel, vp, w, h);
     dispatch({type: 'content/zoom', payload: {'viewport': selection}});
+    clearSelection();
     sm.transition('wait');
-  }
-
-  const zoomOut = () => {
-    if (!backgroundSize) return;
-    const imgRect = getRect(0, 0, backgroundSize[0], backgroundSize[1]);
-    dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
   }
 
   const gmSelectColor = () => {
@@ -185,10 +179,10 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     setContentCtx(contentCanvasRef.current.getContext('2d', { alpha: false }));
   }, [contentCanvasRef, contentCtx]);
 
-  useEffect(() => {
-    if (!overlayCanvasRef.current || overlayCtx != null) return;
-    setOverlayCtx(overlayCanvasRef.current.getContext('2d', { alpha: true }));
-  }, [overlayCanvasRef, overlayCtx]);
+  // useEffect(() => {
+  //   if (!overlayCanvasRef.current || overlayCtx != null) return;
+  //   setOverlayCtx(overlayCanvasRef.current.getContext('2d', { alpha: true }));
+  // }, [overlayCanvasRef, overlayCtx]);
 
   useEffect(() => {
     if (!scene || !scene.viewport) return;
@@ -211,14 +205,14 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
 
   useEffect(() => {
     if (!overlayCanvasRef.current) return;
-    if (!overlayCtx) return;
+    if (!backgroundSize || !backgroundSize.length) return;
+    const overlayCanvas = overlayCanvasRef.current;
 
     setCallback(sm, 'wait', () => {
       sm.resetCoordinates();
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
       updateObscure(false);
-      clearOverlaySelection.bind(overlayCtx)();
     });
 
     setCallback(sm, 'record', () => {
@@ -228,7 +222,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       setShowOpacitySlider(false);
     });
     setCallback(sm, 'background_select', () => {
-      clearOverlaySelection.bind(overlayCtx)();
       sm.resetCoordinates();
       updateObscure(false);
       setShowBackgroundMenu(true);
@@ -238,17 +231,20 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     });
     setCallback(sm, 'background_upload', sceneManager);
     setCallback(sm, 'obscure', () => {
-      obscure(sm.x1(), sm.y1(), sm.x2(), sm.y2());
+      obscureOverlay();
       sm.transition('wait');
     });
     setCallback(sm, 'reveal', () => {
-      reveal(sm.x1(), sm.y1(), sm.x2(), sm.y2());
+      revealOverlay();
       sm.transition('wait');
     });
     setCallback(sm, 'zoomIn', () => {
-      zoomIn(sm.x1(), sm.y1(), sm.x2(), sm.y2())
+      zoomIn(overlayCanvas, backgroundSize, sm.x1(), sm.y1(), sm.x2(), sm.y2())
     });
-    setCallback(sm, 'zoomOut', () => zoomOut());
+    setCallback(sm, 'zoomOut', () => {
+      const imgRect = getRect(0, 0, backgroundSize[0], backgroundSize[1]);
+      dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});  
+    });
     setCallback(sm, 'complete', () => {
       // console.log(`${sm.x1()}, ${sm.x2()}, ${sm.y1()}, ${sm.y2()}`)
       // so if we measure the coordinates to be the same OR the end
@@ -257,9 +253,9 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       if ((sm.x1() === sm.x2() && sm.y1() === sm.y2()) || sm.x2() < 0 || sm.y2() < 0) {
         sm.transition('wait');
       }
+      selectOverlayEnd();
     });
     setCallback(sm, 'opacity_select', () => {
-      clearOverlaySelection.bind(overlayCtx)();
       sm.resetCoordinates();
       // setCanObscure(false);
       updateObscure(false);
@@ -281,21 +277,42 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     });
     setCallback(sm, 'update_render_opacity', (args) => setOverlayOpacity(args[0]));
 
-    sm.setMoveCallback(selectOverlay.bind(overlayCtx));
-    sm.setStartCallback(storeOverlay.bind(overlayCtx));
-    setCallback(sm, 'push', () => dispatch({type: 'content/push'}));
-    setCallback(sm, 'clear', () => {
-      clearOverlay(overlayCtx);
+    sm.setMoveCallback(selectOverlay);
+    sm.setStartCallback(storeOverlay);
+    setCallback(sm, 'push', () => {
+      // TODO these two lines update overlay AND state asynchronously
+      // I'm worried that on slow clients the state may update before the image
+      // and we'll get an old image. Might want to sync these... include the 
+      // overlay image as payload for content/push and if its there in the
+      // middleware send it first? IF YOU DO FIX THIS find all the instances
+      // of updateOverlay because there is more than this one
       updateOverlay();
+      dispatch({type: 'content/push'})
+    });
+    setCallback(sm, 'clear', () => {
+      clearOverlay();
       sm.transition('done');
     });
 
-    overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => {
-      sm.transition('down', evt)
-    });
+    overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
     overlayCanvasRef.current.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-  });
+  }, [backgroundSize, dispatch, overlayCanvasRef, sceneManager, updateObscure, updateOverlay, zoomIn]);
+
+  /**
+   * Handle scene changes to ensure future renders
+   */
+  useEffect(() => {
+    if (!scene) return;
+    if (sceneId !== scene._id) {
+      // these setters will trigger a rerender so after setting up the state properly
+      // and we'll do real work on the next render
+      setSceneId(scene._id);
+      setBgRev(0);
+      setOvRev(0);
+      return;
+    }
+  }, [scene, sceneId])
 
   /**
    * Little context here... this component wont render the background directly!
@@ -310,11 +327,18 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     /**
      * THIS CAN BE BETTER
      * 
+     * I THINK ITS FIXED BY NOT CALLING setSceneId, setBgRev, SetOvRev from within
+     * this callback
+     * 
      * if you put a breakpoint inside the `if (bg) {` block down below, we hit
      * that breakpoint twice on a scene flip... something is triggering a needless
      * rerender
      */
-    if (!apiUrl || !scene || !scene.playerContent || !contentCtx || !overlayCtx) return;
+    if (!apiUrl || !scene || !sceneId || !scene.playerContent || !contentCtx || !overlayCanvasRef || !fullCanvasRef) return;
+    const overlayCanvas: HTMLCanvasElement | null = overlayCanvasRef.current;
+    const fullCanvas: HTMLCanvasElement | null = fullCanvasRef.current;
+    if (!overlayCanvas) return;
+    if (!fullCanvas) return;
 
     // if the scene has changed, reset our revisions so we properly redraw any updated assets
     // also because the setter from useState (setBgRev/setOvRev) don't take effect until next
@@ -323,17 +347,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     // changed until the next render
     const curBgRev = (sceneId !== scene._id) ? 0 : bgRev;
     const curOvRev = (sceneId !== scene._id) ? 0 : ovRev;
-    if (sceneId !== scene._id) {
-      setSceneId(scene._id);
-      setBgRev(0);
-      setOvRev(0);
-    }
 
     const [rev, content] = scene.detailContentRev ? [scene.detailContentRev, scene.detailContent] : [scene.playerContentRev, scene.playerContent];
-    const ovPromise = (scene.overlayContentRev && scene.overlayContentRev > curOvRev) ? loadImage(`${apiUrl}/${scene.overlayContent}`) : Promise.resolve(null);
+    const ovUrl = (scene.overlayContentRev && scene.overlayContentRev > curOvRev) ? `${apiUrl}/${scene.overlayContent}` : undefined;
     const bgPromise = (rev && rev > curBgRev) ? loadImage(`${apiUrl}/${content}`) : Promise.resolve(null);
-    Promise.all([bgPromise,ovPromise])
-      .then(([bg, ov]) => {
+    bgPromise.then(bg => {
         if (bg) {
           if (rev) setBgRev(rev);
           setBackgroundSize([bg.width, bg.height]);
@@ -342,16 +360,16 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
             const imgRect = getRect(0, 0, bg.width, bg.height);
             dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
           }
-          const bounds = renderImageInContainer(bg, contentCtx, true)
-          setupOverlayCanvas(bounds, overlayCtx);
+          renderImageInContainer(bg, contentCtx, true)
+          setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
+                               contentCtx.canvas.height, bg.width, bg.height);
         }
-        if (ov) {
+        if (ovUrl) {
           if (scene.overlayContentRev) setOvRev(scene.overlayContentRev);
-          renderImageInContainer(ov, overlayCtx)
-          setOverlayAsBaseData(overlayCtx)
+          loadOverlay(ovUrl);
         }
       });
-  }, [apiUrl, scene, sceneId, contentCtx, overlayCtx, dispatch, ovRev, bgRev])
+  }, [apiUrl, scene, sceneId, contentCtx, dispatch, ovRev, bgRev, overlayCanvasRef, fullCanvasRef])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
@@ -378,8 +396,10 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
         }
       }}
     >
+      {/* TODO make content a DIV, per https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas#use_plain_css_for_large_background_images */}
       <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
       <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
+      <canvas hidden ref={fullCanvasRef}/>
       <input ref={colorInputRef} type='color' defaultValue='#ff0000' onChange={(evt) => setOverlayColour(evt.target.value)}/>
       {showBackgroundMenu && <div className={`${styles.Menu} ${styles.BackgroundMenu}`}>
         <button onClick={() => sm.transition('upload')}>Upload</button>

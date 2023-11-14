@@ -1,11 +1,8 @@
 import { calculateBounds, getWidthAndHeight, ImageBound, Rect } from "./geometry";
 
 export const CONTROLS_HEIGHT = 46;
-let baseData: ImageData | null = null;
-let red = '255';
-let green = '0';
-let blue = '0';
-let opacity = '1';
+// let baseData: ImageData | null = null;
+let worker: Worker;
 
 export function getRect(x1: number, y1: number, x2: number, y2: number): Rect {
   let x: number;
@@ -121,41 +118,58 @@ function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
   return bounds;
 }
 
-export function setupOverlayCanvas(bounds: ImageBound, ctx: CanvasRenderingContext2D): Promise<void> {
-  const width = bounds.rotate ? bounds.height : bounds.width;
-  const height = bounds.rotate ? bounds.width : bounds.height;
-
-  ctx.canvas.width = width;
-  ctx.canvas.height = height;
-  ctx.canvas.style.width = `${width}px`;
-  ctx.canvas.style.height = `${height}px`;
-  ctx.canvas.style.top = `${bounds.top}px`;
-  ctx.canvas.style.left = `${bounds.left}px`;
-  clearOverlay(ctx);
-  return Promise.resolve();
+export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
+                                     fullCanvas: HTMLCanvasElement,
+                                     width: number, height: number,
+                                     fullWidth: number, fullHeight: number) {
+  
+  // const [w,h] =rotate ? [height, width]: [width, height]
+  // const [fullW, fullH] = rotate ? [fullHeight, fullWidth] : [fullWidth, fullHeight];
+  // TODO when there is nothing left https://github.com/webpack-contrib/worker-loader#integrating-with-typescript
+  // can't do this more than once
+  const values = {
+    width: width,
+    height: height,
+    fullWidth: fullWidth,
+    fullHeight: fullHeight,
+  }
+  if (!worker) {
+    worker = new Worker("worker.js");
+    const offscreen = canvas.transferControlToOffscreen();
+    const fullOffscreen = fullCanvas.transferControlToOffscreen();
+    worker.postMessage({cmd: 'init', canvas: offscreen, fullCanvas: fullOffscreen, values: values}, [offscreen, fullOffscreen]);
+  } else {
+    worker.postMessage({cmd: 'init', values: values});
+  }
 }
 
-export function setOverlayOpacity(overlayOpacity: string) { opacity = overlayOpacity; }
+export function setOverlayOpacity(opacity: string) {
+  worker.postMessage({cmd: 'opacity', opacity: opacity});
+}
 
 export function setOverlayColour(colour: string) {
-  [red, green, blue] = [parseInt(colour.slice(1, 3), 16).toString(),
+  const [red, green, blue] = [parseInt(colour.slice(1, 3), 16).toString(),
                         parseInt(colour.slice(3, 5), 16).toString(),
                         parseInt(colour.slice(5, 7), 16).toString()];
+  worker.postMessage({cmd: 'colour', red: red, green: green, blue: blue});
 }
 
-export function obscureOverlay(this: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
-  if (baseData === null) return;
-  this.putImageData(baseData, 0, 0);
-  this.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
-  this.fillRect(x1,y1,x2-x1,y2-y1);
-  baseData = this.getImageData(0, 0, this.canvas.width, this.canvas.height);
+export function obscureOverlay() {
+  // if (baseData === null) return;
+  // this.putImageData(baseData, 0, 0);
+  // this.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+  // this.fillRect(x1,y1,x2-x1,y2-y1);
+  // baseData = this.getImageData(0, 0, this.canvas.width, this.canvas.height);
+  worker.postMessage({cmd: 'obscure'});
 }
 
-export function revealOverlay(this: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
-  if (baseData === null) return;
-  this.putImageData(baseData, 0, 0);
-  this.clearRect(x1,y1,x2-x1,y2-y1);
-  baseData = this.getImageData(0, 0, this.canvas.width, this.canvas.height);
+export function revealOverlay() {
+  // if (baseData === null) return;
+  // this.putImageData(baseData, 0, 0);
+  // this.clearRect(x1,y1,x2-x1,y2-y1);
+  // baseData = this.getImageData(0, 0, this.canvas.width, this.canvas.height);
+  // OSCtx.putImageData(baseData, 0, 0);
+  worker.postMessage({cmd: 'reveal'});
 }
 
 
@@ -167,9 +181,11 @@ export function revealOverlay(this: CanvasRenderingContext2D, x1: number, y1: nu
  * 
  * @param this the overlay canvas context from which to store the image data.
  */
-export function storeOverlay(this: CanvasRenderingContext2D) {
-  if (baseData !== null) return;
-  baseData = this.getImageData(0, 0, this.canvas.width, this.canvas.height);
+export function storeOverlay(this: any) {
+  // if (baseData !== null) return;
+  // baseData = this.getImageData(0, 0, this.canvas.width, this.canvas.height);
+  // setOverlayAsBaseData();
+  // worker.postMessage({cmd: 'record', x: this.startX, y: this.startY});
 }
 
 /**
@@ -179,8 +195,8 @@ export function storeOverlay(this: CanvasRenderingContext2D) {
  * have been set when the canvas is initialized... in theory
  * @param ctx 
  */
-export function setOverlayAsBaseData(ctx: CanvasRenderingContext2D) {
-  baseData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+export function setOverlayAsBaseData(ctx?: CanvasRenderingContext2D) {
+  // baseData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
 }
 
 /**
@@ -193,20 +209,32 @@ export function setOverlayAsBaseData(ctx: CanvasRenderingContext2D) {
  * @param x2 the second x coordinate
  * @param y2 teh second y coordinate
  */
-export function selectOverlay(this: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
-  if (baseData === null) return;
-  this.putImageData(baseData, 0, 0);
-  this.fillStyle = "rgba(255, 255, 255, 0.25)";
-  this.fillRect(x1,y1,x2-x1,y2-y1);
+export function selectOverlay(x1: number, y1: number, x2: number, y2: number) {
+  // if (baseData === null) return;
+  // this.putImageData(baseData, 0, 0);
+  // this.fillStyle = "rgba(255, 255, 255, 0.25)";
+  // this.fillRect(x1,y1,x2-x1,y2-y1);  
+  worker.postMessage({cmd: 'record', x1: x1, y1: y1, x2: x2, y2: y2});
 }
 
-export function clearOverlay(ctx: CanvasRenderingContext2D) {
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  ctx.save();
-  baseData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+export function clearSelection() {
+  worker.postMessage({cmd: 'clearselection'});
 }
 
-export function clearOverlaySelection(this: CanvasRenderingContext2D) {
-  if (baseData === null) return;
-  this.putImageData(baseData, 0, 0);
+export function selectOverlayEnd() {
+  worker.postMessage({cmd: 'endrecording'});
+}
+
+export function clearOverlay() {
+  // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  // ctx.save();
+  // baseData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+  worker.postMessage({cmd: 'clear'});
+}
+
+export function loadOverlay(url: string) {
+  // const img = new Image();
+  // img.addEventListener('load', () => {worker.postMessage({cmd: 'load', img: img}, [img])});
+  // img.src = url;
+  worker.postMessage({cmd: 'load', url: url});
 }
