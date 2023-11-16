@@ -118,13 +118,11 @@ function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
   return bounds;
 }
 
+// TODO MICAH MOVE THIS SOON -- we can basically cut this entire file by moving the worker into the content editor.
 export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
                                      fullCanvas: HTMLCanvasElement,
                                      width: number, height: number,
                                      fullWidth: number, fullHeight: number) {
-  
-  // const [w,h] =rotate ? [height, width]: [width, height]
-  // const [fullW, fullH] = rotate ? [fullHeight, fullWidth] : [fullWidth, fullHeight];
   // TODO when there is nothing left https://github.com/webpack-contrib/worker-loader#integrating-with-typescript
   // can't do this more than once
   const values = {

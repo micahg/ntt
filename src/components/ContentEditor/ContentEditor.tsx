@@ -1,4 +1,4 @@
-import React, { RefObject, createRef, useEffect, useState } from 'react';
+import React, { RefObject, createRef, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, obscureOverlay,
@@ -6,7 +6,6 @@ import { loadImage, obscureOverlay,
          getRect, clearOverlay, setOverlayOpacity,
          setOverlayColour, 
          renderImageInContainer,
-         setOverlayAsBaseData,
          setupOffscreenCanvas,
          selectOverlayEnd,
          clearSelection,
@@ -44,8 +43,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   
   const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef()});
   const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
-  // const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
-  // const [overlayCtx, setOverlayCtx] = useState<ImageBitmapRenderingContext|null>(null);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
@@ -71,7 +68,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
 
-  const updateOverlay = () => {
+  const updateOverlay = useCallback(() => {
     fullCanvasRef.current?.toBlob((blob: Blob | null) => {
       if (!blob) {
         // TODO SIGNAL ERROR
@@ -80,24 +77,18 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       dispatch({type: 'content/overlay', payload: blob})
       setOvRev(ovRev + 1);
     }, 'image/png', 1);
-  }
+  }, [dispatch, fullCanvasRef, ovRev]);
 
-  const updateObscure = (value: boolean) => {
+  const updateObscure = useCallback((value: boolean) => {
     if (internalState.obscure !== value && redrawToolbar) {
       internalState.obscure = value;
       redrawToolbar();
     }
-  }
-  // const obscure = (x1: number, y1: number, x2: number, y2: number) => {
-  //   // if (!overlayCtx) return;
-  //   // obscureOverlay.bind(overlayCtx)(x1, y1, x2, y2);
-  //   obscureOverlay();
-  //   // updateOverlay();
-  // }
+  }, [internalState, redrawToolbar]);
 
-  const sceneManager = () => {if (manageScene) manageScene(); }
+  const sceneManager = useCallback(() => {if (manageScene) manageScene(); }, [manageScene]);
 
-  const zoomIn = (canvas: HTMLCanvasElement, bgSize: number[],
+  const zoomIn = useCallback((canvas: HTMLCanvasElement, bgSize: number[],
                   x1: number, y1: number, x2: number, y2: number) => {
     let sel = getRect(x1, y1, x2, y2);
     // the viewport (vp) in this case is not relative to the background image
@@ -115,7 +106,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     dispatch({type: 'content/zoom', payload: {'viewport': selection}});
     clearSelection();
     sm.transition('wait');
-  }
+  }, [dispatch]);
 
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
@@ -327,18 +318,18 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     /**
      * THIS CAN BE BETTER
      * 
-     * I THINK ITS FIXED BY NOT CALLING setSceneId, setBgRev, SetOvRev from within
-     * this callback
+     * we go between real and 0 values for the overlay/player/detail revisions and its causing
+     * multiple trips through this method.
      * 
-     * if you put a breakpoint inside the `if (bg) {` block down below, we hit
-     * that breakpoint twice on a scene flip... something is triggering a needless
-     * rerender
      */
     if (!apiUrl || !scene || !sceneId || !scene.playerContent || !contentCtx || !overlayCanvasRef || !fullCanvasRef) return;
     const overlayCanvas: HTMLCanvasElement | null = overlayCanvasRef.current;
     const fullCanvas: HTMLCanvasElement | null = fullCanvasRef.current;
     if (!overlayCanvas) return;
     if (!fullCanvas) return;
+
+    // also skip drawing iff ovRev = scene.overlayRev and bgRev = detailContentRev || playerContentRev
+    if (ovRev === scene.overlayContentRev && bgRev === (scene.detailContentRev || scene.playerContentRev)) return;
 
     // if the scene has changed, reset our revisions so we properly redraw any updated assets
     // also because the setter from useState (setBgRev/setOvRev) don't take effect until next
@@ -348,7 +339,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     const curBgRev = (sceneId !== scene._id) ? 0 : bgRev;
     const curOvRev = (sceneId !== scene._id) ? 0 : ovRev;
 
-    const [rev, content] = scene.detailContentRev ? [scene.detailContentRev, scene.detailContent] : [scene.playerContentRev, scene.playerContent];
+    // always same: scene apiUrl sceneId dispatch
+    // const doot = [curOvRev, curBgRev, ovRev, bgRev];
+    // console.log(doot);
+    
+    const [rev, content] = [scene.detailContentRev || scene.playerContentRev,  scene.detailContent || scene.playerContent];
     const ovUrl = (scene.overlayContentRev && scene.overlayContentRev > curOvRev) ? `${apiUrl}/${scene.overlayContent}` : undefined;
     const bgPromise = (rev && rev > curBgRev) ? loadImage(`${apiUrl}/${content}`) : Promise.resolve(null);
     bgPromise.then(bg => {
@@ -361,8 +356,10 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
             dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
           }
           renderImageInContainer(bg, contentCtx, true)
+          // TODO find a non-hacky way to do this -- maybe when you conver the bg canvas to a div
+          const [w,h] = bg.height > bg.width ? [bg.height, bg.width] : [bg.width, bg.height];
           setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
-                               contentCtx.canvas.height, bg.width, bg.height);
+                               contentCtx.canvas.height, w, h);
         }
         if (ovUrl) {
           if (scene.overlayContentRev) setOvRev(scene.overlayContentRev);
