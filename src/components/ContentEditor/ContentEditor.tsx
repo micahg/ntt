@@ -290,83 +290,61 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
   }, [backgroundSize, dispatch, overlayCanvasRef, sceneManager, updateObscure, updateOverlay, zoomIn]);
 
-  /**
-   * Handle scene changes to ensure future renders
-   */
-  useEffect(() => {
-    if (!scene) return;
-    if (sceneId !== scene._id) {
-      // these setters will trigger a rerender so after setting up the state properly
-      // and we'll do real work on the next render
-      setSceneId(scene._id);
-      setBgRev(0);
-      setOvRev(0);
-      return;
-    }
-  }, [scene, sceneId])
 
   /**
-   * Little context here... this component wont render the background directly!
-   * It will send to the server and wait for the result to update it.  So, we
-   * dont actually need the apiUrl but whatever, it just ensures we're in a good
-   * state.
+   * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
+   * when we don't have to. We should only repaint when a scene changes OR an asset version has changed
    * 
-   * There is a bit of a situation here though because we might also get the overlay
-   * before we get the background and we can't really sequence these events.
+   * TODO - move the background into its own useEffect and just render it in a div using src=stateValue
    */
   useEffect(() => {
-    /**
-     * THIS CAN BE BETTER
-     * 
-     * we go between real and 0 values for the overlay/player/detail revisions and its causing
-     * multiple trips through this method.
-     * 
-     */
-    if (!apiUrl || !scene || !sceneId || !scene.playerContent || !contentCtx || !overlayCanvasRef || !fullCanvasRef) return;
-    const overlayCanvas: HTMLCanvasElement | null = overlayCanvasRef.current;
-    const fullCanvas: HTMLCanvasElement | null = fullCanvasRef.current;
-    if (!overlayCanvas) return;
-    if (!fullCanvas) return;
-
-    // also skip drawing iff ovRev = scene.overlayRev and bgRev = detailContentRev || playerContentRev
-    if (ovRev === scene.overlayContentRev && bgRev === (scene.detailContentRev || scene.playerContentRev)) return;
-
-    // if the scene has changed, reset our revisions so we properly redraw any updated assets
-    // also because the setter from useState (setBgRev/setOvRev) don't take effect until next
-    // render we need localized up-to-date values to avoid needless rerendering.
-    // SOMETHING IS OFF about that comment above... logically the scene id should also stay
-    // changed until the next render
-    const curBgRev = (sceneId !== scene._id) ? 0 : bgRev;
-    const curOvRev = (sceneId !== scene._id) ? 0 : ovRev;
-
-    // always same: scene apiUrl sceneId dispatch
-    // const doot = [curOvRev, curBgRev, ovRev, bgRev];
-    // console.log(doot);
+    if (!apiUrl || !scene || !contentCtx || !overlayCanvasRef?.current || !fullCanvasRef?.current) return;
     
-    const [rev, content] = [scene.detailContentRev || scene.playerContentRev,  scene.detailContent || scene.playerContent];
-    const ovUrl = (scene.overlayContentRev && scene.overlayContentRev > curOvRev) ? `${apiUrl}/${scene.overlayContent}` : undefined;
-    const bgPromise = (rev && rev > curBgRev) ? loadImage(`${apiUrl}/${content}`) : Promise.resolve(null);
+    // get the detailed or player content 
+    const [bRev, bContent] = [scene.detailContentRev || scene.playerContentRev || 0,  scene.detailContent || scene.playerContent];
+    const [oRev, oContent] = [scene.overlayContentRev || 0, scene.overlayContent]
+    const overlayCanvas: HTMLCanvasElement = overlayCanvasRef.current;
+    const fullCanvas: HTMLCanvasElement = fullCanvasRef.current;
+
+    // update the revisions and trigger rendering if a revision has changed
+    let drawBG = bRev > bgRev;
+    let drawOV = oRev > ovRev;
+    if (drawBG) setBgRev(bRev); // takes effect next render cycle
+    if (drawOV) setOvRev(oRev); // takes effect next render cycle
+    
+    // this is a scene change, so we can safely assume we must redraw everything that is there.
+    // Note that earlier logic (bRev>bgRev or oRev > ovRev) might have prevented us from updating
+    // the state because a new scene may have lower version
+    if (!sceneId || scene._id !== sceneId) {
+      setSceneId(scene._id);
+      setBgRev(bRev);
+      setOvRev(oRev);
+      drawBG = true;
+      drawOV = scene.overlayContent !== undefined;
+    }
+
+    // if we have nothing new to draw then cheese it
+    if (!drawBG && !drawOV) return;
+
+    const ovUrl = drawOV ? `${apiUrl}/${oContent}` : undefined;
+    const bgPromise = drawBG ? loadImage(`${apiUrl}/${bContent}`) : Promise.resolve(null);
     bgPromise.then(bg => {
-        if (bg) {
-          if (rev) setBgRev(rev);
-          setBackgroundSize([bg.width, bg.height]);
-          // if the scene hasn't set a viewport, default to entire background
-          if (!scene.viewport) {
-            const imgRect = getRect(0, 0, bg.width, bg.height);
-            dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
-          }
-          renderImageInContainer(bg, contentCtx, true)
-          // TODO find a non-hacky way to do this -- maybe when you conver the bg canvas to a div
-          const [w,h] = bg.height > bg.width ? [bg.height, bg.width] : [bg.width, bg.height];
-          setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
-                               contentCtx.canvas.height, w, h);
+      if (bg) {
+        setBackgroundSize([bg.width, bg.height]);
+        // if the scene hasn't set a viewport, default to entire background
+        if (!scene.viewport) {
+          const imgRect = getRect(0, 0, bg.width, bg.height);
+          dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
         }
-        if (ovUrl) {
-          if (scene.overlayContentRev) setOvRev(scene.overlayContentRev);
-          loadOverlay(ovUrl);
-        }
-      });
-  }, [apiUrl, scene, sceneId, contentCtx, dispatch, ovRev, bgRev, overlayCanvasRef, fullCanvasRef])
+        renderImageInContainer(bg, contentCtx, true)
+        // TODO find a non-hacky way to do this -- maybe when you conver the bg canvas to a div
+        const [w,h] = bg.height > bg.width ? [bg.height, bg.width] : [bg.width, bg.height];
+        setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
+                              contentCtx.canvas.height, w, h);
+      }
+      if (ovUrl) loadOverlay(ovUrl);
+    });
+  }, [apiUrl, bgRev, contentCtx, dispatch, fullCanvasRef, ovRev, overlayCanvasRef, scene, sceneId])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
