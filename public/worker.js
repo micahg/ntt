@@ -24,6 +24,7 @@ function renderBox(x1, y1, x2, y2, style, full = true) {
   ctx.fillRect(x1, y1, w, h);
   ctx.restore();
   if (full) {
+    console.log('rendering fullctx');
     fullCtx.save();
     fullCtx.fillStyle = style;
     fullCtx.fillRect(scale*x1, scale*y1, scale*w, scale*h);
@@ -100,6 +101,7 @@ self.onmessage = evt => {
       renderBox(startX, startY, endX, endY, fill);
       fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
       buff = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+      setTimeout(() => postMessage('overlaydirty'), 500);
       break;
     }
     case 'reveal': {
