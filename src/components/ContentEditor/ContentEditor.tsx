@@ -1,15 +1,7 @@
 import React, { RefObject, createRef, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, obscureOverlay,
-         selectOverlay, storeOverlay, revealOverlay,
-         getRect, clearOverlay, setOverlayOpacity,
-         setOverlayColour, 
-         renderImageInContainer,
-         setupOffscreenCanvas,
-         selectOverlayEnd,
-         clearSelection,
-         loadOverlay} from '../../utils/drawing';
+import { loadImage, getRect, renderImageInContainer } from '../../utils/drawing';
 import { rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
@@ -17,6 +9,7 @@ import styles from './ContentEditor.module.css';
 import { Opacity, ZoomIn, ZoomOut, LayersClear, Sync, Map, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
 import { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
 import { Box, Menu, MenuItem, Popover, Slider } from '@mui/material';
+import { setupOffscreenCanvas } from '../../utils/worker';
 
 const sm = new MouseStateMachine();
 
@@ -51,6 +44,8 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [bgRev, setBgRev] = useState<number>(0);
   const [ovRev, setOvRev] = useState<number>(0);
   const [sceneId, setSceneId] = useState<string>(); // used to track flipping between scenes
+  const [worker, setWorker] = useState<Worker>();
+  const [ovDirty, setOvDirty] = useState<boolean>(false);
 
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
@@ -68,17 +63,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const pushTime = useSelector((state: AppReducerState) => state.content.pushTime);
 
-  const updateOverlay = useCallback(() => {
-    fullCanvasRef.current?.toBlob((blob: Blob | null) => {
-      if (!blob) {
-        // TODO SIGNAL ERROR
-        return;
-      }
-      dispatch({type: 'content/overlay', payload: blob})
-      setOvRev(ovRev + 1);
-    }, 'image/png', 1);
-  }, [dispatch, fullCanvasRef, ovRev]);
-
   const updateObscure = useCallback((value: boolean) => {
     if (internalState.obscure !== value && redrawToolbar) {
       internalState.obscure = value;
@@ -90,6 +74,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
 
   const zoomIn = useCallback((canvas: HTMLCanvasElement, bgSize: number[],
                   x1: number, y1: number, x2: number, y2: number) => {
+    if (!worker) return;
     let sel = getRect(x1, y1, x2, y2);
     // the viewport (vp) in this case is not relative to the background image
     // size, but the size of the canvas upon which it is painted
@@ -104,9 +89,9 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     }
     const selection = scaleSelection(sel, vp, w, h);
     dispatch({type: 'content/zoom', payload: {'viewport': selection}});
-    clearSelection();
+    worker.postMessage({cmd: 'clearselection'});
     sm.transition('wait');
-  }, [dispatch]);
+  }, [dispatch, worker]);
 
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
@@ -136,6 +121,28 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     setAnchorEl(null);
     sm.transition('wait');
   }
+
+  const setOverlayColour = (colour: string) => {
+    if (!worker) return;
+    const [red, green, blue] = [parseInt(colour.slice(1, 3), 16).toString(),
+                          parseInt(colour.slice(3, 5), 16).toString(),
+                          parseInt(colour.slice(5, 7), 16).toString()];
+    worker.postMessage({cmd: 'colour', red: red, green: green, blue: blue});
+  }
+
+  const selectOverlay = useCallback((x1: number, y1: number, x2: number, y2: number) => {
+    if (!worker) return;
+    worker.postMessage({cmd: 'record', x1: x1, y1: y1, x2: x2, y2: y2});
+  }, [worker]);
+
+  /**
+   * This method doesn't have access to the updated component state *BECAUSE*
+   * its 
+   */
+  const handleWorkerMessage = useCallback((evt: MessageEvent<any>) => {
+    // bump the overlay version so it gets sent
+    if (evt.data === 'overlaydirty') setOvDirty(true);
+  }, []);
 
   useEffect(() => {
     if (!internalState || !toolbarPopulated) return;
@@ -170,11 +177,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     setContentCtx(contentCanvasRef.current.getContext('2d', { alpha: false }));
   }, [contentCanvasRef, contentCtx]);
 
-  // useEffect(() => {
-  //   if (!overlayCanvasRef.current || overlayCtx != null) return;
-  //   setOverlayCtx(overlayCanvasRef.current.getContext('2d', { alpha: true }));
-  // }, [overlayCanvasRef, overlayCtx]);
-
   useEffect(() => {
     if (!scene || !scene.viewport) return;
     // if (!viewport) return;
@@ -197,6 +199,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   useEffect(() => {
     if (!overlayCanvasRef.current) return;
     if (!backgroundSize || !backgroundSize.length) return;
+    if (!worker) return;
     const overlayCanvas = overlayCanvasRef.current;
 
     setCallback(sm, 'wait', () => {
@@ -222,11 +225,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     });
     setCallback(sm, 'background_upload', sceneManager);
     setCallback(sm, 'obscure', () => {
-      obscureOverlay();
+      worker.postMessage({cmd: 'obscure'});
       sm.transition('wait');
     });
     setCallback(sm, 'reveal', () => {
-      revealOverlay();
+      worker.postMessage({cmd: 'reveal'});
       sm.transition('wait');
     });
     setCallback(sm, 'zoomIn', () => {
@@ -244,7 +247,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       if ((sm.x1() === sm.x2() && sm.y1() === sm.y2()) || sm.x2() < 0 || sm.y2() < 0) {
         sm.transition('wait');
       }
-      selectOverlayEnd();
+      worker.postMessage({cmd: 'endrecording'});
     });
     setCallback(sm, 'opacity_select', () => {
       sm.resetCoordinates();
@@ -266,31 +269,42 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
         overlayCanvasRef.current.style.opacity=opacity;
       }
     });
-    setCallback(sm, 'update_render_opacity', (args) => setOverlayOpacity(args[0]));
+    setCallback(sm, 'update_render_opacity', (args) => worker.postMessage({cmd: 'opacity', opacity: args[0]}));
 
     sm.setMoveCallback(selectOverlay);
-    sm.setStartCallback(storeOverlay);
-    setCallback(sm, 'push', () => {
-      // TODO these two lines update overlay AND state asynchronously
-      // I'm worried that on slow clients the state may update before the image
-      // and we'll get an old image. Might want to sync these... include the 
-      // overlay image as payload for content/push and if its there in the
-      // middleware send it first? IF YOU DO FIX THIS find all the instances
-      // of updateOverlay because there is more than this one
-      updateOverlay();
-      dispatch({type: 'content/push'})
-    });
+    // sm.setStartCallback(storeOverlay);
+    setCallback(sm, 'push', () => dispatch({type: 'content/push'}));
     setCallback(sm, 'clear', () => {
-      clearOverlay();
+      worker.postMessage({cmd: 'clear'});
       sm.transition('done');
     });
 
     overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
     overlayCanvasRef.current.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-  }, [backgroundSize, dispatch, overlayCanvasRef, sceneManager, updateObscure, updateOverlay, zoomIn]);
+  }, [backgroundSize, dispatch, overlayCanvasRef, sceneManager, selectOverlay, updateObscure, worker, zoomIn]);
 
 
+  /**
+   * When the overlay revision changes, upload it
+   * 
+   * TODO - debounce it when you bring in painting
+   */
+  useEffect(() => {
+    if (!fullCanvasRef?.current) return;
+    if (!ovDirty) return;
+    setOvDirty(false);
+    console.log(`ovRev updated ${ovRev}`);
+    fullCanvasRef.current.toBlob((blob: Blob | null) => {
+      if (!blob) {
+        // TODO SIGNAL ERROR
+        return;
+      }
+      console.log(`updating overlay`);
+      dispatch({type: 'content/overlay', payload: blob})
+      setOvRev(ovRev + 1);
+    }, 'image/png', 1);
+  }, [ovDirty, fullCanvasRef, ovRev, dispatch])
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
    * when we don't have to. We should only repaint when a scene changes OR an asset version has changed
@@ -339,12 +353,14 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
         renderImageInContainer(bg, contentCtx, true)
         // TODO find a non-hacky way to do this -- maybe when you conver the bg canvas to a div
         const [w,h] = bg.height > bg.width ? [bg.height, bg.width] : [bg.width, bg.height];
-        setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
-                              contentCtx.canvas.height, w, h);
+        const wrkr = setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
+                             contentCtx.canvas.height, w, h);
+        setWorker(wrkr);
+        wrkr.onmessage = handleWorkerMessage;
+        if (ovUrl) wrkr.postMessage({cmd: 'load', url: ovUrl});
       }
-      if (ovUrl) loadOverlay(ovUrl);
     });
-  }, [apiUrl, bgRev, contentCtx, dispatch, fullCanvasRef, ovRev, overlayCanvasRef, scene, sceneId])
+  }, [apiUrl, bgRev, contentCtx, dispatch, fullCanvasRef, handleWorkerMessage, ovRev, overlayCanvasRef, scene, sceneId])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
