@@ -45,7 +45,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [ovRev, setOvRev] = useState<number>(0);
   const [sceneId, setSceneId] = useState<string>(); // used to track flipping between scenes
   const [worker, setWorker] = useState<Worker>();
-  const [ovDirty, setOvDirty] = useState<boolean>(false);
 
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
@@ -141,8 +140,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
    */
   const handleWorkerMessage = useCallback((evt: MessageEvent<any>) => {
     // bump the overlay version so it gets sent
-    if (evt.data === 'overlaydirty') setOvDirty(true);
-  }, []);
+    if (evt.data.cmd === 'overlay') {
+      setOvRev(ovRev + 1);
+      dispatch({type: 'content/overlay', payload: evt.data.blob})
+    }
+  }, [dispatch, ovRev]);
 
   useEffect(() => {
     if (!internalState || !toolbarPopulated) return;
@@ -284,27 +286,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
   }, [backgroundSize, dispatch, overlayCanvasRef, sceneManager, selectOverlay, updateObscure, worker, zoomIn]);
 
-
-  /**
-   * When the overlay revision changes, upload it
-   * 
-   * TODO - debounce it when you bring in painting
-   */
-  useEffect(() => {
-    if (!fullCanvasRef?.current) return;
-    if (!ovDirty) return;
-    setOvDirty(false);
-    console.log(`ovRev updated ${ovRev}`);
-    fullCanvasRef.current.toBlob((blob: Blob | null) => {
-      if (!blob) {
-        // TODO SIGNAL ERROR
-        return;
-      }
-      console.log(`updating overlay`);
-      dispatch({type: 'content/overlay', payload: blob})
-      setOvRev(ovRev + 1);
-    }, 'image/png', 1);
-  }, [ovDirty, fullCanvasRef, ovRev, dispatch])
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
    * when we don't have to. We should only repaint when a scene changes OR an asset version has changed

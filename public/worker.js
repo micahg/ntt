@@ -53,6 +53,12 @@ function animateSelection() {
   requestAnimationFrame(animateSelection);
 }
 
+function sendBlob() {
+  fullCtx.canvas.convertToBlob()
+    .then(blob => postMessage({cmd: 'overlay', blob: blob}))
+    .catch(err => console.error(`Unable to post blob: ${JSON.stringify(err)}`));
+}
+
 // eslint-disable-next-line no-restricted-globals
 self.onmessage = evt => {
   switch(evt.data.cmd) {
@@ -101,7 +107,7 @@ self.onmessage = evt => {
       renderBox(startX, startY, endX, endY, fill);
       fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
       buff = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-      setTimeout(() => postMessage('overlaydirty'), 500);
+      sendBlob();
       break;
     }
     case 'reveal': {
@@ -110,12 +116,14 @@ self.onmessage = evt => {
       clearBox(startX, startY, endX, endY);
       fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
       buff = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+      sendBlob();
       break;
     }
     case 'clear': {
       ctx.putImageData(buff, 0, 0);
       fullCtx.putImageData(fullBuff, 0, 0);
       clearCanvas();
+      sendBlob();
       break;
     }
     case 'clearselection': {
