@@ -347,7 +347,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
         if (ovUrl) wrkr.postMessage({cmd: 'load', url: ovUrl});
       }
     });
-  }, [apiUrl, bgRev, contentCtx, dispatch, fullCanvasRef, handleWorkerMessage, ovRev, overlayCanvasRef, scene, sceneId])
+  }, [apiUrl, bgRev, canvassesTransferred, contentCtx, dispatch, fullCanvasRef, handleWorkerMessage, ovRev, overlayCanvasRef, scene, sceneId])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
