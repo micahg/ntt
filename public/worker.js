@@ -64,7 +64,7 @@ self.onmessage = evt => {
   switch(evt.data.cmd) {
     case 'init': {
       console.log(evt.data);
-      if (!canvas) {
+      if (evt.data.canvas) {
         canvas = evt.data.canvas;
         ctx = canvas.getContext('2d', { alpha: true });
       }
@@ -73,7 +73,7 @@ self.onmessage = evt => {
 
       scale = evt.data.values.fullWidth/evt.data.values.width;
 
-      if (!fullCanvas) {
+      if (evt.data.fullCanvas) {
         fullCanvas = evt.data.fullCanvas;
         fullCtx = fullCanvas.getContext('2d', { alpha: true });
       }

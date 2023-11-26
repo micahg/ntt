@@ -3,7 +3,8 @@ let worker: Worker;
 export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
     fullCanvas: HTMLCanvasElement,
     width: number, height: number,
-    fullWidth: number, fullHeight: number): Worker {
+    fullWidth: number, fullHeight: number,
+    alreadyTransferred: boolean): Worker {
   // TODO when there is nothing left https://github.com/webpack-contrib/worker-loader#integrating-with-typescript
   // can't do this more than once
   const values = {
@@ -14,6 +15,8 @@ export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
   }
   if (!worker) {
     worker = new Worker("worker.js"); // this lives with the other public assets
+  }
+  if (!alreadyTransferred) {
     const offscreen = canvas.transferControlToOffscreen();
     const fullOffscreen = fullCanvas.transferControlToOffscreen();
     worker.postMessage({cmd: 'init', canvas: offscreen, fullCanvas: fullOffscreen, values: values}, [offscreen, fullOffscreen]);

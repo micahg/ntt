@@ -45,6 +45,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [ovRev, setOvRev] = useState<number>(0);
   const [sceneId, setSceneId] = useState<string>(); // used to track flipping between scenes
   const [worker, setWorker] = useState<Worker>();
+  const [canvassesTransferred, setCanvassesTransferred] = useState<boolean>(false); // avoid transfer errors
 
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
@@ -334,8 +335,13 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
         renderImageInContainer(bg, contentCtx, true)
         // TODO find a non-hacky way to do this -- maybe when you conver the bg canvas to a div
         const [w,h] = bg.height > bg.width ? [bg.height, bg.width] : [bg.width, bg.height];
+
+        // hencefourth canvas is transferred -- this doesn't take effect until the next render
+        // so the on this pass it is false when passed to setCanvassesTransferred even if set
+        console.log(`xfer status ${canvassesTransferred}`);
+        setCanvassesTransferred(true);
         const wrkr = setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
-                             contentCtx.canvas.height, w, h);
+                             contentCtx.canvas.height, w, h, canvassesTransferred);
         setWorker(wrkr);
         wrkr.onmessage = handleWorkerMessage;
         if (ovUrl) wrkr.postMessage({cmd: 'load', url: ovUrl});
