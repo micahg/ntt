@@ -8,7 +8,7 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import ContentEditor from '../ContentEditor/ContentEditor';
+import ContentEditor from '../ContentEditor/ContentEditor.lazy';
 import GameMasterActionComponent, { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
@@ -229,6 +229,8 @@ const GameMasterComponent = () => {
           manageScene={handleManageScene}
         />}
         {focusedComponent === FocusedComponent.Scene && <SceneComponent
+          populateToolbar={handlePopulateToolbar}
+          redrawToolbar={handleRedrawToolbar}
           scene={currentScene}
           editScene={handleEditScene}
         />}
