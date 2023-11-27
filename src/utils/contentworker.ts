@@ -1,23 +1,23 @@
 /**
  * Worker for offscreen drawing in the content editor.
  */
-let canvas;
-let ctx;
-let fullCanvas;
-let fullCtx;
+let canvas: OffscreenCanvas;
+let ctx: OffscreenCanvasRenderingContext2D;
+let fullCanvas: OffscreenCanvas;
+let fullCtx: OffscreenCanvasRenderingContext2D;
 let recording = false;
-let buff;
-let fullBuff;
+let buff: ImageData;
+let fullBuff: ImageData;
 
-let startX, startY, endX, endY;
-let scale;
+let startX: number, startY: number, endX: number, endY: number;
+let scale: number;
 
 let opacity = '1';
 let red = '255';
 let green = '0';
 let blue = '0';
 
-function renderBox(x1, y1, x2, y2, style, full = true) {
+function renderBox(x1: number, y1: number, x2: number, y2: number, style: string, full = true) {
   const [w,h] = [x2-x1, y2-y1]
   ctx.save();
   ctx.fillStyle = style;
@@ -32,7 +32,7 @@ function renderBox(x1, y1, x2, y2, style, full = true) {
   }
 }
 
-function clearBox(x1, y1, x2, y2) {
+function clearBox(x1: number, y1: number, x2: number, y2: number) {
   const [w,h] = [x2 - x1, y2 - y1];
   ctx.clearRect(x1,y1,w,h);
   fullCtx.clearRect(scale*x1,scale*y1,scale*w,scale*h);
@@ -54,9 +54,9 @@ function animateSelection() {
 }
 
 function sendBlob() {
-  fullCtx.canvas.convertToBlob()
-    .then(blob => postMessage({cmd: 'overlay', blob: blob}))
-    .catch(err => console.error(`Unable to post blob: ${JSON.stringify(err)}`));
+  fullCanvas.convertToBlob()
+    .then((blob:Blob) => postMessage({cmd: 'overlay', blob: blob}))
+    .catch((err:any) => console.error(`Unable to post blob: ${JSON.stringify(err)}`));
 }
 
 // eslint-disable-next-line no-restricted-globals
@@ -66,7 +66,8 @@ self.onmessage = evt => {
       console.log(evt.data);
       if (evt.data.canvas) {
         canvas = evt.data.canvas;
-        ctx = canvas.getContext('2d', { alpha: true });
+        ctx = canvas.getContext('2d', { alpha: true }) as OffscreenCanvasRenderingContext2D;
+        // if (x) ctx = x;
       }
       canvas.width = evt.data.values.width;
       canvas.height = evt.data.values.height;
@@ -75,7 +76,8 @@ self.onmessage = evt => {
 
       if (evt.data.fullCanvas) {
         fullCanvas = evt.data.fullCanvas;
-        fullCtx = fullCanvas.getContext('2d', { alpha: true });
+        fullCtx = fullCanvas.getContext('2d', { alpha: true }) as OffscreenCanvasRenderingContext2D;
+        // if (x) fullCtx = x;
       }
       fullCanvas.width = evt.data.values.fullWidth;
       fullCanvas.height = evt.data.values.fullHeight;
@@ -161,3 +163,5 @@ self.onmessage = evt => {
     }
   }
 }
+
+export {};

@@ -5,17 +5,17 @@ export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
     width: number, height: number,
     fullWidth: number, fullHeight: number,
     alreadyTransferred: boolean): Worker {
-  // TODO when there is nothing left https://webpack.js.org/guides/web-workers/
-  // can't do this more than once
   const values = {
     width: width,
     height: height,
     fullWidth: fullWidth,
     fullHeight: fullHeight,
   }
+  // only create a web worker if we dont' have one already
   if (!worker) {
-    worker = new Worker("worker.js"); // this lives with the other public assets
+    worker = new Worker(new URL('./contentworker.ts', import.meta.url));
   }
+  // if we try to transfer something twice, its an error so the caller must keep track of it
   if (!alreadyTransferred) {
     const offscreen = canvas.transferControlToOffscreen();
     const fullOffscreen = fullCanvas.transferControlToOffscreen();
