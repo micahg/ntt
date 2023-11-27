@@ -9,7 +9,7 @@ import styles from './ContentEditor.module.css';
 import { Opacity, ZoomIn, ZoomOut, LayersClear, Sync, Map, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
 import { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
 import { Box, Menu, MenuItem, Popover, Slider } from '@mui/material';
-import { setupOffscreenCanvas } from '../../utils/worker';
+import { setupOffscreenCanvas } from '../../utils/offscreencanvas';
 
 const sm = new MouseStateMachine();
 

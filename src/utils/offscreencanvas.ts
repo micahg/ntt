@@ -5,7 +5,7 @@ export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
     width: number, height: number,
     fullWidth: number, fullHeight: number,
     alreadyTransferred: boolean): Worker {
-  // TODO when there is nothing left https://github.com/webpack-contrib/worker-loader#integrating-with-typescript
+  // TODO when there is nothing left https://webpack.js.org/guides/web-workers/
   // can't do this more than once
   const values = {
     width: width,
