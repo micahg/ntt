@@ -1,4 +1,4 @@
-import { containingRect, getMaxContainerSize, getScaledContainerSize, rotate, rotatedWidthAndHeight } from "./geometry";
+import { containingRect, getMaxContainerSize, getScaledContainerSize } from "./geometry";
 
 /**
  * Worker for offscreen drawing in the content editor.
