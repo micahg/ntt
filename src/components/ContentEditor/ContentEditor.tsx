@@ -2,11 +2,11 @@ import React, { RefObject, createRef, useCallback, useEffect, useState } from 'r
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, getRect, renderImageInContainer } from '../../utils/drawing';
-import { rotateRect, scaleSelection } from '../../utils/geometry';
+import { getWidthAndHeight, rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
-import { Opacity, ZoomIn, ZoomOut, LayersClear, Sync, Map, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
+import { RotateRight, Opacity, ZoomIn, ZoomOut, LayersClear, Sync, Map, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
 import { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
 import { Box, Menu, MenuItem, Popover, Slider } from '@mui/material';
 import { setupOffscreenCanvas } from '../../utils/offscreencanvas';
@@ -25,6 +25,7 @@ interface InternalState {
   color: RefObject<HTMLInputElement>;
   obscure: boolean;
   zoom: boolean;
+  angle: number;
 }
 
 const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEditorProps) => {
@@ -34,7 +35,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const fullCanvasRef = createRef<HTMLCanvasElement>();
   const colorInputRef = createRef<HTMLInputElement>();
   
-  const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef()});
+  const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef(), angle: 0});
   const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
@@ -92,6 +93,12 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     worker.postMessage({cmd: 'clearselection'});
     sm.transition('wait');
   }, [dispatch, worker]);
+
+  const rotateClockwise = useCallback(() => {
+    if (!worker) return;
+    internalState.angle = (internalState.angle + 90) % 360;
+    worker.postMessage({cmd: 'rotate', angle: internalState.angle});
+  }, [internalState, worker])
 
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
@@ -168,7 +175,8 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       { icon: Visibility,    tooltip: "Reveal",                    hidden: () => false,               disabled: () => !internalState.obscure, callback: () => sm.transition('reveal')},
       { icon: ZoomIn,        tooltip: "Zoom In",                   hidden: () => internalState.zoom,  disabled: () => !internalState.obscure, callback: () => sm.transition('zoomIn')},
       { icon: ZoomOut,       tooltip: "Zoom Out",                  hidden: () => !internalState.zoom, disabled: () => false,                  callback: () => sm.transition('zoomOut')},
-      { icon: Opacity,       tooltip: "Opacity",                   hidden: () => false,               disabled: () => internalState.obscure,  callback: (evt) => gmSelectOpacityMenu(evt)}
+      { icon: Opacity,       tooltip: "Opacity",                   hidden: () => false,               disabled: () => internalState.obscure,  callback: (evt) => gmSelectOpacityMenu(evt)},
+      { icon: RotateRight,   tooltip: "Rotate",                    hidden: () => false,               disabled: () => internalState.obscure,  callback: () => sm.transition('rotateClock')},
     ];
     populateToolbar(actions);
     setToolbarPopulated(true);
@@ -281,11 +289,15 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       worker.postMessage({cmd: 'clear'});
       sm.transition('done');
     });
+    setCallback(sm, 'rotate_clock', () => {
+      rotateClockwise();
+      sm.transition('done');
+    })
 
     overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
     overlayCanvasRef.current.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-  }, [backgroundSize, dispatch, overlayCanvasRef, sceneManager, selectOverlay, updateObscure, worker, zoomIn]);
+  }, [backgroundSize, dispatch, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker, zoomIn]);
 
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
@@ -340,8 +352,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
         // so the on this pass it is false when passed to setCanvassesTransferred even if set
         console.log(`xfer status ${canvassesTransferred}`);
         setCanvassesTransferred(true);
+        const [scrW, scrH] = getWidthAndHeight();
+        // TODO micah you don't need to pass those canvas size values, worker figures it out
+        // from the screen and image width and height
         const wrkr = setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
-                             contentCtx.canvas.height, w, h, canvassesTransferred);
+                             contentCtx.canvas.height, w, h, scrW, scrH, canvassesTransferred);
         setWorker(wrkr);
         wrkr.onmessage = handleWorkerMessage;
         if (ovUrl) wrkr.postMessage({cmd: 'load', url: ovUrl});

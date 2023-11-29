@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { Rect, calculateBounds, scaleSelection, fillToAspect} from "../src/utils/geometry";
+import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, containingRect, getScaledContainerSize} from "../src/utils/geometry";
 
 describe('Geometry', () => {
   describe('Calculate Bounds', () => {
@@ -182,6 +182,26 @@ describe('Geometry', () => {
       // expect(Math.round(filled.width)).toBe(1067);
       // expect(Math.round(filled.height)).toBe(600)
       // expect(Math.round(filled.y)).toBe(3113)
+    });
+
+    it('Should correctly rotate a rectangle around its center', () => {
+      const values = rotatedWidthAndHeight(90, 2888, 1838);
+      expect(values[0]).toBe(1838);
+      expect(values[1]).toBe(2888);
+      expect(values[2]).toBe(-0);
+      expect(values[3]).toBe(0);
+    });
+
+    it('Should figure out the containing rectangle', () => {
+      const values = containingRect(90, 2888, 1838);
+      expect(values[0]).toBe(1838);
+      expect(values[1]).toBe(2888);      
+    });
+
+    it('Should figure out the scaled container size', () => {
+      const [w, h] = getScaledContainerSize(3, 1, 4, 2);
+      expect(w).toBe(2);
+      expect(h).toBe(1);
     });
   })
 });

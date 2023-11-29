@@ -30,6 +30,19 @@ export function getWidthAndHeight(): number[] {
   return [width, height]
 }
 
+export function getMaxContainerSize(screenWidth: number, screenHeight: number) {
+  const padding = 48; // 2 * 24 vertically and horizontally
+  const vOffset = (screenWidth < 600) ? 48: 64 + padding; // App Bar changes based on window width
+  const hOffset = padding;
+  const width = screenWidth - hOffset;
+  const height = screenHeight - vOffset;
+  return [width, height];
+}
+
+export function getScaledContainerSize(screenWidth: number, screenHeight: number, imageWidth: number, imageHeight: number) {
+  const scale = Math.min(screenWidth / imageWidth, screenHeight / imageHeight);
+  return [Math.round(imageWidth*scale), Math.round(imageHeight*scale)];
+}
 
 export function calculateBounds(canvasWidth: number, canvasHeight: number, imageWidth: number, imageHeight: number) {
   const result:ImageBound = {left: 0, top: 0, height: 0, width: 0, rotate: false};
@@ -87,6 +100,38 @@ export function rotateRect(angle: number, rect: Rect, width: number, height: num
   [x1, x2] = [Math.min(x1, x2), Math.max(x1, x2)];
   [y1, y2] = [Math.min(y1, y2), Math.max(y1, y2)];
   return {x: x1, y: y1, width: x2 - x1, height: y2 - y1};
+}
+
+/**
+ * If you were to rotate a rectangle around its own center, get the width and
+ * heigh it would occupy.
+ * @param angle angle of rotation
+ * @param width rectangle width
+ * @param height rectangle heigh
+ * @returns an array 
+ */
+export function rotatedWidthAndHeight(angle: number, width: number, height: number) {
+  const [x1, y1] = rotate(angle, 0, 0, width, height);
+  const [x2, y2] = rotate(angle, width, 0, width, height);
+  const [x3, y3] = rotate(angle, width, height, width, height);
+  const [x4, y4] = rotate(angle, 0, height, width, height);
+  const maxX = Math.round(Math.max(x1, x2, x3, x4));
+  const maxY = Math.round(Math.max(y1, y2, y3, y4));
+  const minX = Math.round(Math.min(x1, x2, x3, x4));
+  const minY = Math.round(Math.min(y1, y2, y3, y4));
+  return [maxX, maxY, minX, minY]
+}
+
+/**
+ * Determine the rectangle that holds a rotated rectangle
+ * @param angle 
+ * @param width 
+ * @param height 
+ * @returns 
+ */
+export function containingRect(angle: number, width: number, height: number) {
+  const values = rotatedWidthAndHeight(angle, width, height);
+  return [values[0] - values[2], values[1] - values[3]];
 }
 
 export function scaleSelection(selection: Rect, viewport: Rect, width: number, height: number) {

@@ -4,12 +4,15 @@ export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
     fullCanvas: HTMLCanvasElement,
     width: number, height: number,
     fullWidth: number, fullHeight: number,
+    scrWidth: number, scrHeight: number,
     alreadyTransferred: boolean): Worker {
   const values = {
     width: width,
     height: height,
     fullWidth: fullWidth,
     fullHeight: fullHeight,
+    screenWidth: scrWidth,
+    screenHeight: scrHeight,
   }
   // only create a web worker if we dont' have one already
   if (!worker) {

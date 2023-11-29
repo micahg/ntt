@@ -1,3 +1,5 @@
+import { containingRect, getMaxContainerSize, getScaledContainerSize, rotate, rotatedWidthAndHeight } from "./geometry";
+
 /**
  * Worker for offscreen drawing in the content editor.
  */
@@ -8,6 +10,11 @@ let fullCtx: OffscreenCanvasRenderingContext2D;
 let recording = false;
 let buff: ImageData;
 let fullBuff: ImageData;
+let angle: number;
+let fullW: number;
+let fullH: number;
+let screenW: number;
+let screenH: number;
 
 let startX: number, startY: number, endX: number, endY: number;
 let scale: number;
@@ -16,6 +23,14 @@ let opacity = '1';
 let red = '255';
 let green = '0';
 let blue = '0';
+
+function sizeCanvas(fullWidth: number, fullHeight: number, canvasWidth: number, canvasHeight: number) {
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  fullCanvas.width = fullWidth;
+  fullCanvas.height = fullHeight;
+  scale = fullWidth/canvasWidth;
+}
 
 function renderBox(x1: number, y1: number, x2: number, y2: number, style: string, full = true) {
   const [w,h] = [x2-x1, y2-y1]
@@ -64,25 +79,64 @@ self.onmessage = evt => {
   switch(evt.data.cmd) {
     case 'init': {
       console.log(evt.data);
+      fullW = evt.data.values.fullWidth;
+      fullH = evt.data.values.fullHeight;
+      screenW = evt.data.values.screenWidth;
+      screenH = evt.data.values.screenHeight;
+      const [maxW, maxH] = getMaxContainerSize(screenW, screenH);
+      const [w, h] = getScaledContainerSize(maxW, maxH, fullW, fullH)
+      
+
       if (evt.data.canvas) {
         canvas = evt.data.canvas;
         ctx = canvas.getContext('2d', { alpha: true }) as OffscreenCanvasRenderingContext2D;
-        // if (x) ctx = x;
       }
-      canvas.width = evt.data.values.width;
-      canvas.height = evt.data.values.height;
-
-      scale = evt.data.values.fullWidth/evt.data.values.width;
 
       if (evt.data.fullCanvas) {
         fullCanvas = evt.data.fullCanvas;
         fullCtx = fullCanvas.getContext('2d', { alpha: true }) as OffscreenCanvasRenderingContext2D;
-        // if (x) fullCtx = x;
       }
-      fullCanvas.width = evt.data.values.fullWidth;
-      fullCanvas.height = evt.data.values.fullHeight;
+
+      sizeCanvas(fullW, fullH, w, h);
 
       clearCanvas();
+      break;
+    }
+    case 'rotate': {
+      angle = evt.data.angle;
+      console.log(`Rotating to ${angle}`);
+      // consider that one day you might rotate 30 degrees, we need to figure out how much bigger
+      // the canvas would be to hold the rotated image... so my geometrically challenged logic is
+      // as follows
+
+      // just establish the biggest box we can render to considering our screen and ui components
+      const [contW, contH] = getMaxContainerSize(screenW, screenH);
+
+      // rotate the full sized canvas
+      const [fullRotW, fullRotH] = containingRect(angle, fullW, fullH);
+
+      // scale the rotated full size image down be contained within our container bounds
+      const [scaleContW, scaleContH] = getScaledContainerSize(contW, contH, fullRotW, fullRotH);
+      
+      // rotate backwards to get the original height/width scaled down (we need it to drawImage)
+      const [scaleW, scaleH] = containingRect(-angle, scaleContW, scaleContH);
+
+
+      console.log(`Full rotated canvas ${fullW}x${fullH}`);
+      console.log(`Max container size ${contW}x${contH}`);
+      console.log(`Scaled container ${scaleContW}x${scaleContH}`);
+      console.log(`Unrotated image size ${scaleW}x${scaleH}`);
+
+      sizeCanvas(fullRotW, fullRotH, scaleContW, scaleContH);
+
+      createImageBitmap(fullBuff).then(bmp => {
+        ctx.save();
+        ctx.translate(scaleContW/2, scaleContH/2);
+        ctx.rotate(angle * Math.PI/180);
+        ctx.drawImage(bmp, -scaleW/2, -scaleH/2, scaleW, scaleH);
+        ctx.restore();
+      });
+      
       break;
     }
     case 'record': {
