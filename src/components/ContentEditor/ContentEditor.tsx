@@ -1,7 +1,7 @@
 import React, { RefObject, createRef, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, getRect, renderImageInContainer } from '../../utils/drawing';
+import { getRect } from '../../utils/drawing';
 import { getWidthAndHeight, rotateRect, scaleSelection } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
@@ -36,7 +36,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const colorInputRef = createRef<HTMLInputElement>();
   
   const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef(), angle: 0});
-  const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
@@ -151,6 +150,8 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (evt.data.cmd === 'overlay') {
       setOvRev(ovRev + 1);
       dispatch({type: 'content/overlay', payload: evt.data.blob})
+    } else if (evt.data.cmd === 'initialized') {
+      setBackgroundSize([evt.data.width, evt.data.height]);
     }
   }, [dispatch, ovRev]);
 
@@ -181,12 +182,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     populateToolbar(actions);
     setToolbarPopulated(true);
   }, []);// eslint-disable-line react-hooks/exhaustive-deps
-
-  // if we don't have a canvas OR have already set context, then bail
-  useEffect(() => {
-    if (!contentCanvasRef.current || contentCtx != null) return;
-    setContentCtx(contentCanvasRef.current.getContext('2d', { alpha: false }));
-  }, [contentCanvasRef, contentCtx]);
 
   useEffect(() => {
     if (!scene || !scene.viewport) return;
@@ -302,15 +297,14 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
    * when we don't have to. We should only repaint when a scene changes OR an asset version has changed
-   * 
-   * TODO - move the background into its own useEffect and just render it in a div using src=stateValue
    */
   useEffect(() => {
-    if (!apiUrl || !scene || !contentCtx || !overlayCanvasRef?.current || !fullCanvasRef?.current) return;
+    if (!apiUrl || !scene || !contentCanvasRef?.current || !overlayCanvasRef?.current || !fullCanvasRef?.current) return;
     
     // get the detailed or player content 
     const [bRev, bContent] = [scene.detailContentRev || scene.playerContentRev || 0,  scene.detailContent || scene.playerContent];
     const [oRev, oContent] = [scene.overlayContentRev || 0, scene.overlayContent]
+    const backgroundCanvas: HTMLCanvasElement = contentCanvasRef.current;
     const overlayCanvas: HTMLCanvasElement = overlayCanvasRef.current;
     const fullCanvas: HTMLCanvasElement = fullCanvasRef.current;
 
@@ -334,35 +328,21 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     // if we have nothing new to draw then cheese it
     if (!drawBG && !drawOV) return;
 
-    const ovUrl = drawOV ? `${apiUrl}/${oContent}` : undefined;
-    const bgPromise = drawBG ? loadImage(`${apiUrl}/${bContent}`) : Promise.resolve(null);
-    bgPromise.then(bg => {
-      if (bg) {
-        setBackgroundSize([bg.width, bg.height]);
-        // if the scene hasn't set a viewport, default to entire background
-        if (!scene.viewport) {
-          const imgRect = getRect(0, 0, bg.width, bg.height);
-          dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
-        }
-        renderImageInContainer(bg, contentCtx, true)
-        // TODO find a non-hacky way to do this -- maybe when you conver the bg canvas to a div
-        const [w,h] = bg.height > bg.width ? [bg.height, bg.width] : [bg.width, bg.height];
+    if (drawBG) {
+      const ovUrl = drawOV ? `${apiUrl}/${oContent}` : undefined;
+      const bgUrl = drawBG ? `${apiUrl}/${bContent}` : undefined;
 
-        // hencefourth canvas is transferred -- this doesn't take effect until the next render
-        // so the on this pass it is false when passed to setCanvassesTransferred even if set
-        console.log(`xfer status ${canvassesTransferred}`);
-        setCanvassesTransferred(true);
-        const [scrW, scrH] = getWidthAndHeight();
-        // TODO micah you don't need to pass those canvas size values, worker figures it out
-        // from the screen and image width and height
-        const wrkr = setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
-                             contentCtx.canvas.height, w, h, scrW, scrH, canvassesTransferred);
-        setWorker(wrkr);
-        wrkr.onmessage = handleWorkerMessage;
-        if (ovUrl) wrkr.postMessage({cmd: 'load', url: ovUrl});
-      }
-    });
-  }, [apiUrl, bgRev, canvassesTransferred, contentCtx, dispatch, fullCanvasRef, handleWorkerMessage, ovRev, overlayCanvasRef, scene, sceneId])
+      const [scrW, scrH] = getWidthAndHeight();
+
+      // hencefourth canvas is transferred -- this doesn't take effect until the next render
+      // so the on this pass it is false when passed to setCanvassesTransferred even if set
+      setCanvassesTransferred(true);
+      // todo remove width
+      const wrkr = setupOffscreenCanvas(backgroundCanvas, overlayCanvas, fullCanvas, canvassesTransferred, scrW, scrH, bgUrl, ovUrl);
+      setWorker(wrkr);
+      wrkr.onmessage = handleWorkerMessage;
+    }
+  }, [apiUrl, bgRev, canvassesTransferred, contentCanvasRef, fullCanvasRef, handleWorkerMessage, ovRev, overlayCanvasRef, scene, sceneId])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
@@ -393,7 +373,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
       <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
       <canvas hidden ref={fullCanvasRef}/>
-      <input ref={colorInputRef} type='color' defaultValue='#ff0000' onChange={(evt) => setOverlayColour(evt.target.value)}/>
+      <input ref={colorInputRef} type='color' defaultValue='#ff0000' onChange={(evt) => setOverlayColour(evt.target.value)} hidden/>
       {showBackgroundMenu && <div className={`${styles.Menu} ${styles.BackgroundMenu}`}>
         <button onClick={() => sm.transition('upload')}>Upload</button>
         <button onClick={() => sm.transition('link')}>Link</button>

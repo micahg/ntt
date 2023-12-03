@@ -1,18 +1,16 @@
 let worker: Worker;
 
-export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
-    fullCanvas: HTMLCanvasElement,
-    width: number, height: number,
-    fullWidth: number, fullHeight: number,
-    scrWidth: number, scrHeight: number,
-    alreadyTransferred: boolean): Worker {
+export function setupOffscreenCanvas(backgroundCanvas: HTMLCanvasElement,
+    overlayCanvas: HTMLCanvasElement,
+    fullOverlayCanvas: HTMLCanvasElement,
+    alreadyTransferred: boolean,
+    screenWidth: number, screenHeight: number,
+    background?: string, overlay?: string): Worker {
   const values = {
-    width: width,
-    height: height,
-    fullWidth: fullWidth,
-    fullHeight: fullHeight,
-    screenWidth: scrWidth,
-    screenHeight: scrHeight,
+    screenWidth: screenWidth,
+    screenHeight: screenHeight,
+    overlay: overlay,
+    background: background,
   }
   // only create a web worker if we dont' have one already
   if (!worker) {
@@ -20,9 +18,10 @@ export function setupOffscreenCanvas(canvas: HTMLCanvasElement,
   }
   // if we try to transfer something twice, its an error so the caller must keep track of it
   if (!alreadyTransferred) {
-    const offscreen = canvas.transferControlToOffscreen();
-    const fullOffscreen = fullCanvas.transferControlToOffscreen();
-    worker.postMessage({cmd: 'init', canvas: offscreen, fullCanvas: fullOffscreen, values: values}, [offscreen, fullOffscreen]);
+    const background = backgroundCanvas.transferControlToOffscreen();
+    const overlay = overlayCanvas.transferControlToOffscreen();
+    const fullOverlay = fullOverlayCanvas.transferControlToOffscreen();
+    worker.postMessage({cmd: 'init', background: background, overlay: overlay, fullOverlay: fullOverlay, values: values}, [background, overlay, fullOverlay]);
   } else {
    worker.postMessage({cmd: 'init', values: values});
   }
