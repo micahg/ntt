@@ -71,6 +71,22 @@ export function calculateBounds(canvasWidth: number, canvasHeight: number, image
 }
 
 /**
+ * Rotate a point around the origin
+ * @param angle angle of rotation
+ * @param x x coordinate
+ * @param y y coordinate
+ * @returns the rotated point as an array of two numbers [x,y]
+ */
+export function rot(angle: number, x: number, y: number) {
+  const r = Math.PI * (angle/180);
+  const mcos = Math.round(Math.cos(r));
+  const msin = Math.round(Math.sin(r));
+  const xp = x*mcos - y*msin;
+  const yp = x*msin + y*mcos;
+  return [xp, yp]
+}
+
+/**
  * Rotate a point around the center of a rectangle
  * @param angle the angle of rotation
  * @param x the X coordinate of the point
@@ -80,19 +96,46 @@ export function calculateBounds(canvasWidth: number, canvasHeight: number, image
  * @returns an array of length two, containing the rotated X and Y cordinate values
  */
 export function rotate(angle: number, x: number, y: number, width: number, height: number): number[] {
+  // TODO MICAH BUG look at why this gets called 1000 times on startup....
   const r = Math.PI * (angle/180);
   const c_x = width/2;
   const c_y = height/2;
   const t_x = x - c_x; // translated x
   const t_y = y - c_y; // translated y
-  const mcos = Math.cos(r);
-  const msin = Math.sin(r);
-  // any math i can look up says this is wrong. The final addends of each
-  // line are flipped (c_y should be c_x and c_x should be c_y)...
-  const x1 = (mcos * t_x) - (msin * t_y) + c_y;
-  const y1 = (msin * t_x) + (mcos * t_y) + c_x;
+  const mcos = Math.round(Math.cos(r));
+  const msin = Math.round(Math.sin(r));
+
+  const cosx = mcos * t_x;
+  const cosy = mcos * t_y;
+  const sinx = msin * t_x;
+  const siny = msin * t_y;
+
+  const x1 = cosx + siny + c_x;
+  const y1 = cosy - sinx + c_y;
+
   return [x1, y1]
 }
+
+/**
+ * Rotate a point back to the orientation of the background. This is used in
+ * situations where drawing is occurring on an already rotated image.
+ */
+export function rotateBackToBackgroundOrientation(angle: number, x: number, y: number, w: number, h: number, ow: number, oh: number): number[] {
+  /**
+   * This is a modified rotration algorithm that does its final transposition
+   * after rotation assuming that instead of returning to the starting point,
+   * you are returning to the origin of your unrotated image based on its
+   * unrotated width and height.
+   */
+  const d_x = x - w/2;
+  const d_y = y - h/2;
+  const [r_x, r_y] = rot(angle, d_x, d_y);
+  const o_x = ow/2;
+  const o_y = oh/2;
+  return [r_x + o_x, r_y + o_y];
+}
+
+
 
 export function rotateRect(angle: number, rect: Rect, width: number, height: number) {
   let [x1, y1] = rotate(-90, rect.x, rect.y, width, height);
@@ -111,6 +154,7 @@ export function rotateRect(angle: number, rect: Rect, width: number, height: num
  * @returns an array 
  */
 export function rotatedWidthAndHeight(angle: number, width: number, height: number) {
+  // TODO this doesn't feel right
   const [x1, y1] = rotate(angle, 0, 0, width, height);
   const [x2, y2] = rotate(angle, width, 0, width, height);
   const [x3, y3] = rotate(angle, width, height, width, height);

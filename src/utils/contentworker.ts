@@ -1,4 +1,4 @@
-import { containingRect, getMaxContainerSize, getScaledContainerSize } from "./geometry";
+import { containingRect, getMaxContainerSize, getScaledContainerSize, rotate, rotateBackToBackgroundOrientation } from "./geometry";
 
 interface ScaledDimensions {
   width: number;
@@ -26,6 +26,8 @@ let _screenW: number;
 let _screenH: number;
 let _scaleW: number;
 let _scaleH: number;
+let _scaleOriginW: number;
+let _scaleOriginH: number;
 
 let startX: number, startY: number, endX: number, endY: number;
 let scale: number;
@@ -84,11 +86,12 @@ function sizeAllCanvasses(angle: number, width: number, height: number): ScaledD
   backgroundCanvas.height = scaleContH;
   overlayCanvas.width = scaleContW;
   overlayCanvas.height = scaleContH;
-  fullOverlayCanvas.width = fullRotW;
-  fullOverlayCanvas.height = fullRotH;
+  // we actually unrotate all updates...  this might become problematic with free-drawing
+  fullOverlayCanvas.width = width;
+  fullOverlayCanvas.height = height;
 
   const d = { width: scaleW, height: scaleH, rotatedWidth: scaleContW, rotatedHeight: scaleContH };
-  const fullD = { width: width, height: height, rotatedWidth: fullRotW, rotatedHeight: fullRotH };
+  const fullD = { width: width, height: height, rotatedWidth: width, rotatedHeight: height };
 
   return [d, fullD];
 }
@@ -108,13 +111,15 @@ function loadAllImages(background: string, overlay?: string) {
 function renderAllCanvasses(background: ImageBitmap | null, overlay: ImageBitmap | null) {
   if (background) {
     const [dimensions, fullDimensions] = sizeAllCanvasses(_angle, background.width, background.height);
+    _scaleOriginW = dimensions.width;
+    _scaleOriginH = dimensions.height;
     _scaleW = dimensions.rotatedWidth;
     _scaleH = dimensions.rotatedHeight;
     renderImage(backgroundCtx, background, _angle, dimensions);
     if (overlay) {
       renderImage(overlayCtx, overlay, _angle, dimensions);
       buff = overlayCtx.getImageData(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-      renderImage(fullCtx, overlay, _angle, fullDimensions);
+      renderImage(fullCtx, overlay, 0, fullDimensions);
       fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
     }
   }
@@ -127,10 +132,14 @@ function renderBox(x1: number, y1: number, x2: number, y2: number, style: string
   overlayCtx.fillRect(x1, y1, w, h);
   overlayCtx.restore();
   if (full) {
-    console.log('rendering fullctx');
+    const [rx1, ry1] = rotateBackToBackgroundOrientation(-_angle, x1, y1, _scaleW, _scaleH, _scaleOriginW, _scaleOriginH);
+    const [rx2, ry2] = rotateBackToBackgroundOrientation(-_angle, x2, y2, _scaleW, _scaleH, _scaleOriginW, _scaleOriginH);
+    const [rw, rh] = [rx2-rx1, ry2-ry1];
+    const [x, y, width, height] = [scale*rx1, scale*ry1, scale*rw, scale*rh];
     fullCtx.save();
     fullCtx.fillStyle = style;
-    fullCtx.fillRect(scale*x1, scale*y1, scale*w, scale*h);
+    
+    fullCtx.fillRect(x, y, width, height);
     fullCtx.restore();  
   }
 }
@@ -143,23 +152,32 @@ function clearBox(x1: number, y1: number, x2: number, y2: number) {
 
 function clearCanvas() {
   overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-  buff = overlayCtx.getImageData(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
   fullCtx.clearRect(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
+}
+
+function restoreOverlay() {
+  overlayCtx.putImageData(buff, 0, 0);
+  fullCtx.putImageData(fullBuff, 0, 0);
+}
+
+/**
+ * Store the updated overlay canvas buffers, update the unrotated image, and
+ * ship it to the main thread for upload.
+ */
+function storeOverlay() {
   fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
+  buff = overlayCtx.getImageData(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
+  fullOverlayCanvas.convertToBlob()
+    .then((blob:Blob) => postMessage({cmd: 'overlay', blob: blob}))
+    .catch((err:any) => console.error(`Unable to post blob: ${JSON.stringify(err)}`));
+  overlayImage = fullOverlayCanvas.transferToImageBitmap();
 }
 
 function animateSelection() {
   if (!recording) return;
-  overlayCtx.putImageData(buff, 0, 0);
-  fullCtx.putImageData(fullBuff, 0, 0);
+  restoreOverlay();
   renderBox(startX, startY, endX, endY, 'rgba(255, 255, 255, 0.25)', false);
   requestAnimationFrame(animateSelection);
-}
-
-function sendBlob() {
-  fullOverlayCanvas.convertToBlob()
-    .then((blob:Blob) => postMessage({cmd: 'overlay', blob: blob}))
-    .catch((err:any) => console.error(`Unable to post blob: ${JSON.stringify(err)}`));
 }
 
 // eslint-disable-next-line no-restricted-globals
@@ -220,8 +238,7 @@ self.onmessage = evt => {
       endY = evt.data.y2;
       if (!recording) {      
         recording = true;
-        overlayCtx.putImageData(buff, 0, 0);
-        fullCtx.putImageData(fullBuff, 0, 0);
+        restoreOverlay();
         requestAnimationFrame(animateSelection);
       }
       break;
@@ -231,34 +248,25 @@ self.onmessage = evt => {
       break;
     }
     case 'obscure': {
-      overlayCtx.putImageData(buff, 0, 0);
-      fullCtx.putImageData(fullBuff, 0, 0);
+      restoreOverlay();
       const fill = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
       renderBox(startX, startY, endX, endY, fill);
-      fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
-      buff = overlayCtx.getImageData(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-      sendBlob();
+      storeOverlay();
       break;
     }
     case 'reveal': {
-      overlayCtx.putImageData(buff, 0, 0);
-      fullCtx.putImageData(fullBuff, 0, 0);
+      restoreOverlay();
       clearBox(startX, startY, endX, endY);
-      fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
-      buff = overlayCtx.getImageData(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
-      sendBlob();
+      storeOverlay();
       break;
     }
     case 'clear': {
-      overlayCtx.putImageData(buff, 0, 0);
-      fullCtx.putImageData(fullBuff, 0, 0);
       clearCanvas();
-      sendBlob();
+      storeOverlay();
       break;
     }
     case 'clearselection': {
-      overlayCtx.putImageData(buff, 0, 0);
-      fullCtx.putImageData(fullBuff, 0, 0);
+      restoreOverlay();
       break;
     }
     case 'opacity': {
