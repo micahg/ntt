@@ -1,4 +1,4 @@
-import { containingRect, getMaxContainerSize, getScaledContainerSize, rotate, rotateBackToBackgroundOrientation } from "./geometry";
+import { containingRect, getMaxContainerSize, getScaledContainerSize, rotateBackToBackgroundOrientation } from "./geometry";
 
 interface ScaledDimensions {
   width: number;
