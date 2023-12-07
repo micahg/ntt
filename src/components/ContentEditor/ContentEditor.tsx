@@ -2,7 +2,7 @@ import React, { RefObject, createRef, useCallback, useEffect, useState } from 'r
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { getRect } from '../../utils/drawing';
-import { getWidthAndHeight, rotateRect, scaleSelection } from '../../utils/geometry';
+import { getWidthAndHeight } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
@@ -39,7 +39,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
-  const [backgroundSize, setBackgroundSize] = useState<number[]|null>(null);
+  const [backgroundSize, setBackgroundSize] = useState<number[]|null>(null); 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [bgRev, setBgRev] = useState<number>(0);
   const [ovRev, setOvRev] = useState<number>(0);
@@ -71,27 +71,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   }, [internalState, redrawToolbar]);
 
   const sceneManager = useCallback(() => {if (manageScene) manageScene(); }, [manageScene]);
-
-  const zoomIn = useCallback((canvas: HTMLCanvasElement, bgSize: number[],
-                  x1: number, y1: number, x2: number, y2: number) => {
-    if (!worker) return;
-    let sel = getRect(x1, y1, x2, y2);
-    // the viewport (vp) in this case is not relative to the background image
-    // size, but the size of the canvas upon which it is painted
-    let vp = getRect(0,0, canvas.width, canvas.height);
-    const [w, h] = bgSize;
-
-    // rotate the selection
-    // TODO this doesn't need rotation in portrait
-    if (w < h) {
-      sel = rotateRect(-90, sel, vp.width, vp.height);
-      vp = getRect(0,0, canvas.height, canvas.width);
-    }
-    const selection = scaleSelection(sel, vp, w, h);
-    dispatch({type: 'content/zoom', payload: {'viewport': selection}});
-    worker.postMessage({cmd: 'clearselection'});
-    sm.transition('wait');
-  }, [dispatch, worker]);
 
   const rotateClockwise = useCallback(() => {
     if (!worker) return;
@@ -150,8 +129,27 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (evt.data.cmd === 'overlay') {
       setOvRev(ovRev + 1);
       dispatch({type: 'content/overlay', payload: evt.data.blob})
+    } else if (evt.data.cmd === 'viewport') {
+      dispatch({type: 'content/zoom', payload: {'viewport': evt.data.viewport}});
     } else if (evt.data.cmd === 'initialized') {
+      // MICAH update background and vp here if the  scene does not have it.
+      // const [w, h] = [evt.data.fullWidth, evt.data.fullHeight];
       setBackgroundSize([evt.data.width, evt.data.height]);
+
+      // if (scene) {
+
+      //   // TODO MICAH move this so somewhere we have the scene.
+      //   const vp: ViewportBundle = {};
+  
+      //   // if the actual viewport is missing or has inaccurate width and height, update
+      //   if (!scene?.viewport || scene.viewport.width !== w || scene.viewport.height !== h) {
+      //     vp.viewport = {x: 0, y: 0, width: w, height: h};
+      //   }
+      //   if (!scene?.backgroundSize || scene.backgroundSize.width !== w || scene.backgroundSize.height !== h) {
+      //     vp.backgroundSize = {x: 0, y: 0, width: w, height: h};
+      //   }
+      //   if (vp.viewport || vp.backgroundSize) dispatch({type: 'content/zoom', payload: vp});
+      // }
     }
   }, [dispatch, ovRev]);
 
@@ -184,20 +182,18 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   }, []);// eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!scene || !scene.viewport) return;
+    if (!scene || !scene.viewport || !scene.backgroundSize) return;
     // if (!viewport) return;
     if (!backgroundSize) return;
     if (!redrawToolbar) return;
+
     const v = scene.viewport;
-    const [w, h] = backgroundSize;
-    const zoomedOut: boolean = (v.x === 0 && v.y === 0 && w === v.width && h === v.height);
-    // if zoomed out and in then state changed.... think about it man...
-    // if (zoomedOut !== zoomedIn) return;
-    // setZoomedIn(!zoomedOut);
+    const bg = scene.backgroundSize;
+    // need to ignore rotat`ion
+    const zoomedOut = (v.x === bg.x && v.y === bg.y && v.width === bg.width && v.height === bg.height);
     if (zoomedOut !== internalState.zoom) return;
     internalState.zoom = !zoomedOut;
     redrawToolbar();
-
     sm.transition('wait');
   }, [scene, backgroundSize, internalState, redrawToolbar]);
 
@@ -206,7 +202,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (!overlayCanvasRef.current) return;
     if (!backgroundSize || !backgroundSize.length) return;
     if (!worker) return;
-    const overlayCanvas = overlayCanvasRef.current;
 
     setCallback(sm, 'wait', () => {
       sm.resetCoordinates();
@@ -239,7 +234,9 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       sm.transition('wait');
     });
     setCallback(sm, 'zoomIn', () => {
-      zoomIn(overlayCanvas, backgroundSize, sm.x1(), sm.y1(), sm.x2(), sm.y2())
+      if (!worker) return;
+      const sel = getRect(sm.x1(), sm.y1(), sm.x2(), sm.y2());
+      worker.postMessage({cmd: 'zoom', rect: sel});
     });
     setCallback(sm, 'zoomOut', () => {
       const imgRect = getRect(0, 0, backgroundSize[0], backgroundSize[1]);
@@ -292,7 +289,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
     overlayCanvasRef.current.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-  }, [backgroundSize, dispatch, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker, zoomIn]);
+  }, [backgroundSize, dispatch, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker]);
 
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting

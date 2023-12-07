@@ -1,4 +1,4 @@
-import { containingRect, getMaxContainerSize, getScaledContainerSize, rotateBackToBackgroundOrientation } from "./geometry";
+import { Rect, containingRect, getMaxContainerSize, getScaledContainerSize, rotateBackToBackgroundOrientation } from "./geometry";
 
 interface ScaledDimensions {
   width: number;
@@ -125,6 +125,20 @@ function renderAllCanvasses(background: ImageBitmap | null, overlay: ImageBitmap
   }
 }
 
+function unrotateAndScaleRect(rect: Rect): Rect {
+  const [rx1, ry1] = rotateBackToBackgroundOrientation(-_angle, rect.x, rect.y, _scaleW, _scaleH, _scaleOriginW, _scaleOriginH);
+  const [rx2, ry2] = rotateBackToBackgroundOrientation(-_angle, rect.x + rect.width, rect.y + rect.height,
+                                                       _scaleW, _scaleH, _scaleOriginW, _scaleOriginH);
+  // this isn't necessary but just keep values positive
+  const x1 = Math.min(rx1, rx2);
+  const x2 = Math.max(rx1, rx2);
+  const y1 = Math.min(ry1, ry2);
+  const y2 = Math.max(ry1, ry2);
+  return {x: Math.round(scale*x1), y: Math.round(scale*y1),
+          width: Math.round(scale*(x2 - x1)),
+          height: Math.round(scale*(y2 - y1))};
+}
+
 function renderBox(x1: number, y1: number, x2: number, y2: number, style: string, full = true) {
   const [w,h] = [x2-x1, y2-y1]
   overlayCtx.save();
@@ -211,7 +225,7 @@ self.onmessage = evt => {
           renderAllCanvasses(bgImg, ovImg);
         })
         .then(() => {
-          postMessage({cmd: 'initialized', width: _scaleW, height: _scaleH});
+          postMessage({cmd: 'initialized', width: _scaleW, height: _scaleH, fullWidth: backgroundImage.width, fullHeight: backgroundImage.height});
           buff = overlayCtx.getImageData(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
           fullBuff = fullCtx.getImageData(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
         })
@@ -277,6 +291,17 @@ self.onmessage = evt => {
       red = evt.data.red;
       green = evt.data.green;
       blue = evt.data.blue;
+      break;
+    }
+    case 'zoom': {
+      // get the scaled down viewport
+      const vp: Rect = evt.data.rect;
+      // project onto unrotated full size origin
+      const fullVp = unrotateAndScaleRect(vp);
+      // post back the full viewport
+      postMessage({cmd: 'viewport', viewport: fullVp});
+      // clear selection
+      restoreOverlay();
       break;
     }
     default: {
