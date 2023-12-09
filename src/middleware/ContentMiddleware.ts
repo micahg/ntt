@@ -8,6 +8,7 @@ import { Rect } from '../utils/geometry';
 export interface ViewportBundle {
   backgroundSize?: Rect,
   viewport?: Rect,
+  angle?:number,
 }
 
 export interface NewSceneBundle {
@@ -96,8 +97,7 @@ export const ContentMiddleware: Middleware = storeAPI => next => action=> {
       if (action.payload === undefined) return;
       const scene = state.content.currentScene;
       if (!scene) return next(action);
-      const vp = action.payload;
-      setViewport(state, scene, vp)
+      setViewport(state, scene, action.payload)
         .then(value => next({type: 'content/scene', payload: value.data}))
         .catch(err => console.error(`Unable to update viewport: ${JSON.stringify(err)}`));
       break;

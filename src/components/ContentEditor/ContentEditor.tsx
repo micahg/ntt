@@ -40,7 +40,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
   const [canvasSize, setCanvasSize] = useState<number[]|null>(null); 
-  // const [imageSize, setImageSize] = useState<number[]|null>(null); 
+  const [imageSize, setImageSize] = useState<number[]|null>(null); 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [bgRev, setBgRev] = useState<number>(0);
   const [ovRev, setOvRev] = useState<number>(0);
@@ -77,7 +77,9 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (!worker) return;
     internalState.angle = (internalState.angle + 90) % 360;
     worker.postMessage({cmd: 'rotate', angle: internalState.angle});
-  }, [internalState, worker])
+    // angle is part of the viewport call
+    dispatch({type: 'content/zoom', payload: {angle: internalState.angle}});
+  }, [dispatch, internalState, worker])
 
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
@@ -134,7 +136,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       dispatch({type: 'content/zoom', payload: {'viewport': evt.data.viewport}});
     } else if (evt.data.cmd === 'initialized') {
       setCanvasSize([evt.data.width, evt.data.height]);
-      // setImageSize([evt.data.fullWidth, evt.data.fullHeight]);
+      setImageSize([evt.data.fullWidth, evt.data.fullHeight]);
     }
   }, [dispatch, ovRev]);
 
@@ -186,6 +188,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   useEffect(() => {
     if (!overlayCanvasRef.current) return;
     if (!canvasSize || !canvasSize.length) return;
+    if (!imageSize || !imageSize.length) return;
     if (!worker) return;
 
     setCallback(sm, 'wait', () => {
@@ -224,7 +227,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       worker.postMessage({cmd: 'zoom', rect: sel});
     });
     setCallback(sm, 'zoomOut', () => {
-      const imgRect = getRect(0, 0, canvasSize[0], canvasSize[1]);
+      const imgRect = getRect(0, 0, imageSize[0], imageSize[1]);
       dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});  
     });
     setCallback(sm, 'complete', () => {
@@ -273,7 +276,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
     overlayCanvasRef.current.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-  }, [canvasSize, dispatch, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker]);
+  }, [canvasSize, dispatch, imageSize, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker]);
 
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
