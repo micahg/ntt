@@ -4,6 +4,7 @@ export function setupOffscreenCanvas(backgroundCanvas: HTMLCanvasElement,
     overlayCanvas: HTMLCanvasElement,
     fullOverlayCanvas: HTMLCanvasElement,
     alreadyTransferred: boolean,
+    angle: number,
     screenWidth: number, screenHeight: number,
     background?: string, overlay?: string): Worker {
   const values = {
@@ -11,6 +12,7 @@ export function setupOffscreenCanvas(backgroundCanvas: HTMLCanvasElement,
     screenHeight: screenHeight,
     overlay: overlay,
     background: background,
+    angle: angle,
   }
   // only create a web worker if we dont' have one already
   if (!worker) {

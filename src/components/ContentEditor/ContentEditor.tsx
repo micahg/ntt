@@ -25,7 +25,6 @@ interface InternalState {
   color: RefObject<HTMLInputElement>;
   obscure: boolean;
   zoom: boolean;
-  angle: number;
 }
 
 const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEditorProps) => {
@@ -35,7 +34,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const fullCanvasRef = createRef<HTMLCanvasElement>();
   const colorInputRef = createRef<HTMLInputElement>();
   
-  const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef(), angle: 0});
+  const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef()});
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
@@ -75,11 +74,12 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
 
   const rotateClockwise = useCallback(() => {
     if (!worker) return;
-    internalState.angle = (internalState.angle + 90) % 360;
-    worker.postMessage({cmd: 'rotate', angle: internalState.angle});
+    if (!scene) return;
+    const angle = ((scene.angle || 0) + 90) % 360;
+    worker.postMessage({cmd: 'rotate', angle: angle});
     // angle is part of the viewport call
-    dispatch({type: 'content/zoom', payload: {angle: internalState.angle}});
-  }, [dispatch, internalState, worker])
+    dispatch({type: 'content/zoom', payload: {angle: angle}});
+  }, [dispatch, internalState, worker, scene])
 
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
@@ -316,13 +316,13 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       const ovUrl = drawOV ? `${apiUrl}/${oContent}` : undefined;
       const bgUrl = drawBG ? `${apiUrl}/${bContent}` : undefined;
 
+      const angle = scene.angle || 0;
       const [scrW, scrH] = getWidthAndHeight();
 
       // hencefourth canvas is transferred -- this doesn't take effect until the next render
       // so the on this pass it is false when passed to setCanvassesTransferred even if set
       setCanvassesTransferred(true);
-      // todo remove width
-      const wrkr = setupOffscreenCanvas(backgroundCanvas, overlayCanvas, fullCanvas, canvassesTransferred, scrW, scrH, bgUrl, ovUrl);
+      const wrkr = setupOffscreenCanvas(backgroundCanvas, overlayCanvas, fullCanvas, canvassesTransferred, angle, scrW, scrH, bgUrl, ovUrl);
       setWorker(wrkr);
       wrkr.onmessage = handleWorkerMessage;
     }

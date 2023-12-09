@@ -202,7 +202,7 @@ self.onmessage = evt => {
       _screenW = evt.data.values.screenWidth;
       _screenH = evt.data.values.screenHeight;
       // TODO get the angle from the viewport on load
-      _angle = 0;
+      _angle = evt.data.values.angle;
       
       if (evt.data.background) {
         backgroundCanvas = evt.data.background;
