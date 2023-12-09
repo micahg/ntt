@@ -79,7 +79,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     worker.postMessage({cmd: 'rotate', angle: angle});
     // angle is part of the viewport call
     dispatch({type: 'content/zoom', payload: {angle: angle}});
-  }, [dispatch, internalState, worker, scene])
+  }, [dispatch, worker, scene])
 
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
