@@ -39,7 +39,8 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
-  const [backgroundSize, setBackgroundSize] = useState<number[]|null>(null); 
+  const [canvasSize, setCanvasSize] = useState<number[]|null>(null); 
+  // const [imageSize, setImageSize] = useState<number[]|null>(null); 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [bgRev, setBgRev] = useState<number>(0);
   const [ovRev, setOvRev] = useState<number>(0);
@@ -132,24 +133,8 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     } else if (evt.data.cmd === 'viewport') {
       dispatch({type: 'content/zoom', payload: {'viewport': evt.data.viewport}});
     } else if (evt.data.cmd === 'initialized') {
-      // MICAH update background and vp here if the  scene does not have it.
-      // const [w, h] = [evt.data.fullWidth, evt.data.fullHeight];
-      setBackgroundSize([evt.data.width, evt.data.height]);
-
-      // if (scene) {
-
-      //   // TODO MICAH move this so somewhere we have the scene.
-      //   const vp: ViewportBundle = {};
-  
-      //   // if the actual viewport is missing or has inaccurate width and height, update
-      //   if (!scene?.viewport || scene.viewport.width !== w || scene.viewport.height !== h) {
-      //     vp.viewport = {x: 0, y: 0, width: w, height: h};
-      //   }
-      //   if (!scene?.backgroundSize || scene.backgroundSize.width !== w || scene.backgroundSize.height !== h) {
-      //     vp.backgroundSize = {x: 0, y: 0, width: w, height: h};
-      //   }
-      //   if (vp.viewport || vp.backgroundSize) dispatch({type: 'content/zoom', payload: vp});
-      // }
+      setCanvasSize([evt.data.width, evt.data.height]);
+      // setImageSize([evt.data.fullWidth, evt.data.fullHeight]);
     }
   }, [dispatch, ovRev]);
 
@@ -184,7 +169,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   useEffect(() => {
     if (!scene || !scene.viewport || !scene.backgroundSize) return;
     // if (!viewport) return;
-    if (!backgroundSize) return;
+    if (!canvasSize) return;
     if (!redrawToolbar) return;
 
     const v = scene.viewport;
@@ -195,12 +180,12 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     internalState.zoom = !zoomedOut;
     redrawToolbar();
     sm.transition('wait');
-  }, [scene, backgroundSize, internalState, redrawToolbar]);
+  }, [scene, canvasSize, internalState, redrawToolbar]);
 
 
   useEffect(() => {
     if (!overlayCanvasRef.current) return;
-    if (!backgroundSize || !backgroundSize.length) return;
+    if (!canvasSize || !canvasSize.length) return;
     if (!worker) return;
 
     setCallback(sm, 'wait', () => {
@@ -239,7 +224,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       worker.postMessage({cmd: 'zoom', rect: sel});
     });
     setCallback(sm, 'zoomOut', () => {
-      const imgRect = getRect(0, 0, backgroundSize[0], backgroundSize[1]);
+      const imgRect = getRect(0, 0, canvasSize[0], canvasSize[1]);
       dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});  
     });
     setCallback(sm, 'complete', () => {
@@ -275,7 +260,6 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     setCallback(sm, 'update_render_opacity', (args) => worker.postMessage({cmd: 'opacity', opacity: args[0]}));
 
     sm.setMoveCallback(selectOverlay);
-    // sm.setStartCallback(storeOverlay);
     setCallback(sm, 'push', () => dispatch({type: 'content/push'}));
     setCallback(sm, 'clear', () => {
       worker.postMessage({cmd: 'clear'});
@@ -289,7 +273,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
     overlayCanvasRef.current.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-  }, [backgroundSize, dispatch, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker]);
+  }, [canvasSize, dispatch, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker]);
 
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting

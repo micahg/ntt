@@ -18,10 +18,20 @@ export function setupOffscreenCanvas(backgroundCanvas: HTMLCanvasElement,
   }
   // if we try to transfer something twice, its an error so the caller must keep track of it
   if (!alreadyTransferred) {
-    const background = backgroundCanvas.transferControlToOffscreen();
-    const overlay = overlayCanvas.transferControlToOffscreen();
-    const fullOverlay = fullOverlayCanvas.transferControlToOffscreen();
-    worker.postMessage({cmd: 'init', background: background, overlay: overlay, fullOverlay: fullOverlay, values: values}, [background, overlay, fullOverlay]);
+    try {
+      const background = backgroundCanvas.transferControlToOffscreen();
+      const overlay = overlayCanvas.transferControlToOffscreen();
+      const fullOverlay = fullOverlayCanvas.transferControlToOffscreen();
+      worker.postMessage({cmd: 'init', background: background, overlay: overlay, fullOverlay: fullOverlay, values: values}, [background, overlay, fullOverlay]);  
+    } catch (err) {
+      /**
+       * normally you wouldn't get yourself into a situation where you're
+       * transferring twice. However, in react strict mode, you do. Just
+       * ignore the exception since its already transferred.
+       */
+      console.warn("Ignore the following error if you're doing development in react strict mode...");
+      console.error(err);
+    }
   } else {
    worker.postMessage({cmd: 'init', values: values});
   }
