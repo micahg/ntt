@@ -2,29 +2,10 @@
  * @jest-environment jsdom
  */
 
-import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, getScaledContainerSize, rotateBackToBackgroundOrientation, rotateAndFillViewport} from "../src/utils/geometry";
+import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, getScaledContainerSize, rotateBackToBackgroundOrientation, rotateAndFillViewport, cb} from "../src/utils/geometry";
 
 describe('Geometry', () => {
   describe('Rotation', () => {
-
-    // TODO probably test to here...
-
-    // it('Should rotate correctly 180', () => {
-    //   let [x, y] = rotate(180, 0, 0, 751, 478);
-    //   expect(x).toBe(751);
-    //   expect(y).toBe(478);
-
-    //   [x, y] = rotate(180, 751, 0, 751, 478);
-    //   expect(x).toBe(0);
-    //   expect(y).toBe(478);
-    // });
-
-    // it('Should rotate correctly 0', () => {
-    //   const [x, y] = rotate(0, 0, 0, 751, 478);
-    //   expect(x).toBe(0);
-    //   expect(y).toBe(0);
-    // });
-
     it('Should rotate a points back to the origin of the prerotated width', () => {
       let x: number, y: number;
       [x, y] = rotateBackToBackgroundOrientation(-90, 0, 4, 2, 4, 4, 2);
@@ -116,6 +97,22 @@ describe('Geometry', () => {
       expect(result.width).toEqual(8);
       expect(result.height).toEqual(20);
       expect(result.rotate).toEqual(true);
+    });
+
+    it('Brain Melting', () => {
+      const result = cb(1422, 647, 4160, 2008);
+      expect(result.x).toEqual(41);
+      expect(result.y).toEqual(0);
+      expect(result.width).toEqual(1340);
+      expect(result.height).toEqual(647);
+    });
+
+    it('Brain Melting 2', () => {
+      const result = cb(1422, 647, 5200, 2008);
+      expect(result.x).toEqual(0);
+      expect(result.y).toEqual(49);
+      expect(result.width).toEqual(1422);
+      expect(result.height).toEqual(549);
     });
   });
 
@@ -239,15 +236,6 @@ describe('Geometry', () => {
   });
 
   describe('Rotate and Fill Viewport', () => {
-    beforeAll(() => {
-      global.innerWidth = 960;
-      global.innerHeight = 540;
-      jest.spyOn(document.documentElement, 'clientWidth', 'get').mockImplementation(() => global.innerWidth)
-      jest.spyOn(document.documentElement, 'clientHeight', 'get').mockImplementation(() => global.innerHeight)
-      jest.spyOn(document.documentElement, 'offsetWidth', 'get').mockImplementation(() => global.innerWidth)
-      jest.spyOn(document.documentElement, 'offsetHeight', 'get').mockImplementation(() => global.innerHeight)
-    });
-
     it('Should rotate and fill the viewport horizontally', () => {
       const screen = [960, 540];
       const image = [2008, 4160];
@@ -284,7 +272,7 @@ describe('Geometry', () => {
       expect(result.y).toBe(1294);
     });
 
-    it('No rot rect', () => {
+    it('It should retain viewport when not zoomed', () => {
       const screen = [1420, 642];
       const image = [2888, 1838];
       const angle = 0;

@@ -1,4 +1,4 @@
-import { Rect, rotatedWidthAndHeight } from "./geometry";
+import { Rect, calculateBounds, cb, rotatedWidthAndHeight } from "./geometry";
 
 export const CONTROLS_HEIGHT = 46;
 
@@ -54,14 +54,20 @@ export function loadImage(uri: string): Promise<HTMLImageElement> {
 }
 
 export function renderViewPort(ctx: CanvasRenderingContext2D, image: HTMLImageElement, angle: number, viewport: Rect) {
-    const [r_w, r_h] = rotatedWidthAndHeight(angle, ctx.canvas.width, ctx.canvas.height)
-    const [c_x, c_y] = [r_w/2, r_h/2]
+    const [r_w, r_h] = rotatedWidthAndHeight(angle, ctx.canvas.width, ctx.canvas.height);
+    const [rv_w, rv_h] = rotatedWidthAndHeight(angle, viewport.width, viewport.height);
+    // const [c_x, c_y] = [r_w/2, r_h/2]
+    const bounds = cb(ctx.canvas.width, ctx.canvas.height, rv_w, rv_h);
+    const [b_x, b_y] = [bounds.width, bounds.height];
+    const [c_x, c_y] = rotatedWidthAndHeight(-angle, b_x, b_y);
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.save();
     ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
     ctx.rotate(angle * Math.PI/180);
     ctx.drawImage(image, viewport.x, viewport.y, viewport.width, viewport.height,
-                  -c_x, -c_y, r_w, r_h);
+                  -c_x/2, -c_y/2, c_x, c_y);
+                  // -b_x/2, -b_y/2, b_x, b_y); 
+                  // -c_x, -c_y, r_w, r_h);
     ctx.restore();
   return;
 }

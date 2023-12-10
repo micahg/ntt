@@ -44,35 +44,43 @@ export function getScaledContainerSize(screenWidth: number, screenHeight: number
   return [Math.round(imageWidth*scale), Math.round(imageHeight*scale)];
 }
 
-export function calculateBounds(canvas: number[], image: number[]) {
-  
-  return;
+export function cb(canvasWidth: number, canvasHeight: number, imageWidth: number, imageHeight: number) {
+  const cr = canvasWidth/canvasHeight;
+  const ir = imageWidth/imageHeight;
+  if (cr > ir) { // canvas aspect wider than image aspect
+    const w = Math.round(canvasHeight * ir);
+    const l = (canvasWidth - w)/2;
+    return {x: l, y: 0, width: w, height: canvasHeight};
+  }
+  const h = Math.round(canvasWidth/ir);
+  const t = (canvasHeight - h)/2;
+  return {x: 0, y: t, width: canvasWidth, height: h};
 }
-// export function calculateBounds(canvasWidth: number, canvasHeight: number, imageWidth: number, imageHeight: number) {
-//   const result:ImageBound = {left: 0, top: 0, height: 0, width: 0, rotate: false};
-//   const wideImage: boolean = imageWidth >= imageHeight;
-//   const wideCanvas: boolean = canvasWidth >= canvasHeight;
-//   const rotate = (wideCanvas !== wideImage)
+export function calculateBounds(canvasWidth: number, canvasHeight: number, imageWidth: number, imageHeight: number) {
+  const result:ImageBound = {left: 0, top: 0, height: 0, width: 0, rotate: false};
+  const wideImage: boolean = imageWidth >= imageHeight;
+  const wideCanvas: boolean = canvasWidth >= canvasHeight;
+  const rotate = (wideCanvas !== wideImage)
 
-//   if ((canvasWidth >= canvasHeight && imageWidth >= imageHeight) ||
-//       (canvasHeight > canvasWidth && imageHeight >= imageWidth)) {
-//     const scale = Math.min(canvasWidth / imageWidth, canvasHeight / imageHeight);
-//     result.width = imageWidth * scale;
-//     result.height = imageHeight * scale;
-//     result.top = (canvasHeight - result.height)/2;
-//     result.left = (canvasWidth - result.width)/2;
-//   } else {
-//     const scale = Math.min(canvasWidth / imageHeight, canvasHeight / imageWidth);
-//     result.width =  imageWidth * scale;
-//     result.height = imageHeight * scale;
-//     result.top = (canvasHeight - result.width)/2;
-//     result.left = (canvasWidth - result.height)/2;
-//     result.rotate = true;
-//   }
-
-//   result.rotate = rotate;
-//   return result;
-// }
+  if ((canvasWidth >= canvasHeight && imageWidth >= imageHeight) ||
+      (canvasHeight > canvasWidth && imageHeight >= imageWidth)) {
+    const scale = Math.min(canvasWidth / imageWidth, canvasHeight / imageHeight);
+    result.width = imageWidth * scale;
+    result.height = imageHeight * scale;
+    result.top = (canvasHeight - result.height)/2;
+    result.left = (canvasWidth - result.width)/2;
+  } else {
+    const scale = Math.min(canvasWidth / imageHeight, canvasHeight / imageWidth);
+    result.width =  imageWidth * scale;
+    result.height = imageHeight * scale;
+    result.top = (canvasHeight - result.width)/2;
+    result.left = (canvasWidth - result.height)/2;
+    result.rotate = true;
+  }
+  // TODO round the return, chump
+  result.rotate = rotate;
+  return result;
+}
 
 /**
  * Rotate a point around the origin
