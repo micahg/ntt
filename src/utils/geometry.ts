@@ -44,31 +44,35 @@ export function getScaledContainerSize(screenWidth: number, screenHeight: number
   return [Math.round(imageWidth*scale), Math.round(imageHeight*scale)];
 }
 
-export function calculateBounds(canvasWidth: number, canvasHeight: number, imageWidth: number, imageHeight: number) {
-  const result:ImageBound = {left: 0, top: 0, height: 0, width: 0, rotate: false};
-  const wideImage: boolean = imageWidth >= imageHeight;
-  const wideCanvas: boolean = canvasWidth >= canvasHeight;
-  const rotate = (wideCanvas !== wideImage)
-
-  if ((canvasWidth >= canvasHeight && imageWidth >= imageHeight) ||
-      (canvasHeight > canvasWidth && imageHeight >= imageWidth)) {
-    const scale = Math.min(canvasWidth / imageWidth, canvasHeight / imageHeight);
-    result.width = imageWidth * scale;
-    result.height = imageHeight * scale;
-    result.top = (canvasHeight - result.height)/2;
-    result.left = (canvasWidth - result.width)/2;
-  } else {
-    const scale = Math.min(canvasWidth / imageHeight, canvasHeight / imageWidth);
-    result.width =  imageWidth * scale;
-    result.height = imageHeight * scale;
-    result.top = (canvasHeight - result.width)/2;
-    result.left = (canvasWidth - result.height)/2;
-    result.rotate = true;
-  }
-
-  result.rotate = rotate;
-  return result;
+export function calculateBounds(canvas: number[], image: number[]) {
+  
+  return;
 }
+// export function calculateBounds(canvasWidth: number, canvasHeight: number, imageWidth: number, imageHeight: number) {
+//   const result:ImageBound = {left: 0, top: 0, height: 0, width: 0, rotate: false};
+//   const wideImage: boolean = imageWidth >= imageHeight;
+//   const wideCanvas: boolean = canvasWidth >= canvasHeight;
+//   const rotate = (wideCanvas !== wideImage)
+
+//   if ((canvasWidth >= canvasHeight && imageWidth >= imageHeight) ||
+//       (canvasHeight > canvasWidth && imageHeight >= imageWidth)) {
+//     const scale = Math.min(canvasWidth / imageWidth, canvasHeight / imageHeight);
+//     result.width = imageWidth * scale;
+//     result.height = imageHeight * scale;
+//     result.top = (canvasHeight - result.height)/2;
+//     result.left = (canvasWidth - result.width)/2;
+//   } else {
+//     const scale = Math.min(canvasWidth / imageHeight, canvasHeight / imageWidth);
+//     result.width =  imageWidth * scale;
+//     result.height = imageHeight * scale;
+//     result.top = (canvasHeight - result.width)/2;
+//     result.left = (canvasWidth - result.height)/2;
+//     result.rotate = true;
+//   }
+
+//   result.rotate = rotate;
+//   return result;
+// }
 
 /**
  * Rotate a point around the origin
@@ -95,26 +99,26 @@ export function rot(angle: number, x: number, y: number) {
  * @param height the height of the rectangle
  * @returns an array of length two, containing the rotated X and Y cordinate values
  */
-export function rotate(angle: number, x: number, y: number, width: number, height: number): number[] {
-  // TODO MICAH BUG look at why this gets called 1000 times on startup....
-  const r = Math.PI * (angle/180);
-  const c_x = width/2;
-  const c_y = height/2;
-  const t_x = x - c_x; // translated x
-  const t_y = y - c_y; // translated y
-  const mcos = Math.round(Math.cos(r));
-  const msin = Math.round(Math.sin(r));
+// export function rotate(angle: number, x: number, y: number, width: number, height: number): number[] {
+//   // TODO MICAH BUG look at why this gets called 1000 times on startup....
+//   const r = Math.PI * (angle/180);
+//   const c_x = width/2;
+//   const c_y = height/2;
+//   const t_x = x - c_x; // translated x
+//   const t_y = y - c_y; // translated y
+//   const mcos = Math.round(Math.cos(r));
+//   const msin = Math.round(Math.sin(r));
 
-  const cosx = mcos * t_x;
-  const cosy = mcos * t_y;
-  const sinx = msin * t_x;
-  const siny = msin * t_y;
+//   const cosx = mcos * t_x;
+//   const cosy = mcos * t_y;
+//   const sinx = msin * t_x;
+//   const siny = msin * t_y;
 
-  const x1 = cosx + siny + c_x;
-  const y1 = cosy - sinx + c_y;
+//   const x1 = cosx + siny + c_x;
+//   const y1 = cosy - sinx + c_y;
 
-  return [x1, y1];
-}
+//   return [x1, y1];
+// }
 
 /**
  * Rotate a point back to the orientation of the background. This is used in
@@ -137,13 +141,13 @@ export function rotateBackToBackgroundOrientation(angle: number, x: number, y: n
 
 
 
-export function rotateRect(angle: number, rect: Rect, width: number, height: number) {
-  let [x1, y1] = rotate(-90, rect.x, rect.y, width, height);
-  let [x2, y2] = rotate(-90, rect.x + rect.width, rect.y + rect.height, width, height);
-  [x1, x2] = [Math.min(x1, x2), Math.max(x1, x2)];
-  [y1, y2] = [Math.min(y1, y2), Math.max(y1, y2)];
-  return {x: x1, y: y1, width: x2 - x1, height: y2 - y1};
-}
+// export function rotateRect(angle: number, rect: Rect, width: number, height: number) {
+//   let [x1, y1] = rotate(-90, rect.x, rect.y, width, height);
+//   let [x2, y2] = rotate(-90, rect.x + rect.width, rect.y + rect.height, width, height);
+//   [x1, x2] = [Math.min(x1, x2), Math.max(x1, x2)];
+//   [y1, y2] = [Math.min(y1, y2), Math.max(y1, y2)];
+//   return {x: x1, y: y1, width: x2 - x1, height: y2 - y1};
+// }
 
 /**
  * If you were to rotate a rectangle around its own center, get the width and
@@ -177,13 +181,45 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
 /**
  * rotate and fill viewport to fit screen/window/canvas
  * @param screen screen [width, height]
- * @param image image [width, height] (actual)
- * @param oImage iamge [width, height] (original)
+ * @param image image [width, height] (actual -- might get shrunk by browser)
+ * @param oImage image [width, height] (original -- as the editor saw it -- possibly shrunk but we dont' handle that yet)
  * @param angle angle of rotation
- * @param viewport viewport {x, y, w, h}
+ * @param viewport viewport withing the original image {x, y, w, h}
  * @returns 
  */
 export function rotateAndFillViewport(screen: number[], image: number[], oImage: number[], angle: number, viewport: Rect) {
+  if (viewport.x === 0 && viewport.y === 0 && viewport.width === oImage[0] && viewport.height === oImage[1]) {
+    return getRect(0, 0, image[0], image[1]);
+  }
+  const rScreen = rotatedWidthAndHeight(angle, screen[0], screen[1]);
+  const selR = viewport.width / viewport.height;
+  const scrR = rScreen[0]/rScreen[1];
+  let { x, y, width: w, height: h } = viewport;
+
+  // const newVP = { x: viewport.x, y: viewport.y, width: viewport.width, height: viewport.height };
+  if (scrR > selR) {
+    const offset = Math.round(((h * scrR) - w)/2);
+    w = Math.round(h * scrR);
+    if (x - offset < 0) x = 0; // shunt to left screen bound rather than render a partial image
+    else if (x + w > oImage[0]) x = oImage[0] - w; // shunt to right screen bound rather than render a partial image
+    else x -= offset;
+  } else {
+    const offset = Math.round(((w/scrR) - h)/2);
+    h = Math.round(w/scrR);
+    if (y - offset < 0) y = 0;
+    else if (y + h + offset > oImage[1]) y = oImage[1] - h;
+    else y -= offset;
+  }
+  // calculate coefficient for browser-resized images
+  // We shouldn't need to square (**2) the scaling value; however, I
+  // think due to a browser bug, squaring silkScale below is what works.
+  // FWIW, the bug was filed here:
+  // https://bugs.chromium.org/p/chromium/issues/detail?id=1494756
+  const silkScale = (image[0]/oImage[0])**2;
+  return {x: x * silkScale, y: y * silkScale, width: w * silkScale, height: h * silkScale};
+}
+
+export function oldRotateAndFillViewport(screen: number[], image: number[], oImage: number[], angle: number, viewport: Rect) {
   const [iW, iH] = image;
   const [oW, oH] = oImage
   if (viewport.x === 0 && viewport.y === 0 && viewport.width === oW && viewport.height === oH) {
@@ -196,9 +232,55 @@ export function rotateAndFillViewport(screen: number[], image: number[], oImage:
   // FWIW, the bug was filed here:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=1494756
   const silkScale = (iW/oW)**2;
-  // const p1 = viewport
 
-  return silkScale;
+  // translate to origin
+  const d_x1 = viewport.x - oW/2;
+  const d_y1 = viewport.y - oH/2;
+  const d_x2 = (viewport.x + viewport.width) - oW/2;
+  const d_y2 = (viewport.y + viewport.height) - oH/2;
+
+  // rotate both points around the center
+  const [r_x1, r_y1] = rot(angle, d_x1, d_y1);
+  const [r_x2, r_y2] = rot(angle, d_x2, d_y2);
+
+  // rotate the entire image dimensions
+  const [rW, rH] = rotatedWidthAndHeight(angle, iW, iH);
+  const o_x = rW/2;
+  const o_y = rH/2;
+
+  // translate both points away from rotated origin
+  let [x1, y1] = [r_x1 + o_x, r_y1 + o_y];
+  let [x2, y2] = [r_x2 + o_x, r_y2 + o_y];
+
+  // keep x1,y1 the smaller value to prevent natives
+  [x1, x2] = [Math.min(x1, x2), Math.max(x1, x2)];
+  [y1, y2] = [Math.min(y1, y2), Math.max(y1, y2)];
+  let [v_RW, v_RH] = [x2 - x1, y2 - y1];
+
+
+  // if the selection ratio is greater than the screen ratio it implies
+  // aspect ratio of the selection is wider than the aspect ratio of the
+  // screen, so the height can be scaled up to match the screen/image ratio
+  const selR = v_RW / v_RH;
+  const scrR = screen[0]/screen[1];
+  if (scrR > selR) {
+    const offset = Math.round(((v_RW * scrR) - v_RW)/2);
+    v_RW = Math.round(v_RW * scrR);
+    if (x1 - offset < 0) x1 = 0; // shunt to left screen bound rather than render a partial image
+    else if (x2 + offset > rW) x1 = rW - v_RW; // shunt to right screen bound rather than render a partial image
+    else x1 -= offset;
+  } else {
+    const offset = Math.round(((v_RW/scrR) - v_RH)/2);
+    v_RH = Math.round(v_RW/scrR);
+    if (y1 - offset < 0) y1 = 0;
+    else if (y2 + offset > rH) y1 = rH - v_RH;
+    else y1 -= offset;
+  }
+
+  const rV = {x: x1 * silkScale, y: y1 * silkScale,
+    width: v_RW * silkScale, height: v_RH * silkScale};
+
+  return rV;
 }
 
 /**

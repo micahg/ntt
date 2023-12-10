@@ -2,25 +2,28 @@
  * @jest-environment jsdom
  */
 
-import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, getScaledContainerSize, rotate, rotateBackToBackgroundOrientation} from "../src/utils/geometry";
+import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, getScaledContainerSize, rotateBackToBackgroundOrientation, rotateAndFillViewport} from "../src/utils/geometry";
 
 describe('Geometry', () => {
   describe('Rotation', () => {
-    it('Should rotate correctly 180', () => {
-      let [x, y] = rotate(180, 0, 0, 751, 478);
-      expect(x).toBe(751);
-      expect(y).toBe(478);
 
-      [x, y] = rotate(180, 751, 0, 751, 478);
-      expect(x).toBe(0);
-      expect(y).toBe(478);
-    });
+    // TODO probably test to here...
 
-    it('Should rotate correctly 0', () => {
-      const [x, y] = rotate(0, 0, 0, 751, 478);
-      expect(x).toBe(0);
-      expect(y).toBe(0);
-    });
+    // it('Should rotate correctly 180', () => {
+    //   let [x, y] = rotate(180, 0, 0, 751, 478);
+    //   expect(x).toBe(751);
+    //   expect(y).toBe(478);
+
+    //   [x, y] = rotate(180, 751, 0, 751, 478);
+    //   expect(x).toBe(0);
+    //   expect(y).toBe(478);
+    // });
+
+    // it('Should rotate correctly 0', () => {
+    //   const [x, y] = rotate(0, 0, 0, 751, 478);
+    //   expect(x).toBe(0);
+    //   expect(y).toBe(0);
+    // });
 
     it('Should rotate a points back to the origin of the prerotated width', () => {
       let x: number, y: number;
@@ -235,14 +238,62 @@ describe('Geometry', () => {
     });
   });
 
-  // describe('Rotate and Fill Viewport', () => {
-  //   beforeAll(() => {
-  //     global.innerWidth = 960;
-  //     global.innerHeight = 540;
-  //     jest.spyOn(document.documentElement, 'clientWidth', 'get').mockImplementation(() => global.innerWidth)
-  //     jest.spyOn(document.documentElement, 'clientHeight', 'get').mockImplementation(() => global.innerHeight)
-  //     jest.spyOn(document.documentElement, 'offsetWidth', 'get').mockImplementation(() => global.innerWidth)
-  //     jest.spyOn(document.documentElement, 'offsetHeight', 'get').mockImplementation(() => global.innerHeight)
-  //   });
-  // });
+  describe('Rotate and Fill Viewport', () => {
+    beforeAll(() => {
+      global.innerWidth = 960;
+      global.innerHeight = 540;
+      jest.spyOn(document.documentElement, 'clientWidth', 'get').mockImplementation(() => global.innerWidth)
+      jest.spyOn(document.documentElement, 'clientHeight', 'get').mockImplementation(() => global.innerHeight)
+      jest.spyOn(document.documentElement, 'offsetWidth', 'get').mockImplementation(() => global.innerWidth)
+      jest.spyOn(document.documentElement, 'offsetHeight', 'get').mockImplementation(() => global.innerHeight)
+    });
+
+    it('Should rotate and fill the viewport horizontally', () => {
+      const screen = [960, 540];
+      const image = [2008, 4160];
+      const angle = 90;
+      const viewport = {x: 100, y: 100, width: 100, height: 100};
+      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      expect(result.width).toBe(100);
+      expect(result.height).toBe(178);
+      expect(result.x).toBe(100);
+      expect(result.y).toBe(61);
+    });
+
+    it('Should rotate and fill the viewport', () => {
+      const screen = [960, 540];
+      const image = [2008, 4160];
+      const angle = 90;
+      const viewport = {x: 100, y: 100, width: 100, height: 10};
+      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      expect(result.width).toBe(100);
+      expect(result.height).toBe(178);
+      expect(result.x).toBe(100);
+      expect(result.y).toBe(16);
+    });
+
+    it('BRAIN MELTING', () => {
+      const screen = [1420, 641];
+      const image = [2008, 4160];
+      const angle = 90;
+      const viewport = { x: 300, y: 1294, width: 72, height: 448 }
+      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      expect(result.width).toBe(202);
+      expect(result.height).toBe(448);
+      expect(result.x).toBe(235);
+      expect(result.y).toBe(1294);
+    });
+
+    it('No rot rect', () => {
+      const screen = [1420, 642];
+      const image = [2888, 1838];
+      const angle = 0;
+      const viewport = { x: 0, y: 0, width: 2888, height: 1838 }
+      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      expect(result.width).toBe(2888);
+      expect(result.height).toBe(1838);
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    })
+  });
 });

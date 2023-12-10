@@ -1,4 +1,4 @@
-import { calculateBounds, getWidthAndHeight, ImageBound, Rect } from "./geometry";
+import { Rect, rotatedWidthAndHeight } from "./geometry";
 
 export const CONTROLS_HEIGHT = 46;
 
@@ -53,65 +53,78 @@ export function loadImage(uri: string): Promise<HTMLImageElement> {
   });
 }
 
-export function renderImageInContainer(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
-  resizeCanvas = false) {
-
-  if (resizeCanvas) {
-    const [windowWidth, windowHeight] = getWidthAndHeight();
-    const padding = 48; // 2 * 24 vertically and horizontally
-    const vOffset = (windowWidth < 600) ? 48: 64 + padding; // App Bar changes based on window width
-    const hOffset = padding;
-    const width = windowWidth - hOffset;
-    const height = windowHeight - vOffset;
-    // TODO stop calcualting bounds twice
-    const adjusted = calculateBounds(width, height, image.width, image.height);
-    ctx.canvas.width = adjusted.rotate ? adjusted.height : adjusted.width;
-    ctx.canvas.height = adjusted.rotate ? adjusted.width : adjusted.height;
-    ctx.canvas.style.width = `${ctx.canvas.width}px`;
-    ctx.canvas.style.height = `${ctx.canvas.height}px`;
-  }
-
-  return renderImage(image, ctx);
+export function renderViewPort(ctx: CanvasRenderingContext2D, image: HTMLImageElement, angle: number, viewport: Rect) {
+    const [r_w, r_h] = rotatedWidthAndHeight(angle, ctx.canvas.width, ctx.canvas.height)
+    const [c_x, c_y] = [r_w/2, r_h/2]
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.save();
+    ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
+    ctx.rotate(angle * Math.PI/180);
+    ctx.drawImage(image, viewport.x, viewport.y, viewport.width, viewport.height,
+                  -c_x, -c_y, r_w, r_h);
+    ctx.restore();
+  return;
 }
 
-export function renderImageFullScreen(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
-  viewport: Rect | null = null) {
-  if (!ctx) return Promise.reject(`Unable to get canvas context`);
+// export function renderImageInContainer(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
+//   resizeCanvas = false) {
 
-  /**
-   * Something to remember: the offsetWidth/offsetHeight is used by amazon silk.
-   * On silk the client is 960*480 but the offset is 960*540. The actual
-   * available screen is indeed 960*540 BUT you only get it by scrolling the
-   * screen down
-   */
-  const [width, height] = getWidthAndHeight();
-  ctx.canvas.width = width;
-  ctx.canvas.height = height;
-  ctx.canvas.style.width = `${width}px`;
-  ctx.canvas.style.height = `${height}px`;
+//   if (resizeCanvas) {
+//     const [windowWidth, windowHeight] = getWidthAndHeight();
+//     const padding = 48; // 2 * 24 vertically and horizontally
+//     const vOffset = (windowWidth < 600) ? 48: 64 + padding; // App Bar changes based on window width
+//     const hOffset = padding;
+//     const width = windowWidth - hOffset;
+//     const height = windowHeight - vOffset;
+//     // TODO stop calcualting bounds twice
+//     const adjusted = calculateBounds(width, height, image.width, image.height);
+//     ctx.canvas.width = adjusted.rotate ? adjusted.height : adjusted.width;
+//     ctx.canvas.height = adjusted.rotate ? adjusted.width : adjusted.height;
+//     ctx.canvas.style.width = `${ctx.canvas.width}px`;
+//     ctx.canvas.style.height = `${ctx.canvas.height}px`;
+//   }
 
-  return renderImage(image, ctx, viewport);
-}
+//   return renderImage(image, ctx);
+// }
 
-function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
-  viewport: Rect | null = null): ImageBound {
+// export function renderImageFullScreen(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
+//   viewport: Rect | null = null) {
+//   if (!ctx) return Promise.reject(`Unable to get canvas context`);
 
-  // if we're zoomed we should use viewport width and height (not image)
-  const [width, height] = viewport ? [viewport.width, viewport.height] : [image.width, image.height];
-  const bounds = calculateBounds(ctx.canvas.width, ctx.canvas.height, width, height);
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  ctx.save();
-  ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
-  if (bounds.rotate) {
-    ctx.rotate(90 * Math.PI/180);
-  }
-  if (viewport != null) {
-    ctx.drawImage(image,
-      viewport.x, viewport.y, viewport.width, viewport.height,
-      -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);  
-  } else {
-    ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
-  }
-  ctx.restore();
-  return bounds;
-}
+//   /**
+//    * Something to remember: the offsetWidth/offsetHeight is used by amazon silk.
+//    * On silk the client is 960*480 but the offset is 960*540. The actual
+//    * available screen is indeed 960*540 BUT you only get it by scrolling the
+//    * screen down
+//    */
+//   const [width, height] = getWidthAndHeight();
+//   ctx.canvas.width = width;
+//   ctx.canvas.height = height;
+//   ctx.canvas.style.width = `${width}px`;
+//   ctx.canvas.style.height = `${height}px`;
+
+//   return renderImage(image, ctx, viewport);
+// }
+
+// function renderImage(image: HTMLImageElement, ctx: CanvasRenderingContext2D,
+//   viewport: Rect | null = null): ImageBound {
+
+//   // if we're zoomed we should use viewport width and height (not image)
+//   const [width, height] = viewport ? [viewport.width, viewport.height] : [image.width, image.height];
+//   const bounds = calculateBounds(ctx.canvas.width, ctx.canvas.height, width, height);
+//   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+//   ctx.save();
+//   ctx.translate(ctx.canvas.width/2, ctx.canvas.height/2);
+//   if (bounds.rotate) {
+//     ctx.rotate(90 * Math.PI/180);
+//   }
+//   if (viewport != null) {
+//     ctx.drawImage(image,
+//       viewport.x, viewport.y, viewport.width, viewport.height,
+//       -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);  
+//   } else {
+//     ctx.drawImage(image, -bounds.width/2, -bounds.height/2, bounds.width, bounds.height);
+//   }
+//   ctx.restore();
+//   return bounds;
+// }
