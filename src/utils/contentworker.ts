@@ -1,4 +1,4 @@
-import { Rect, containingRect, getMaxContainerSize, getScaledContainerSize, rotateBackToBackgroundOrientation } from "./geometry";
+import { Rect, getMaxContainerSize, getScaledContainerSize, rotateBackToBackgroundOrientation, rotatedWidthAndHeight } from "./geometry";
 
 interface ScaledDimensions {
   width: number;
@@ -69,14 +69,15 @@ function sizeAllCanvasses(angle: number, width: number, height: number): ScaledD
   // just establish the biggest box we can render to considering our screen and ui components
   const [contW, contH] = getMaxContainerSize(_screenW, _screenH);
 
+  //rotatedWidthAndHeight
   // rotate the full sized hidden canvas (holds the full-sized overlay)
-  const [fullRotW, fullRotH] = containingRect(angle, width, height);
+  const [fullRotW, fullRotH] = rotatedWidthAndHeight(angle, width, height);
 
   // scale the rotated full size image down be contained within our container bounds
   const [scaleContW, scaleContH] = getScaledContainerSize(contW, contH, fullRotW, fullRotH);
 
   // rotate backwards to get the original height/width scaled down (we need it to drawImage)
-  const [scaleW, scaleH] = containingRect(-angle, scaleContW, scaleContH);
+  const [scaleW, scaleH] = rotatedWidthAndHeight(-angle, scaleContW, scaleContH);
 
   // calculate pre-rotation scale
   scale = width/scaleW;

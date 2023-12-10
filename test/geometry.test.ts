@@ -2,9 +2,37 @@
  * @jest-environment jsdom
  */
 
-import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, containingRect, getScaledContainerSize, rotate, rotateBackToBackgroundOrientation} from "../src/utils/geometry";
+import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, getScaledContainerSize, rotate, rotateBackToBackgroundOrientation} from "../src/utils/geometry";
 
 describe('Geometry', () => {
+  describe('Rotation', () => {
+    it('Should rotate correctly 180', () => {
+      let [x, y] = rotate(180, 0, 0, 751, 478);
+      expect(x).toBe(751);
+      expect(y).toBe(478);
+
+      [x, y] = rotate(180, 751, 0, 751, 478);
+      expect(x).toBe(0);
+      expect(y).toBe(478);
+    });
+
+    it('Should rotate correctly 0', () => {
+      const [x, y] = rotate(0, 0, 0, 751, 478);
+      expect(x).toBe(0);
+      expect(y).toBe(0);
+    });
+
+    it('Should rotate a points back to the origin of the prerotated width', () => {
+      let x: number, y: number;
+      [x, y] = rotateBackToBackgroundOrientation(-90, 0, 4, 2, 4, 4, 2);
+      expect(x).toBe(4);
+      expect(y).toBe(2);
+      [x, y] = rotateBackToBackgroundOrientation(-180, 0, 4, 2, 4, 2, 4);
+      expect(x).toBe(2);
+      expect(y).toBe(0);
+    });
+  });
+
   describe('Calculate Bounds', () => {
     it('Should handle a perfect fit', () => {
       const result = calculateBounds(10,10,10,10);
@@ -87,6 +115,7 @@ describe('Geometry', () => {
       expect(result.rotate).toEqual(true);
     });
   });
+
   describe('Scale Selection', () => {
     it('Should scale horizontally', () => {
       const viewport: Rect = {x: 0, y: 0, width: 3, height: 3};
@@ -184,18 +213,19 @@ describe('Geometry', () => {
       // expect(Math.round(filled.y)).toBe(3113)
     });
 
-    // it('Should correctly rotate a rectangle around its center', () => {
-    //   const values = rotatedWidthAndHeight(90, 2888, 1838);
-    //   expect(values[0]).toBe(1838);
-    //   expect(values[1]).toBe(2888);
-    //   expect(values[2]).toBe(-0);
-    //   expect(values[3]).toBe(0);
-    // });
-
-    it('Should figure out the containing rectangle', () => {
-      const values = containingRect(90, 2888, 1838);
-      expect(values[0]).toBe(1838);
-      expect(values[1]).toBe(2888);      
+    it('Should figure out the rotated width and height', () => {
+      let [x, y] = rotatedWidthAndHeight(90, 2, 4);
+      expect(x).toBe(4);
+      expect(y).toBe(2);
+      [x, y] = rotatedWidthAndHeight(180, 2, 4);
+      expect(x).toBe(2);
+      expect(y).toBe(4);
+      [x, y] = rotatedWidthAndHeight(270, 2, 4);
+      expect(x).toBe(4);
+      expect(y).toBe(2);
+      [x, y] = rotatedWidthAndHeight(360, 2, 4);
+      expect(x).toBe(2);
+      expect(y).toBe(4);
     });
 
     it('Should figure out the scaled container size', () => {
@@ -203,54 +233,16 @@ describe('Geometry', () => {
       expect(w).toBe(2);
       expect(h).toBe(1);
     });
-
-    // it('Should rotate correctly... math is hard mmmmkay', () => {
-    //   const [x, y] = rotate(-90, 0, 751, 478, 751);
-    //   expect(x).toBe(751);
-    //   expect(y).toBe(478);
-    // });
-
-
-    // it('Should rotate correctly 90', () => {
-    //   const [x, y] = rotate(90, 751, 0, 751, 478);
-    //   expect(x).toBe(478);
-    //   expect(y).toBe(751);
-    // });
-
-    it('Should rotate correctly 180', () => {
-      let [x, y] = rotate(180, 0, 0, 751, 478);
-      expect(x).toBe(751);
-      expect(y).toBe(478);
-
-      [x, y] = rotate(180, 751, 0, 751, 478);
-      expect(x).toBe(0);
-      expect(y).toBe(478);
-    });
-
-    // it('Should rotate correctly 180', () => {
-    //   let [x, y] = rot(180, 0, 0, 751/2, 478);
-    //   expect(x).toBe(751);
-    //   expect(y).toBe(478);
-
-    //   [x, y] = rot(180, 751, 0, 751, 478);
-    //   expect(x).toBe(0);
-    //   expect(y).toBe(478);
-    // });
-
-    it('Should rotate correctly 0', () => {
-      const [x, y] = rotate(0, 0, 0, 751, 478);
-      expect(x).toBe(0);
-      expect(y).toBe(0);
-    });
-
-    it('Should rotate a points back to the origin of the prerotated width', () => {
-      let x: number, y: number;
-      [x, y] = rotateBackToBackgroundOrientation(-90, 0, 4, 2, 4, 4, 2);
-      expect(x).toBe(4);
-      expect(y).toBe(2);
-      [x, y] = rotateBackToBackgroundOrientation(-180, 0, 4, 2, 4, 2, 4);
-      expect(x).toBe(2);
-      expect(y).toBe(0);
-    });
   });
+
+  // describe('Rotate and Fill Viewport', () => {
+  //   beforeAll(() => {
+  //     global.innerWidth = 960;
+  //     global.innerHeight = 540;
+  //     jest.spyOn(document.documentElement, 'clientWidth', 'get').mockImplementation(() => global.innerWidth)
+  //     jest.spyOn(document.documentElement, 'clientHeight', 'get').mockImplementation(() => global.innerHeight)
+  //     jest.spyOn(document.documentElement, 'offsetWidth', 'get').mockImplementation(() => global.innerWidth)
+  //     jest.spyOn(document.documentElement, 'offsetHeight', 'get').mockImplementation(() => global.innerHeight)
+  //   });
+  // });
 });

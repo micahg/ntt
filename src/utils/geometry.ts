@@ -113,7 +113,7 @@ export function rotate(angle: number, x: number, y: number, width: number, heigh
   const x1 = cosx + siny + c_x;
   const y1 = cosy - sinx + c_y;
 
-  return [x1, y1]
+  return [x1, y1];
 }
 
 /**
@@ -154,28 +154,13 @@ export function rotateRect(angle: number, rect: Rect, width: number, height: num
  * @returns an array 
  */
 export function rotatedWidthAndHeight(angle: number, width: number, height: number) {
-  // TODO this doesn't feel right
-  const [x1, y1] = rotate(angle, 0, 0, width, height);
-  const [x2, y2] = rotate(angle, width, 0, width, height);
-  const [x3, y3] = rotate(angle, width, height, width, height);
-  const [x4, y4] = rotate(angle, 0, height, width, height);
-  const maxX = Math.round(Math.max(x1, x2, x3, x4));
-  const maxY = Math.round(Math.max(y1, y2, y3, y4));
-  const minX = Math.round(Math.min(x1, x2, x3, x4));
-  const minY = Math.round(Math.min(y1, y2, y3, y4));
-  return [maxX, maxY, minX, minY]
-}
-
-/**
- * Determine the rectangle that holds a rotated rectangle
- * @param angle 
- * @param width 
- * @param height 
- * @returns 
- */
-export function containingRect(angle: number, width: number, height: number) {
-  const values = rotatedWidthAndHeight(angle, width, height);
-  return [values[0] - values[2], values[1] - values[3]];
+  //https://stackoverflow.com/questions/69963451/how-to-get-height-and-width-of-element-when-it-is-rotated/69966021#69966021
+  const r = Math.PI * (angle/180);
+  const cos = Math.round(Math.cos(r));
+  const sin = Math.round(Math.sin(r));
+  const h = Math.abs((width * sin) + (height * cos));
+  const w = Math.abs((height * sin) + (width * cos));
+  return [w,h];
 }
 
 export function scaleSelection(selection: Rect, viewport: Rect, width: number, height: number) {
@@ -187,6 +172,33 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
     x: selection.x * h_scale, y: selection.y * v_scale,
     width: selection.width * h_scale, height: selection.height * v_scale,
   };
+}
+
+/**
+ * rotate and fill viewport to fit screen/window/canvas
+ * @param screen screen [width, height]
+ * @param image image [width, height] (actual)
+ * @param oImage iamge [width, height] (original)
+ * @param angle angle of rotation
+ * @param viewport viewport {x, y, w, h}
+ * @returns 
+ */
+export function rotateAndFillViewport(screen: number[], image: number[], oImage: number[], angle: number, viewport: Rect) {
+  const [iW, iH] = image;
+  const [oW, oH] = oImage
+  if (viewport.x === 0 && viewport.y === 0 && viewport.width === oW && viewport.height === oH) {
+    return getRect(0, 0, iW, iH);
+  }
+
+  // calculate coefficient for browser-resized images
+  // We shouldn't need to square (**2) the scaling value; however, I
+  // think due to a browser bug, squaring silkScale below is what works.
+  // FWIW, the bug was filed here:
+  // https://bugs.chromium.org/p/chromium/issues/detail?id=1494756
+  const silkScale = (iW/oW)**2;
+  // const p1 = viewport
+
+  return silkScale;
 }
 
 /**
@@ -203,7 +215,7 @@ export function scaleSelection(selection: Rect, viewport: Rect, width: number, h
  */
 export function fillToAspect(selection: Rect | null, tableBGRect: Rect, width: number, height: number) {
   if (!selection) return getRect(0, 0, width, height);
-  
+
   // We need to remember that some browsers (Amazon Silk on a firestick) MAY
   // shrink your image without telling you (probably due to ram constraints on
   // big images). In such situations (all situations consequently) we need to
