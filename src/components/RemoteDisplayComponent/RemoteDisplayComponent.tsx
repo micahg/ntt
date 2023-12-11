@@ -73,9 +73,9 @@ const RemoteDisplayComponent = () => {
   /**
    * Render table data
    */
-  const processTableData = useCallback((js: any, apiUrl: string, content: CanvasRenderingContext2D, overlay: CanvasRenderingContext2D) => {
+  const processTableData = useCallback((js: WSStateMessage, apiUrl: string, content: CanvasRenderingContext2D, overlay: CanvasRenderingContext2D) => {
     // ignore null state -- happens when server has no useful state loaded yet
-    if (js.state === null) return;
+    if (!js.state) return;
 
     if (!js.state.viewport) {
       console.error('Unable to render without viewport');
