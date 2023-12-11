@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { Rect, calculateBounds, scaleSelection, fillToAspect, rotatedWidthAndHeight, getScaledContainerSize, rotateBackToBackgroundOrientation, rotateAndFillViewport, cb} from "../src/utils/geometry";
+import { Rect, calculateBounds, scaleSelection, rotatedWidthAndHeight, getScaledContainerSize, rotateBackToBackgroundOrientation, fillRotatedViewport } from "../src/utils/geometry";
 
 describe('Geometry', () => {
   describe('Rotation', () => {
@@ -20,87 +20,46 @@ describe('Geometry', () => {
   describe('Calculate Bounds', () => {
     it('Should handle a perfect fit', () => {
       const result = calculateBounds(10,10,10,10);
-      expect(result.top).toEqual(0);
-      expect(result.left).toEqual(0);
+      expect(result.y).toEqual(0);
+      expect(result.x).toEqual(0);
       expect(result.width).toEqual(10);
       expect(result.height).toEqual(10);
-      expect(result.rotate).toEqual(false);
     });
   
     it('Should handle a wide display/wide image', () => {
       const result = calculateBounds(20,10,10,5);
-      expect(result.top).toEqual(0);
-      expect(result.left).toEqual(0);
+      expect(result.y).toEqual(0);
+      expect(result.x).toEqual(0);
       expect(result.width).toEqual(20);
       expect(result.height).toEqual(10);
-      expect(result.rotate).toEqual(false);
     });
   
     it('Should handle wide display with larger aspect height but wide image', () => {
       const result = calculateBounds(20, 10, 10, 8);
-      expect(result.left).toEqual(3.75);
-      expect(result.top).toEqual(0);
-      expect(result.width).toEqual(12.5);
+      expect(result.x).toEqual(4);
+      expect(result.y).toEqual(0);
+      expect(result.width).toEqual(13);
       expect(result.height).toEqual(10);
-      expect(result.rotate).toEqual(false);
     });
   
     it('Should handle wide display with smaller aspect height but wide image', () => {
       const result = calculateBounds(20, 10, 10, 4);
-      expect(result.left).toEqual(0);
-      expect(result.top).toEqual(1);
+      expect(result.x).toEqual(0);
+      expect(result.y).toEqual(1);
       expect(result.width).toEqual(20);
       expect(result.height).toEqual(8);
-      expect(result.rotate).toEqual(false);
     });
   
     it('Should handle wide display with a larger wide image with a smaller aspect height but wide image', () => {
       const result = calculateBounds(20, 10, 30, 12);
-      expect(result.left).toEqual(0);
-      expect(result.top).toEqual(1);
+      expect(result.x).toEqual(0);
+      expect(result.y).toEqual(1);
       expect(result.width).toEqual(20);
       expect(result.height).toEqual(8);
-      expect(result.rotate).toEqual(false);
     });
   
-    it ('Should rotate a tall image to a wide display', () => {
-      const result = calculateBounds(20, 10, 10, 20);
-      expect(result.left).toEqual(0);
-      expect(result.top).toEqual(0);
-      expect(result.width).toEqual(10);
-      expect(result.height).toEqual(20);
-      expect(result.rotate).toEqual(true);
-    });
-  
-    it ('Should rotate and scale a tall image to a wide display', () => {
-      const result = calculateBounds(20, 10, 5, 10);
-      expect(result.left).toEqual(0);
-      expect(result.top).toEqual(0);
-      expect(result.width).toEqual(10);
-      expect(result.height).toEqual(20);
-      expect(result.rotate).toEqual(true);
-    });
-  
-    it ('Should rotate and scale a tall image with a different aspect ratio to a wide display', () => {
-      const result = calculateBounds(20, 10, 8, 10);
-      expect(result.left).toEqual(3.75);
-      expect(result.top).toEqual(0);
-      expect(result.width).toEqual(10);
-      expect(result.height).toEqual(12.5);
-      expect(result.rotate).toEqual(true);
-    });
-  
-    it('Should rotate a larger wide image with a smaller aspect height but wide image', () => {
-      const result = calculateBounds(20, 10, 12, 30);
-      expect(result.left).toEqual(0);
-      expect(result.top).toEqual(1);
-      expect(result.width).toEqual(8);
-      expect(result.height).toEqual(20);
-      expect(result.rotate).toEqual(true);
-    });
-
     it('Brain Melting', () => {
-      const result = cb(1422, 647, 4160, 2008);
+      const result = calculateBounds(1422, 647, 4160, 2008);
       expect(result.x).toEqual(41);
       expect(result.y).toEqual(0);
       expect(result.width).toEqual(1340);
@@ -108,7 +67,7 @@ describe('Geometry', () => {
     });
 
     it('Brain Melting 2', () => {
-      const result = cb(1422, 647, 5200, 2008);
+      const result = calculateBounds(1422, 647, 5200, 2008);
       expect(result.x).toEqual(0);
       expect(result.y).toEqual(49);
       expect(result.width).toEqual(1422);
@@ -161,57 +120,6 @@ describe('Geometry', () => {
       jest.spyOn(document.documentElement, 'offsetWidth', 'get').mockImplementation(() => global.innerWidth)
       jest.spyOn(document.documentElement, 'offsetHeight', 'get').mockImplementation(() => global.innerHeight)
     })
-    it('Should fill a square selection', () => {
-      const selection: Rect = {x: 2000, y: 1000, width: 1000, height: 500}
-      const table: Rect = { x: 0, y:0, width: 6750, height: 4950};
-      const filled = fillToAspect(selection, table, table.width, table.height);
-      expect(filled).not.toBeNull();
-      expect(filled.x).toBe(2000);
-      expect(filled.width).toBe(1000);
-      expect(filled.height).toBe(562.5)
-      expect(filled.y).toBe(968.75)
-    });
-
-    it('Should Scale Horizontally With A Reduced Image Size', () => {
-      const width = 5063;
-      const height = 3713;
-      const selection: Rect = {x: 5316, y: 4010, width: 1422, height: 939}
-      const table: Rect = { x: 0, y:0, width: 6750, height: 4950};
-      const filled = fillToAspect(selection, table, width, height);
-      expect(filled).not.toBeNull();
-      // these values are incorrect and work around a browser issue with
-      // drawImage... I think.
-      expect(Math.round(filled.x)).toBe(2858);
-      expect(Math.round(filled.width)).toBe(939);
-      expect(Math.round(filled.height)).toBe(528)
-      expect(Math.round(filled.y)).toBe(2256)
-      // these are the correct values
-      // expect(Math.round(filled.x)).toBe(3811);
-      // expect(Math.round(filled.width)).toBe(1252);
-      // expect(Math.round(filled.height)).toBe(704)
-      // expect(Math.round(filled.y)).toBe(3008)
-    });
-
-    it('Should Scale Vertically With A Reduced Image Size', () => {
-      const width = 5063;
-      const height = 3713;
-      const selection: Rect = {x: 5316, y: 4449, width: 1422, height: 500}
-      const table: Rect = { x: 0, y:0, width: 6750, height: 4950};
-      const filled = fillToAspect(selection, table, width, height);
-      expect(filled).not.toBeNull();
-      // these values are incorrect and work around a browser issue with
-      // drawImage... I think.
-      expect(Math.round(filled.x)).toBe(2991);
-      expect(Math.round(filled.width)).toBe(800);
-      expect(Math.round(filled.height)).toBe(450)
-      expect(Math.round(filled.y)).toBe(2335)
-
-      // these are the actual values
-      // expect(Math.round(filled.x)).toBe(3987);
-      // expect(Math.round(filled.width)).toBe(1067);
-      // expect(Math.round(filled.height)).toBe(600)
-      // expect(Math.round(filled.y)).toBe(3113)
-    });
 
     it('Should figure out the rotated width and height', () => {
       let [x, y] = rotatedWidthAndHeight(90, 2, 4);
@@ -241,7 +149,7 @@ describe('Geometry', () => {
       const image = [2008, 4160];
       const angle = 90;
       const viewport = {x: 100, y: 100, width: 100, height: 100};
-      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      const result = fillRotatedViewport(screen, image, image, angle, viewport);
       expect(result.width).toBe(100);
       expect(result.height).toBe(178);
       expect(result.x).toBe(100);
@@ -253,7 +161,7 @@ describe('Geometry', () => {
       const image = [2008, 4160];
       const angle = 90;
       const viewport = {x: 100, y: 100, width: 100, height: 10};
-      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      const result = fillRotatedViewport(screen, image, image, angle, viewport);
       expect(result.width).toBe(100);
       expect(result.height).toBe(178);
       expect(result.x).toBe(100);
@@ -265,7 +173,7 @@ describe('Geometry', () => {
       const image = [2008, 4160];
       const angle = 90;
       const viewport = { x: 300, y: 1294, width: 72, height: 448 }
-      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      const result = fillRotatedViewport(screen, image, image, angle, viewport);
       expect(result.width).toBe(202);
       expect(result.height).toBe(448);
       expect(result.x).toBe(235);
@@ -277,7 +185,7 @@ describe('Geometry', () => {
       const image = [2888, 1838];
       const angle = 0;
       const viewport = { x: 0, y: 0, width: 2888, height: 1838 }
-      const result = rotateAndFillViewport(screen, image, image, angle, viewport);
+      const result = fillRotatedViewport(screen, image, image, angle, viewport);
       expect(result.width).toBe(2888);
       expect(result.height).toBe(1838);
       expect(result.x).toBe(0);

@@ -2,7 +2,7 @@ import { createRef, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
 import { loadImage, /*renderImageFullScreen,*/ renderViewPort } from '../../utils/drawing';
-import { Rect, getWidthAndHeight, rotateAndFillViewport } from '../../utils/geometry';
+import { Rect, getWidthAndHeight, fillRotatedViewport } from '../../utils/geometry';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 
@@ -116,52 +116,15 @@ const RemoteDisplayComponent = () => {
       // const bgVPnoTaint = fillToAspect(viewport, tableBGSize, tableBGSize.width, tableBGSize.height);
       // const bgVP = fillToAspect(viewport, tableBGSize, bgImg.width, bgImg.height);
       const oDimensions = [tableBGSize.width, tableBGSize.height]
-      const bgVP = rotateAndFillViewport([width, height], [bgImg.width, bgImg.height], oDimensions, angle, viewport);
+      const bgVP = fillRotatedViewport([width, height], [bgImg.width, bgImg.height], oDimensions, angle, viewport);
       if (overlayUri) {
         loadImage(overlayUri).then(ovrImg => {
-          /* REALLY IMPORTANT - base overlay on the BG Viewport as it can shift the
-           * image. If the zoomed selection is so small that we render negative space
-           * (eg beyond the bordres) the viewport shifts to render from the border */
-          
-          // start assuming no rotation (the easy case)
-
-          // TODO detect portrait - ALL OF THIS CODE assumes editor/overlay are landsacpe
-          // let [x, y, w, h] = [0, 0, 0, 0]
-          // if (bgImg.width < bgImg.height) {
-          //   [x, y] = rotate(90, bgVPnoTaint.x, bgVPnoTaint.y, tableBGSize.width, tableBGSize.height);
-          //   let [x2, y2] = rotate(90, bgVPnoTaint.x + bgVPnoTaint.width, bgVPnoTaint.y + bgVPnoTaint.height,
-          //                         tableBGSize.width, tableBGSize.height);
-          //   [x, x2] = [Math.min(x, x2), Math.max(x, x2)];
-          //   [y, y2] = [Math.min(y, y2), Math.max(y, y2)];
-          //   w = x2 - x;
-          //   h = y2 - y;
-          //   const scale = ovrImg.width/tableBGSize.height;
-          //   x *= scale;
-          //   y *= scale;
-          //   w *= scale;
-          //   h *= scale;
-          // } else {
-          //   const scale = tableBGSize.width/ovrImg.width;
-          //   x = bgVPnoTaint.x / scale;
-          //   y = bgVPnoTaint.y / scale;
-          //   w = bgVPnoTaint.width / scale;
-          //   h = bgVPnoTaint.height / scale;
-          // }
-          // const olVP = {x: x, y: y, width: w, height: h};
-          // renderImageFullScreen(ovrImg, overlay, olVP);
-          // still calculate separately because its possible only one image was silk scaled
-
-          const ovVP = rotateAndFillViewport([width, height], [ovrImg.width, ovrImg.height], oDimensions, angle, viewport);
-          // renderViewPort(overlay, ovrImg, angle, ovVP);
-          // renderViewPort(content, bgImg, angle, bgVP);
+          const ovVP = fillRotatedViewport([width, height], [ovrImg.width, ovrImg.height], oDimensions, angle, viewport);
           renderViewPort(overlay, ovrImg, angle, ovVP);
           renderViewPort(content, bgImg, angle, bgVP);
-          // renderImageFullScreen(ovrImg, overlay, ovVP);
-          // renderImageFullScreen(bgImg, content, bgVP);
         }).catch(err => console.error(`Error loading overlay image ${overlayUri}: ${JSON.stringify(err)}`));
       } else {
         renderViewPort(content, bgImg, angle, bgVP);
-        // renderImageFullScreen(bgImg, content, bgVP);
       }
     }).catch(err => console.error(`Error loading background image: ${JSON.stringify(err)}`));
   }, []);
