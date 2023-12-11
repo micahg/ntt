@@ -10,6 +10,24 @@ import styles from './RemoteDisplayComponent.module.css';
 import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 
+/**
+ * Table state sent to display client by websocket. A partial Scene.
+ */
+export interface TableState {
+  overlay?: string;
+  background?: string;
+  viewport: Rect;
+  angle: number;
+  backgroundSize?: Rect;
+}
+
+interface WSStateMessage {
+  method?: string,
+  info?: string,
+  state?: TableState,
+  tsLocal?: number,
+}
+
 const RemoteDisplayComponent = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -23,7 +41,7 @@ const RemoteDisplayComponent = () => {
   const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [overlayCtx, setOverlayCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [connected, setConnected] = useState<boolean|undefined>();
-  const [tableData, setTableData] = useState<any>();
+  const [tableData, setTableData] = useState<WSStateMessage>();
   const [authTimer, setAuthTimer] = useState<NodeJS.Timer>();
   const [wsTimer, setWSTimer] = useState<NodeJS.Timer>();
   const [serverInfo, setServerInfo] = useState<string>();
@@ -35,7 +53,7 @@ const RemoteDisplayComponent = () => {
    */
   const processWSMessage = (data: string) => {
     try {
-      const js = JSON.parse(data);
+      const js: WSStateMessage = JSON.parse(data);
       js.tsLocal = Date.now();
       if (js.method === 'error') {
         if (js.info === 'NO_SCENE') setServerInfo('No scene information. Please ask your GM to set a background and send and update');
