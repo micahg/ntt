@@ -1,6 +1,7 @@
 import { AuthState, getAuthClient, getAuthConfig, getAuthState, getDeviceCode, pollDeviceCode } from '../utils/auth';
 import { Middleware } from 'redux';
 import axios from 'axios';
+import { AuthConfig } from '../reducers/EnvironmentReducer';
 
 export const EnvironmentMiddleware: Middleware = storeAPI => next => action => {
   if (action.type === 'environment/config') {
@@ -66,7 +67,7 @@ export const EnvironmentMiddleware: Middleware = storeAPI => next => action => {
     next({type: 'environment/authstarted', payload: true});
 
     getAuthConfig(storeAPI)
-      .then(data => getDeviceCode(data))
+      .then(data => getDeviceCode(data as AuthConfig))
       .then(value => next({'type': action.type, 'payload': value}))
       .catch(err => console.error(`Device Code Authentication Failed: ${JSON.stringify(err)}`))
   } else if (action.type === 'environment/devicecodepoll') {

@@ -2,6 +2,15 @@ import { PayloadAction } from "@reduxjs/toolkit";
 import { AuthState } from "../utils/auth";
 import { Auth0Client } from "@auth0/auth0-spa-js";
 
+export interface AuthConfig {
+  domain: string,
+  clientId: string,
+  authorizationParams: {
+      audience: string,
+      redirect_uri: string,
+  },
+}
+
 export type EnvironmentReducerState = {
   readonly api: string | undefined;
   readonly ws: string | undefined;

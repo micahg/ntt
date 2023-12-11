@@ -2,6 +2,7 @@ import { Auth0Client, createAuth0Client } from "@auth0/auth0-spa-js";
 import { AnyAction, Dispatch, MiddlewareAPI } from "@reduxjs/toolkit";
 import axios from "axios";
 import { AppReducerState } from "../reducers/AppReducer";
+import { AuthConfig } from "../reducers/EnvironmentReducer";
 
 /**
  * Authorization state
@@ -13,23 +14,23 @@ export interface AuthState {
   auth: boolean;
   // flag indicating if authorization explicitly disabled
   noauth?: boolean;
-  config?: any;
+  config?: unknown;
 }
 
 /**
- * Step 1 - get your authentication configuraiton. Remember, its up to the 
+ * Step 1 - get your authentication configuration. Remember, its up to the 
  * middleware to set this. If you come back here hopefully you read this and
  * aren't tempted (again) to try to set the state from here.
  * @param store 
  * @param next 
  * @returns 
  */
-export function getAuthConfig(store: MiddlewareAPI<Dispatch<AnyAction>>): Promise<any> {
+export function getAuthConfig(store: MiddlewareAPI<Dispatch<AnyAction>>): Promise<AuthState|AuthConfig> {
   return new Promise((resolve, reject) => {
 
     // ensure we have an authorization state
     const authConfig = store.getState().environment.authConfig;
-    if (authConfig !== undefined) return resolve(authConfig);
+    if (authConfig !== undefined) return resolve(authConfig); // AuthConfig
 
     // get the client auth.json and hte server noauth setting. If the server is
     // running in auth disabled mode, /noauth will return {"noauth": true}
@@ -42,7 +43,7 @@ export function getAuthConfig(store: MiddlewareAPI<Dispatch<AnyAction>>): Promis
         noauth: noauth.data.noauth,
         config: auth.data,
       };
-      return resolve(data);
+      return resolve(data); // AuthState
     }).catch(err => reject(err));
   });
 }
@@ -68,7 +69,7 @@ export function getAuthState(client: Auth0Client): Promise<AuthState> {
     client.isAuthenticated().then(authn => {
       const query = window.location.search;
 
-      // if we're alread authenticated we can just go get a token
+      // if we're already authenticated we can just go get a token
       if (authn) return resolve({client: client, auth: true});
 
       // if we have a auth code callback handle it
@@ -95,12 +96,12 @@ export function getAuthState(client: Auth0Client): Promise<AuthState> {
  * @param client 
  * @returns 
  */
-export function getToken(state: AppReducerState, headers?: any): Promise<any> {
-  if (!headers) headers = {};
+export function getToken(state: AppReducerState, headers?: {[key: string]: string}): Promise<{[key: string]: string}> {
+  const res = headers || {};
 
   if (state.environment.noauth) {
-    headers['Authorization'] = `Bearer NOAUTH`;
-    return Promise.resolve(headers);
+    res['Authorization'] = `Bearer NOAUTH`;
+    return Promise.resolve(res);
   }
 
   const client = state.environment.authClient;
@@ -110,14 +111,15 @@ export function getToken(state: AppReducerState, headers?: any): Promise<any> {
   return new Promise((resolve, reject) => {
     client.getTokenSilently()
       .then(value => {
-        headers['Authorization'] = `Bearer ${value}`;
-        resolve(headers);
+        res['Authorization'] = `Bearer ${value}`;
+        resolve(res);
       })
       .catch(err => reject(err));
   });
 }
 
-export function getDeviceCode(data: any) {
+export function getDeviceCode(data: AuthConfig) {
+  console.log(data);
   return new Promise((resolve, reject) => {
     const params: URLSearchParams = new URLSearchParams({
       'client_id': data.clientId,
