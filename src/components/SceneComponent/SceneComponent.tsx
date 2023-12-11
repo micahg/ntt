@@ -81,6 +81,9 @@ const SceneComponent = ({populateToolbar, redrawToolbar, scene, editScene}: Scen
 
   const updateScene = () => {
     setCreating(true);
+    // if we are changing any images reset the viewport
+    const rect = {x: 0, y: 0, width: playerWH[0], height: playerWH[1]};
+    const vpData = {'backgroundSize': rect, 'viewport': rect};
     if (scene) {
       // TODO clear overlay
       if (playerFile && playerUpdated) {
@@ -91,12 +94,13 @@ const SceneComponent = ({populateToolbar, redrawToolbar, scene, editScene}: Scen
         dispatch({type: 'content/detail', payload: detailFile});
         setDetailUpdated(false);
       }
+      dispatch({type: 'content/zoom', payload: vpData});
       if (editScene) editScene();
       return;
     }
     if (!name) return; // TODO ERROR
     if (!playerFile) return; // TODO ERROR
-    const data: NewSceneBundle = { description: name, player: playerFile, detail: detailFile};
+    const data: NewSceneBundle = { description: name, player: playerFile, detail: detailFile, viewport: vpData};
     dispatch({type: 'content/createscene', payload: data});
   }
 

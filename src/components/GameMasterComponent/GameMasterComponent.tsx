@@ -133,7 +133,7 @@ const GameMasterComponent = () => {
   }, [dispatch, noauth, auth, authClient])
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', width: '100vw', height: '100vh'}}>
       <CssBaseline />
       <GameMasterAppBar position="fixed" open={open}>
         <Toolbar>

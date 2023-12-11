@@ -1,12 +1,12 @@
 import React, { RefObject, createRef, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, getRect, renderImageInContainer } from '../../utils/drawing';
-import { rotateRect, scaleSelection } from '../../utils/geometry';
+import { getRect } from '../../utils/drawing';
+import { getWidthAndHeight } from '../../utils/geometry';
 import { MouseStateMachine } from '../../utils/mousestatemachine';
 import { setCallback } from '../../utils/statemachine';
 import styles from './ContentEditor.module.css';
-import { Opacity, ZoomIn, ZoomOut, LayersClear, Sync, Map, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
+import { RotateRight, Opacity, ZoomIn, ZoomOut, LayersClear, Sync, Map, Palette, VisibilityOff, Visibility } from '@mui/icons-material';
 import { GameMasterAction } from '../GameMasterActionComponent/GameMasterActionComponent';
 import { Box, Menu, MenuItem, Popover, Slider } from '@mui/material';
 import { setupOffscreenCanvas } from '../../utils/offscreencanvas';
@@ -35,11 +35,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   const colorInputRef = createRef<HTMLInputElement>();
   
   const [internalState, ] = useState<InternalState>({zoom: false, obscure: false, color: createRef()});
-  const [contentCtx, setContentCtx] = useState<CanvasRenderingContext2D|null>(null);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
-  const [backgroundSize, setBackgroundSize] = useState<number[]|null>(null);
+  const [canvasSize, setCanvasSize] = useState<number[]|null>(null); 
+  const [imageSize, setImageSize] = useState<number[]|null>(null); 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [bgRev, setBgRev] = useState<number>(0);
   const [ovRev, setOvRev] = useState<number>(0);
@@ -72,26 +72,14 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
 
   const sceneManager = useCallback(() => {if (manageScene) manageScene(); }, [manageScene]);
 
-  const zoomIn = useCallback((canvas: HTMLCanvasElement, bgSize: number[],
-                  x1: number, y1: number, x2: number, y2: number) => {
+  const rotateClockwise = useCallback(() => {
     if (!worker) return;
-    let sel = getRect(x1, y1, x2, y2);
-    // the viewport (vp) in this case is not relative to the background image
-    // size, but the size of the canvas upon which it is painted
-    let vp = getRect(0,0, canvas.width, canvas.height);
-    const [w, h] = bgSize;
-
-    // rotate the selection
-    // TODO this doesn't need rotation in portrait
-    if (w < h) {
-      sel = rotateRect(-90, sel, vp.width, vp.height);
-      vp = getRect(0,0, canvas.height, canvas.width);
-    }
-    const selection = scaleSelection(sel, vp, w, h);
-    dispatch({type: 'content/zoom', payload: {'viewport': selection}});
-    worker.postMessage({cmd: 'clearselection'});
-    sm.transition('wait');
-  }, [dispatch, worker]);
+    if (!scene) return;
+    const angle = ((scene.angle || 0) + 90) % 360;
+    worker.postMessage({cmd: 'rotate', angle: angle});
+    // angle is part of the viewport call
+    dispatch({type: 'content/zoom', payload: {angle: angle}});
+  }, [dispatch, worker, scene])
 
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
@@ -144,6 +132,11 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     if (evt.data.cmd === 'overlay') {
       setOvRev(ovRev + 1);
       dispatch({type: 'content/overlay', payload: evt.data.blob})
+    } else if (evt.data.cmd === 'viewport') {
+      dispatch({type: 'content/zoom', payload: {'viewport': evt.data.viewport}});
+    } else if (evt.data.cmd === 'initialized') {
+      setCanvasSize([evt.data.width, evt.data.height]);
+      setImageSize([evt.data.fullWidth, evt.data.fullHeight]);
     }
   }, [dispatch, ovRev]);
 
@@ -168,42 +161,35 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       { icon: Visibility,    tooltip: "Reveal",                    hidden: () => false,               disabled: () => !internalState.obscure, callback: () => sm.transition('reveal')},
       { icon: ZoomIn,        tooltip: "Zoom In",                   hidden: () => internalState.zoom,  disabled: () => !internalState.obscure, callback: () => sm.transition('zoomIn')},
       { icon: ZoomOut,       tooltip: "Zoom Out",                  hidden: () => !internalState.zoom, disabled: () => false,                  callback: () => sm.transition('zoomOut')},
-      { icon: Opacity,       tooltip: "Opacity",                   hidden: () => false,               disabled: () => internalState.obscure,  callback: (evt) => gmSelectOpacityMenu(evt)}
+      { icon: Opacity,       tooltip: "Opacity",                   hidden: () => false,               disabled: () => internalState.obscure,  callback: (evt) => gmSelectOpacityMenu(evt)},
+      { icon: RotateRight,   tooltip: "Rotate",                    hidden: () => false,               disabled: () => internalState.obscure,  callback: () => sm.transition('rotateClock')},
     ];
     populateToolbar(actions);
     setToolbarPopulated(true);
   }, []);// eslint-disable-line react-hooks/exhaustive-deps
 
-  // if we don't have a canvas OR have already set context, then bail
   useEffect(() => {
-    if (!contentCanvasRef.current || contentCtx != null) return;
-    setContentCtx(contentCanvasRef.current.getContext('2d', { alpha: false }));
-  }, [contentCanvasRef, contentCtx]);
-
-  useEffect(() => {
-    if (!scene || !scene.viewport) return;
+    if (!scene || !scene.viewport || !scene.backgroundSize) return;
     // if (!viewport) return;
-    if (!backgroundSize) return;
+    if (!canvasSize) return;
     if (!redrawToolbar) return;
+
     const v = scene.viewport;
-    const [w, h] = backgroundSize;
-    const zoomedOut: boolean = (v.x === 0 && v.y === 0 && w === v.width && h === v.height);
-    // if zoomed out and in then state changed.... think about it man...
-    // if (zoomedOut !== zoomedIn) return;
-    // setZoomedIn(!zoomedOut);
+    const bg = scene.backgroundSize;
+    // need to ignore rotat`ion
+    const zoomedOut = (v.x === bg.x && v.y === bg.y && v.width === bg.width && v.height === bg.height);
     if (zoomedOut !== internalState.zoom) return;
     internalState.zoom = !zoomedOut;
     redrawToolbar();
-
     sm.transition('wait');
-  }, [scene, backgroundSize, internalState, redrawToolbar]);
+  }, [scene, canvasSize, internalState, redrawToolbar]);
 
 
   useEffect(() => {
     if (!overlayCanvasRef.current) return;
-    if (!backgroundSize || !backgroundSize.length) return;
+    if (!canvasSize || !canvasSize.length) return;
+    if (!imageSize || !imageSize.length) return;
     if (!worker) return;
-    const overlayCanvas = overlayCanvasRef.current;
 
     setCallback(sm, 'wait', () => {
       sm.resetCoordinates();
@@ -236,10 +222,12 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       sm.transition('wait');
     });
     setCallback(sm, 'zoomIn', () => {
-      zoomIn(overlayCanvas, backgroundSize, sm.x1(), sm.y1(), sm.x2(), sm.y2())
+      if (!worker) return;
+      const sel = getRect(sm.x1(), sm.y1(), sm.x2(), sm.y2());
+      worker.postMessage({cmd: 'zoom', rect: sel});
     });
     setCallback(sm, 'zoomOut', () => {
-      const imgRect = getRect(0, 0, backgroundSize[0], backgroundSize[1]);
+      const imgRect = getRect(0, 0, imageSize[0], imageSize[1]);
       dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});  
     });
     setCallback(sm, 'complete', () => {
@@ -275,30 +263,32 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     setCallback(sm, 'update_render_opacity', (args) => worker.postMessage({cmd: 'opacity', opacity: args[0]}));
 
     sm.setMoveCallback(selectOverlay);
-    // sm.setStartCallback(storeOverlay);
     setCallback(sm, 'push', () => dispatch({type: 'content/push'}));
     setCallback(sm, 'clear', () => {
       worker.postMessage({cmd: 'clear'});
       sm.transition('done');
     });
+    setCallback(sm, 'rotate_clock', () => {
+      rotateClockwise();
+      sm.transition('done');
+    })
 
     overlayCanvasRef.current.addEventListener('mousedown', (evt: MouseEvent) => sm.transition('down', evt));
     overlayCanvasRef.current.addEventListener('mouseup', (evt: MouseEvent) => sm.transition('up', evt));
     overlayCanvasRef.current.addEventListener('mousemove', (evt: MouseEvent) => sm.transition('move', evt));
-  }, [backgroundSize, dispatch, overlayCanvasRef, sceneManager, selectOverlay, updateObscure, worker, zoomIn]);
+  }, [canvasSize, dispatch, imageSize, overlayCanvasRef, rotateClockwise, sceneManager, selectOverlay, updateObscure, worker]);
 
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
    * when we don't have to. We should only repaint when a scene changes OR an asset version has changed
-   * 
-   * TODO - move the background into its own useEffect and just render it in a div using src=stateValue
    */
   useEffect(() => {
-    if (!apiUrl || !scene || !contentCtx || !overlayCanvasRef?.current || !fullCanvasRef?.current) return;
+    if (!apiUrl || !scene || !contentCanvasRef?.current || !overlayCanvasRef?.current || !fullCanvasRef?.current) return;
     
     // get the detailed or player content 
     const [bRev, bContent] = [scene.detailContentRev || scene.playerContentRev || 0,  scene.detailContent || scene.playerContent];
     const [oRev, oContent] = [scene.overlayContentRev || 0, scene.overlayContent]
+    const backgroundCanvas: HTMLCanvasElement = contentCanvasRef.current;
     const overlayCanvas: HTMLCanvasElement = overlayCanvasRef.current;
     const fullCanvas: HTMLCanvasElement = fullCanvasRef.current;
 
@@ -322,32 +312,21 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
     // if we have nothing new to draw then cheese it
     if (!drawBG && !drawOV) return;
 
-    const ovUrl = drawOV ? `${apiUrl}/${oContent}` : undefined;
-    const bgPromise = drawBG ? loadImage(`${apiUrl}/${bContent}`) : Promise.resolve(null);
-    bgPromise.then(bg => {
-      if (bg) {
-        setBackgroundSize([bg.width, bg.height]);
-        // if the scene hasn't set a viewport, default to entire background
-        if (!scene.viewport) {
-          const imgRect = getRect(0, 0, bg.width, bg.height);
-          dispatch({type: 'content/zoom', payload: {'backgroundSize': imgRect, 'viewport': imgRect}});
-        }
-        renderImageInContainer(bg, contentCtx, true)
-        // TODO find a non-hacky way to do this -- maybe when you conver the bg canvas to a div
-        const [w,h] = bg.height > bg.width ? [bg.height, bg.width] : [bg.width, bg.height];
+    if (drawBG) {
+      const ovUrl = drawOV ? `${apiUrl}/${oContent}` : undefined;
+      const bgUrl = drawBG ? `${apiUrl}/${bContent}` : undefined;
 
-        // hencefourth canvas is transferred -- this doesn't take effect until the next render
-        // so the on this pass it is false when passed to setCanvassesTransferred even if set
-        console.log(`xfer status ${canvassesTransferred}`);
-        setCanvassesTransferred(true);
-        const wrkr = setupOffscreenCanvas(overlayCanvas, fullCanvas, contentCtx.canvas.width,
-                             contentCtx.canvas.height, w, h, canvassesTransferred);
-        setWorker(wrkr);
-        wrkr.onmessage = handleWorkerMessage;
-        if (ovUrl) wrkr.postMessage({cmd: 'load', url: ovUrl});
-      }
-    });
-  }, [apiUrl, bgRev, canvassesTransferred, contentCtx, dispatch, fullCanvasRef, handleWorkerMessage, ovRev, overlayCanvasRef, scene, sceneId])
+      const angle = scene.angle || 0;
+      const [scrW, scrH] = getWidthAndHeight();
+
+      // hencefourth canvas is transferred -- this doesn't take effect until the next render
+      // so the on this pass it is false when passed to setCanvassesTransferred even if set
+      setCanvassesTransferred(true);
+      const wrkr = setupOffscreenCanvas(backgroundCanvas, overlayCanvas, fullCanvas, canvassesTransferred, angle, scrW, scrH, bgUrl, ovUrl);
+      setWorker(wrkr);
+      wrkr.onmessage = handleWorkerMessage;
+    }
+  }, [apiUrl, bgRev, canvassesTransferred, contentCanvasRef, fullCanvasRef, handleWorkerMessage, ovRev, overlayCanvasRef, scene, sceneId])
 
   // make sure we end the push state when we get a successful push time update
   useEffect(() => sm.transition('done'), [pushTime])
@@ -378,7 +357,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>Sorry, your browser does not support canvas.</canvas>
       <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef}/>
       <canvas hidden ref={fullCanvasRef}/>
-      <input ref={colorInputRef} type='color' defaultValue='#ff0000' onChange={(evt) => setOverlayColour(evt.target.value)}/>
+      <input ref={colorInputRef} type='color' defaultValue='#ff0000' onChange={(evt) => setOverlayColour(evt.target.value)} hidden/>
       {showBackgroundMenu && <div className={`${styles.Menu} ${styles.BackgroundMenu}`}>
         <button onClick={() => sm.transition('upload')}>Upload</button>
         <button onClick={() => sm.transition('link')}>Link</button>
