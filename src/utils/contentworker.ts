@@ -87,7 +87,7 @@ function sizeAllCanvasses(angle: number, width: number, height: number): ScaledD
   backgroundCanvas.height = scaleContH;
   overlayCanvas.width = scaleContW;
   overlayCanvas.height = scaleContH;
-  // we actually unrotate all updates...  this might become problematic with free-drawing
+  // we actually un-rotate all updates...  this might become problematic with free-drawing
   fullOverlayCanvas.width = width;
   fullOverlayCanvas.height = height;
 
@@ -176,7 +176,7 @@ function restoreOverlay() {
 }
 
 /**
- * Store the updated overlay canvas buffers, update the unrotated image, and
+ * Store the updated overlay canvas buffers, update the un-rotated image, and
  * ship it to the main thread for upload.
  */
 function storeOverlay() {
@@ -184,7 +184,7 @@ function storeOverlay() {
   buff = overlayCtx.getImageData(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
   fullOverlayCanvas.convertToBlob()
     .then((blob:Blob) => postMessage({cmd: 'overlay', blob: blob}))
-    .catch((err:any) => console.error(`Unable to post blob: ${JSON.stringify(err)}`));
+    .catch((err) => console.error(`Unable to post blob: ${JSON.stringify(err)}`));
   overlayImage = fullOverlayCanvas.transferToImageBitmap();
 }
 
@@ -238,9 +238,9 @@ self.onmessage = evt => {
     case 'rotate': {
       /**
        * Set the angle then render all canvasses. Keep in mind we are using
-       * UNROTATED images as our starting poitn and rotating to the request
+       * UN-ROTATED images as our starting point and rotating to the request
        * angle. If you start trying to use the actual canvas data, which might
-       * already be rotated, you end up overrotating and things get really bad.
+       * already be rotated, you end up over-rotating and things get really bad.
        */
       _angle = evt.data.angle;
       renderAllCanvasses(backgroundImage, overlayImage);     
@@ -297,7 +297,7 @@ self.onmessage = evt => {
     case 'zoom': {
       // get the scaled down viewport
       const vp: Rect = evt.data.rect;
-      // project onto unrotated full size origin
+      // project onto un-rotated full size origin
       const fullVp = unrotateAndScaleRect(vp);
       // post back the full viewport
       postMessage({cmd: 'viewport', viewport: fullVp});
