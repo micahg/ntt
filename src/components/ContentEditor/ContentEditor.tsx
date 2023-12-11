@@ -127,14 +127,36 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
    * This method doesn't have access to the updated component state *BECAUSE*
    * its 
    */
-  const handleWorkerMessage = useCallback((evt: MessageEvent<any>) => {
+  const handleWorkerMessage = useCallback((evt: MessageEvent<unknown>) => {
     // bump the overlay version so it gets sent
+    if (!evt.data || typeof evt.data !== 'object') return;
+    if (!('cmd' in evt.data)) return;
     if (evt.data.cmd === 'overlay') {
-      setOvRev(ovRev + 1);
-      dispatch({type: 'content/overlay', payload: evt.data.blob})
+      if ('blob' in evt.data) {
+        setOvRev(ovRev + 1);
+        dispatch({type: 'content/overlay', payload: evt.data.blob})
+      } else console.error('Error: no blob in worker message');
     } else if (evt.data.cmd === 'viewport') {
-      dispatch({type: 'content/zoom', payload: {'viewport': evt.data.viewport}});
+      if ('viewport' in evt.data) {
+        dispatch({type: 'content/zoom', payload: {'viewport': evt.data.viewport}});
+      } else console.error('No viewport in worker message');
     } else if (evt.data.cmd === 'initialized') {
+      if (!(('width') in evt.data) || typeof evt.data.width !== 'number') {
+        console.error('Invalid width in worker initialized message');
+        return;
+      }
+      if (!(('height') in evt.data) || typeof evt.data.height !== 'number') {
+        console.error('Invalid height in worker initialized message');
+        return;
+      }
+      if (!(('fullWidth') in evt.data) || typeof evt.data.fullWidth !== 'number') {
+        console.error('Invalid fullWidth in worker initialized message');
+        return;
+      }
+      if (!(('fullHeight') in evt.data) || typeof evt.data.fullHeight !== 'number') {
+        console.error('Invalid fullHeight in worker initialized message');
+        return;
+      }
       setCanvasSize([evt.data.width, evt.data.height]);
       setImageSize([evt.data.fullWidth, evt.data.fullHeight]);
     }

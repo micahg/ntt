@@ -14,7 +14,7 @@ export function setupOffscreenCanvas(backgroundCanvas: HTMLCanvasElement,
     background: background,
     angle: angle,
   }
-  // only create a web worker if we dont' have one already
+  // only create a web worker if we don't have one already
   if (!worker) {
     worker = new Worker(new URL('./contentworker.ts', import.meta.url));
   }
