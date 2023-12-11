@@ -1,7 +1,7 @@
 import { createRef, useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppReducerState } from '../../reducers/AppReducer';
-import { loadImage, /*renderImageFullScreen,*/ renderViewPort } from '../../utils/drawing';
+import { loadImage, renderViewPort } from '../../utils/drawing';
 import { Rect, getWidthAndHeight, fillRotatedViewport } from '../../utils/geometry';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
