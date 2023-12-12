@@ -50,7 +50,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
    * this components actions to another components toolbar, we will get rerendered
-   * more thatn we want.
+   * more than we want.
    *
    * To avoid rerendering we start with this flag false until we've triggered and
    * ensure any relevant useEffect calls depend on its truth.
@@ -277,6 +277,7 @@ const ContentEditor = ({populateToolbar, redrawToolbar, manageScene}: ContentEdi
       setShowOpacitySlider(true);
     });
     setCallback(sm, 'update_display_opacity', (args) => {
+      if (typeof args[0] !== 'string') return;
       const opacity: string = args[0];
       if (overlayCanvasRef.current) {
         overlayCanvasRef.current.style.opacity=opacity;

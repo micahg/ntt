@@ -3,7 +3,7 @@ import { setCallback, StateMachine, transitionStateMachine } from "./statemachin
 export class MouseStateMachine implements StateMachine {
   current: string;
   states: Record<string, Record<string, string>>
-  actions: Record<string, (args: any[]) => void>
+  actions: Record<string, (args: unknown[]) => void>
   startX = -1;
   startY = -1;
   endX = 0;
@@ -99,17 +99,23 @@ export class MouseStateMachine implements StateMachine {
     setCallback(this, 'record_mouse', this.doRecord);
   }
 
-  transition(input: string, ...args: any[]): void {
+  transition(input: string, ...args: unknown[]): void {
     if (this.current === 'complete' && input === 'down') this.resetCoordinates();
     transitionStateMachine(this, input, args[0]);
   }
 
-  doRecord(args: any[]) {
+  doRecord(args: unknown[]) {
     // process consumer record callback first
     if ('record' in this.actions) this.actions['record'](args);
 
     // deal with recording mouse events
-    const evt: MouseEvent = args[0];
+    // const evt: MouseEvent = args[0];
+    const evt = args[0];
+    // there has got to be a better way
+    if (!evt || typeof evt !== 'object' || !('offsetX' in evt) || !('offsetY' in evt) ||
+        typeof evt.offsetX !== 'number' || typeof evt.offsetY !== 'number') {
+      return;
+    }
     if (this.startX < 0) {
       this.startX = evt.offsetX;
       this.startY = evt.offsetY;

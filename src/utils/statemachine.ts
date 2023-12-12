@@ -1,8 +1,8 @@
 export interface StateMachine {
   current: string;
   states: Record<string, Record<string, string>>
-  actions: Record<string, (args: any[]) => void>
-  transition(input: string, ...args: any[]): void;
+  actions: Record<string, (args: unknown[]) => void>
+  transition(input: string, ...args: unknown[]): void;
 }
 
 /**
@@ -13,7 +13,7 @@ export interface StateMachine {
  * @param args extra arguments for the implementing class.
  * @returns true if the transition between states succeeds, otherwise, false.
  */
-export function transitionStateMachine(sm: StateMachine, input: string, ...args: any[]): boolean {
+export function transitionStateMachine(sm: StateMachine, input: string, ...args: unknown[]): boolean {
 
     // yes this could crash but not unless something has really gone wrong
     if (!(input  in sm.states[sm.current])) {
@@ -29,6 +29,6 @@ export function transitionStateMachine(sm: StateMachine, input: string, ...args:
     return true;
 }
 
-export function setCallback(sm: StateMachine, state: string, cb: (args: any[]) => void) {
+export function setCallback(sm: StateMachine, state: string, cb: (args: unknown[]) => void) {
   sm.actions[state] = cb;
 }
