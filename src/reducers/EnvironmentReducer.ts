@@ -11,6 +11,16 @@ export interface AuthConfig {
   },
 }
 
+// https://auth0.com/docs/get-started/authentication-and-authorization-flow/call-your-api-using-the-device-authorization-flow#device-code-response
+export interface DeviceCode {
+  device_code: string,
+  user_code: string,
+  verification_uri: string,
+  verification_uri_complete: string,
+  expires_in: number,
+  interval: number
+}
+
 export type EnvironmentReducerState = {
   readonly api: string | undefined;
   readonly ws: string | undefined;
@@ -27,8 +37,8 @@ export type EnvironmentReducerState = {
   */
   readonly auth?: boolean;
   readonly authClient?: Auth0Client;
-  readonly authConfig?: any;
-  readonly deviceCode?: any;
+  readonly authConfig?: AuthConfig;
+  readonly deviceCode?: DeviceCode;
   readonly deviceCodeToken?: string;
 };
 
@@ -59,7 +69,6 @@ export const EnvironmentReducer = (state = initialState, action: PayloadAction) 
     case 'environment/authconfig': {
       if (action.payload === null || action.payload === undefined) return state;
       const authState: AuthState = (action.payload as unknown) as AuthState;
-
       return {...state, auth: authState.auth, noauth: authState.noauth, authConfig: authState.config};
     }
     case 'environment/authenticate': {
@@ -77,8 +86,8 @@ export const EnvironmentReducer = (state = initialState, action: PayloadAction) 
     }
     case 'environment/devicecodepoll': {
       if (action.payload === undefined || action.payload === null) return state;
-      const authResult: any = (action.payload as unknown) as any;
-      if (!Object.prototype.hasOwnProperty.call(authResult, 'access_token')) return state;
+      const authResult: unknown = action.payload;
+      if (!authResult || typeof authResult !== 'object' || !('access_token' in authResult)) return state;
       return {...state, auth: true, deviceCode: undefined, deviceCodeToken: authResult.access_token};
     }
 		default:

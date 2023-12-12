@@ -125,6 +125,7 @@ export function getDeviceCode(data: AuthConfig) {
       'client_id': data.clientId,
       'audience': data.authorizationParams.audience,
     });
+    //https://auth0.com/docs/get-started/authentication-and-authorization-flow/call-your-api-using-the-device-authorization-flow#device-code-response
     axios.post(`https://${data.domain}/oauth/device/code`, params)
       .then(resp => resolve({...resp.data, domain: data.domain, client_id: data.clientId}))
       .catch(err => reject(err));
