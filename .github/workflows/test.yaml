@@ -52,4 +52,4 @@ jobs:
         with:
           node-version: '18.x'
       - run: npm ci
-      - run: DISABLE_ESLINT_PLUGIN=true npm run build
+      - run: npm run build

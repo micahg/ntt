@@ -29,7 +29,7 @@ jobs:
       - id: get_package
         run: |
           npm ci
-          DISABLE_ESLINT_PLUGIN=true npm run build
+          npm run build
           PACKAGE=$(npm pack)
           echo "package envvar is $PACKAGE"
           echo "package_file=$PACKAGE"
