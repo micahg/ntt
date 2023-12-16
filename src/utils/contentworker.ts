@@ -216,6 +216,32 @@ function unrotateAndScaleRect(rect: Rect): Rect {
   };
 }
 
+/**
+ * Given to points on the overlay, un-rotate and scale to the full size overlay
+ */
+function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
+  const [rx1, ry1] = rotateBackToBackgroundOrientation(
+    -_angle,
+    x1,
+    y1,
+    _scaleW,
+    _scaleH,
+    _scaleOriginW,
+    _scaleOriginH,
+  );
+  const [rx2, ry2] = rotateBackToBackgroundOrientation(
+    -_angle,
+    x2,
+    y2,
+    _scaleW,
+    _scaleH,
+    _scaleOriginW,
+    _scaleOriginH,
+  );
+  const [rw, rh] = [rx2 - rx1, ry2 - ry1];
+  return [scale * rx1, scale * ry1, scale * rw, scale * rh];
+}
+
 function renderBox(
   x1: number,
   y1: number,
@@ -224,49 +250,23 @@ function renderBox(
   style: string,
   full = true,
 ) {
-  const [w, h] = [x2 - x1, y2 - y1];
   overlayCtx.save();
   overlayCtx.fillStyle = style;
-  overlayCtx.fillRect(x1, y1, w, h);
+  overlayCtx.fillRect(x1, y1, x2 - x1, y2 - y1);
   overlayCtx.restore();
   if (full) {
-    const [rx1, ry1] = rotateBackToBackgroundOrientation(
-      -_angle,
-      x1,
-      y1,
-      _scaleW,
-      _scaleH,
-      _scaleOriginW,
-      _scaleOriginH,
-    );
-    const [rx2, ry2] = rotateBackToBackgroundOrientation(
-      -_angle,
-      x2,
-      y2,
-      _scaleW,
-      _scaleH,
-      _scaleOriginW,
-      _scaleOriginH,
-    );
-    const [rw, rh] = [rx2 - rx1, ry2 - ry1];
-    const [x, y, width, height] = [
-      scale * rx1,
-      scale * ry1,
-      scale * rw,
-      scale * rh,
-    ];
+    const [x, y, w, h] = unrotateBox(x1, y1, x2, y2);
     fullCtx.save();
     fullCtx.fillStyle = style;
-
-    fullCtx.fillRect(x, y, width, height);
+    fullCtx.fillRect(x, y, w, h);
     fullCtx.restore();
   }
 }
 
 function clearBox(x1: number, y1: number, x2: number, y2: number) {
-  const [w, h] = [x2 - x1, y2 - y1];
-  overlayCtx.clearRect(x1, y1, w, h);
-  fullCtx.clearRect(scale * x1, scale * y1, scale * w, scale * h);
+  overlayCtx.clearRect(x1, y1, x2 - x1, y2 - y1);
+  const [x, y, w, h] = unrotateBox(x1, y1, x2, y2);
+  fullCtx.clearRect(x, y, w, h);
 }
 
 function clearCanvas() {
