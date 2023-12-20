@@ -28,6 +28,7 @@ let recording = false;
 let buff: ImageData;
 let fullBuff: ImageData;
 let _angle: number;
+let _zoom = 0;
 let _screenW: number;
 let _screenH: number;
 let _scaleW: number;
@@ -47,18 +48,22 @@ function renderImage(
   ctx: OffscreenCanvasRenderingContext2D,
   img: ImageBitmap,
   angle: number,
+  zoom: number,
   dimensions: ScaledDimensions,
 ) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
+  const [w, h] = zoom
+    ? [zoom * ctx.canvas.width, zoom * ctx.canvas.height]
+    : [img.width, img.height];
   ctx.translate(dimensions.rotatedWidth / 2, dimensions.rotatedHeight / 2);
   ctx.rotate((angle * Math.PI) / 180);
   ctx.drawImage(
     img,
     0,
     0,
-    img.width,
-    img.height,
+    w,
+    h,
     -dimensions.width / 2,
     -dimensions.height / 2,
     dimensions.width,
@@ -88,6 +93,7 @@ function sizeAllCanvasses(
   angle: number,
   width: number,
   height: number,
+  zoom: number,
 ): ScaledDimensions[] {
   // just establish the biggest box we can render to considering our screen and ui components
   const [contW, contH] = getMaxContainerSize(_screenW, _screenH);
@@ -97,12 +103,9 @@ function sizeAllCanvasses(
   const [fullRotW, fullRotH] = rotatedWidthAndHeight(angle, width, height);
 
   // scale the rotated full size image down be contained within our container bounds
-  const [scaleContW, scaleContH] = getScaledContainerSize(
-    contW,
-    contH,
-    fullRotW,
-    fullRotH,
-  );
+  const [scaleContW, scaleContH] = zoom
+    ? [contW, contH]
+    : getScaledContainerSize(contW, contH, fullRotW, fullRotH);
 
   // rotate backwards to get the original height/width scaled down (we need it to drawImage)
   const [scaleW, scaleH] = rotatedWidthAndHeight(
@@ -159,21 +162,22 @@ function renderAllCanvasses(
       _angle,
       background.width,
       background.height,
+      _zoom,
     );
     _scaleOriginW = dimensions.width;
     _scaleOriginH = dimensions.height;
     _scaleW = dimensions.rotatedWidth;
     _scaleH = dimensions.rotatedHeight;
-    renderImage(backgroundCtx, background, _angle, dimensions);
+    renderImage(backgroundCtx, background, _angle, _zoom, dimensions);
     if (overlay) {
-      renderImage(overlayCtx, overlay, _angle, dimensions);
+      renderImage(overlayCtx, overlay, _angle, _zoom, dimensions);
       buff = overlayCtx.getImageData(
         0,
         0,
         overlayCtx.canvas.width,
         overlayCtx.canvas.height,
       );
-      renderImage(fullCtx, overlay, 0, fullDimensions);
+      renderImage(fullCtx, overlay, 0, 0, fullDimensions);
       fullBuff = fullCtx.getImageData(
         0,
         0,
@@ -436,6 +440,12 @@ self.onmessage = (evt) => {
       break;
     }
     case "zoom": {
+      /**
+       * TODO this shouldn't be called zoom -- instead we should have a generic
+       * "get the un-rotated rectangle projected on the full sized image" call.
+       *
+       * Then the caller and choose to zoom out or do something else...
+       */
       // get the scaled down viewport
       const vp: Rect = evt.data.rect;
       // project onto un-rotated full size origin
@@ -444,6 +454,20 @@ self.onmessage = (evt) => {
       postMessage({ cmd: "viewport", viewport: fullVp });
       // clear selection
       restoreOverlay();
+      break;
+    }
+    case "zoom_in": {
+      if (!_zoom) {
+        _zoom = 1;
+        renderAllCanvasses(backgroundImage, overlayImage);
+      } else {
+        console.log("CANT ZOOM FURTHER YET");
+      }
+      break;
+    }
+    case "zoom_out": {
+      _zoom = 0;
+      renderAllCanvasses(backgroundImage, overlayImage);
       break;
     }
     default: {

@@ -432,6 +432,13 @@ const ContentEditor = ({
     overlayCanvasRef.current.addEventListener("mousemove", (evt: MouseEvent) =>
       sm.transition("move", evt),
     );
+    overlayCanvasRef.current.addEventListener("wheel", (evt: WheelEvent) => {
+      if (evt.deltaY > 0) {
+        worker.postMessage({ cmd: "zoom_in" });
+      } else if (evt.deltaY < 0) {
+        worker.postMessage({ cmd: "zoom_out" });
+      }
+    });
   }, [
     canvasSize,
     dispatch,
