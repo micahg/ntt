@@ -29,12 +29,14 @@ let buff: ImageData;
 let fullBuff: ImageData;
 let _angle: number;
 let _zoom = 0;
-let _screenW: number;
-let _screenH: number;
+let _containerW: number;
+let _containerH: number;
 let _scaleW: number;
 let _scaleH: number;
 let _scaleOriginW: number;
 let _scaleOriginH: number;
+let _fullRotW: number;
+let _fullRotH: number;
 
 let startX: number, startY: number, endX: number, endY: number;
 let scale: number;
@@ -49,14 +51,29 @@ function renderImage(
   img: ImageBitmap,
   angle: number,
   zoom: number,
-  dimensions: ScaledDimensions,
+  // dimensions: ScaledDimensions,
 ) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
-  const [w, h] = zoom
-    ? [zoom * ctx.canvas.width, zoom * ctx.canvas.height]
-    : [img.width, img.height];
-  ctx.translate(dimensions.rotatedWidth / 2, dimensions.rotatedHeight / 2);
+  const [cw, ch] = [ctx.canvas.width, ctx.canvas.height];
+  const [rcw, rch] = rotatedWidthAndHeight(-angle, cw, ch);
+  /**
+   * heres the thing - zoomed out we always render the entire image so we
+   * don't compensate for rotation. The canvas is sized to compensate for us.
+   *
+   * I suspect if we use rcw * zoom,rch * zoom we get victory
+   */
+  const [w, h] = zoom ? [zoom * cw, zoom * ch] : [img.width, img.height];
+  const [ow, oh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
+  // _scaleW = scaleContW;
+  // _scaleH = scaleContH;
+  // ctx.translate(dimensions.rotatedWidth / 2, dimensions.rotatedHeight / 2);
+  // MICAH this is the fucked part here
+  // ctx.translate(_scaleW / 2, _scaleH / 2);
+  console.log(
+    `0,0,${w},${h}\t${Math.round(-ow / 2)},${Math.round(-oh / 2)},${ow},${oh}`,
+  );
+  ctx.translate(cw / 2, ch / 2);
   ctx.rotate((angle * Math.PI) / 180);
   ctx.drawImage(
     img,
@@ -64,10 +81,18 @@ function renderImage(
     0,
     w,
     h,
-    -dimensions.width / 2,
-    -dimensions.height / 2,
-    dimensions.width,
-    dimensions.height,
+    -ow / 2,
+    -oh / 2,
+    ow,
+    oh,
+    // -_scaleOriginW / 2,
+    // -_scaleOriginH / 2,
+    // _scaleOriginW,
+    // _scaleOriginH,
+    // -dimensions.width / 2,
+    // -dimensions.height / 2,
+    // dimensions.width,
+    // dimensions.height,
   );
   ctx.restore();
 }
@@ -76,6 +101,61 @@ function loadImage(url: string): Promise<ImageBitmap> {
   return fetch(url)
     .then((resp) => resp.blob())
     .then((blob) => createImageBitmap(blob));
+}
+
+function calcualteCanvasses(
+  angle: number,
+  width: number,
+  height: number,
+  containerWidth: number,
+  containerHeight: number,
+) {
+  //: ScaledDimensions[] {
+  // just establish the biggest box we can render to considering our screen and ui components
+  // const [contW, contH] = getMaxContainerSize(_screenW, _screenH);
+
+  //rotatedWidthAndHeight
+  // rotate the full sized hidden canvas (holds the full-sized overlay)
+  [_fullRotW, _fullRotH] = rotatedWidthAndHeight(angle, width, height);
+
+  // scale the rotated full size image down be contained within our container bounds
+  const [scaleContW, scaleContH] = getScaledContainerSize(
+    containerWidth,
+    containerHeight,
+    _fullRotW,
+    _fullRotH,
+  );
+
+  // rotate backwards to get the original height/width scaled down (we need it to drawImage)
+  const [scaleW, scaleH] = rotatedWidthAndHeight(
+    -angle,
+    scaleContW,
+    scaleContH,
+  );
+
+  // calculate pre-rotation scale
+  scale = width / scaleW;
+
+  _scaleOriginW = scaleW;
+  _scaleOriginH = scaleH;
+  _scaleW = scaleContW;
+  _scaleH = scaleContH;
+  return;
+
+  // const d = {
+  //   width: scaleW,
+  //   height: scaleH,
+  //   rotatedWidth: scaleContW,
+  //   rotatedHeight: scaleContH,
+  // };
+  // const fullD = {
+  //   width: width,
+  //   height: height,
+  //   rotatedWidth: width,
+  //   rotatedHeight: height,
+  // };
+
+  // return [d, fullD];
 }
 
 /**
@@ -94,29 +174,10 @@ function sizeAllCanvasses(
   width: number,
   height: number,
   zoom: number,
-): ScaledDimensions[] {
-  // just establish the biggest box we can render to considering our screen and ui components
-  const [contW, contH] = getMaxContainerSize(_screenW, _screenH);
-
-  //rotatedWidthAndHeight
-  // rotate the full sized hidden canvas (holds the full-sized overlay)
-  const [fullRotW, fullRotH] = rotatedWidthAndHeight(angle, width, height);
-
-  // scale the rotated full size image down be contained within our container bounds
+) {
   const [scaleContW, scaleContH] = zoom
-    ? [contW, contH]
-    : getScaledContainerSize(contW, contH, fullRotW, fullRotH);
-
-  // rotate backwards to get the original height/width scaled down (we need it to drawImage)
-  const [scaleW, scaleH] = rotatedWidthAndHeight(
-    -angle,
-    scaleContW,
-    scaleContH,
-  );
-
-  // calculate pre-rotation scale
-  scale = width / scaleW;
-
+    ? [_containerW, _containerH]
+    : getScaledContainerSize(_containerW, _containerH, _fullRotW, _fullRotH);
   // set the canvases
   backgroundCanvas.width = scaleContW;
   backgroundCanvas.height = scaleContH;
@@ -125,22 +186,59 @@ function sizeAllCanvasses(
   // we actually un-rotate all updates...  this might become problematic with free-drawing
   fullOverlayCanvas.width = width;
   fullOverlayCanvas.height = height;
-
-  const d = {
-    width: scaleW,
-    height: scaleH,
-    rotatedWidth: scaleContW,
-    rotatedHeight: scaleContH,
-  };
-  const fullD = {
-    width: width,
-    height: height,
-    rotatedWidth: width,
-    rotatedHeight: height,
-  };
-
-  return [d, fullD];
 }
+// function sizeAllCanvasses(
+//   angle: number,
+//   width: number,
+//   height: number,
+//   zoom: number,
+// ): ScaledDimensions[] {
+//   // just establish the biggest box we can render to considering our screen and ui components
+//   const [contW, contH] = getMaxContainerSize(_screenW, _screenH);
+
+//   //rotatedWidthAndHeight
+//   // rotate the full sized hidden canvas (holds the full-sized overlay)
+//   const [fullRotW, fullRotH] = rotatedWidthAndHeight(angle, width, height);
+
+//   // scale the rotated full size image down be contained within our container bounds
+//   const [scaleContW, scaleContH] = zoom
+//     ? [contW, contH]
+//     : getScaledContainerSize(contW, contH, fullRotW, fullRotH);
+
+//   // rotate backwards to get the original height/width scaled down (we need it to drawImage)
+//   const [scaleW, scaleH] = rotatedWidthAndHeight(
+//     -angle,
+//     scaleContW,
+//     scaleContH,
+//   );
+
+//   // calculate pre-rotation scale
+//   scale = width / scaleW;
+
+//   // set the canvases
+//   backgroundCanvas.width = scaleContW;
+//   backgroundCanvas.height = scaleContH;
+//   overlayCanvas.width = scaleContW;
+//   overlayCanvas.height = scaleContH;
+//   // we actually un-rotate all updates...  this might become problematic with free-drawing
+//   fullOverlayCanvas.width = width;
+//   fullOverlayCanvas.height = height;
+
+//   const d = {
+//     width: scaleW,
+//     height: scaleH,
+//     rotatedWidth: scaleContW,
+//     rotatedHeight: scaleContH,
+//   };
+//   const fullD = {
+//     width: width,
+//     height: height,
+//     rotatedWidth: width,
+//     rotatedHeight: height,
+//   };
+
+//   return [d, fullD];
+// }
 
 function loadAllImages(background: string, overlay?: string) {
   const bgP = loadImage(background);
@@ -158,26 +256,28 @@ function renderAllCanvasses(
   overlay: ImageBitmap | null,
 ) {
   if (background) {
-    const [dimensions, fullDimensions] = sizeAllCanvasses(
-      _angle,
-      background.width,
-      background.height,
-      _zoom,
-    );
-    _scaleOriginW = dimensions.width;
-    _scaleOriginH = dimensions.height;
-    _scaleW = dimensions.rotatedWidth;
-    _scaleH = dimensions.rotatedHeight;
-    renderImage(backgroundCtx, background, _angle, _zoom, dimensions);
+    // const [dimensions, fullDimensions] = sizeAllCanvasses(
+    //   _angle,
+    //   background.width,
+    //   background.height,
+    //   _zoom,
+    // );
+    // sizeAllCanvasses(_angle, background.width, background.height, _zoom);
+    sizeAllCanvasses(_angle, _fullRotW, _fullRotH, _zoom);
+    // _scaleOriginW = dimensions.width;
+    // _scaleOriginH = dimensions.height;
+    // _scaleW = dimensions.rotatedWidth;
+    // _scaleH = dimensions.rotatedHeight;
+    renderImage(backgroundCtx, background, _angle, _zoom); //, dimensions);
     if (overlay) {
-      renderImage(overlayCtx, overlay, _angle, _zoom, dimensions);
+      renderImage(overlayCtx, overlay, _angle, _zoom); //, dimensions);
       buff = overlayCtx.getImageData(
         0,
         0,
         overlayCtx.canvas.width,
         overlayCtx.canvas.height,
       );
-      renderImage(fullCtx, overlay, 0, 0, fullDimensions);
+      renderImage(fullCtx, overlay, 0, 0); //, fullDimensions);
       fullBuff = fullCtx.getImageData(
         0,
         0,
@@ -321,8 +421,10 @@ self.onmessage = (evt) => {
   switch (evt.data.cmd) {
     case "init": {
       console.log(evt.data);
-      _screenW = evt.data.values.screenWidth;
-      _screenH = evt.data.values.screenHeight;
+      [_containerW, _containerH] = getMaxContainerSize(
+        evt.data.values.screenWidth,
+        evt.data.values.screenHeight,
+      );
       // TODO get the angle from the viewport on load
       _angle = evt.data.values.angle;
 
@@ -349,7 +451,16 @@ self.onmessage = (evt) => {
 
       loadAllImages(evt.data.values.background, evt.data.values.overlay)
         .then(([bgImg, ovImg]) => {
-          if (bgImg) backgroundImage = bgImg;
+          if (bgImg) {
+            backgroundImage = bgImg;
+            calcualteCanvasses(
+              _angle,
+              bgImg.width,
+              bgImg.height,
+              _containerW,
+              _containerH,
+            );
+          }
           renderAllCanvasses(bgImg, ovImg);
         })
         .then(() => {
@@ -388,6 +499,19 @@ self.onmessage = (evt) => {
        * already be rotated, you end up over-rotating and things get really bad.
        */
       _angle = evt.data.angle;
+      calcualteCanvasses(
+        _angle,
+        backgroundImage.width,
+        backgroundImage.height,
+        _containerW,
+        _containerH,
+      );
+      // sizeAllCanvasses(
+      //   _angle,
+      //   backgroundImage.width,
+      //   backgroundImage.height,
+      //   _zoom,
+      // );
       renderAllCanvasses(backgroundImage, overlayImage);
       break;
     }
@@ -459,6 +583,7 @@ self.onmessage = (evt) => {
     case "zoom_in": {
       if (!_zoom) {
         _zoom = 1;
+        // sizeAllCanvasses(_angle, _fullRotW, _fullRotH, _zoom);
         renderAllCanvasses(backgroundImage, overlayImage);
       } else {
         console.log("CANT ZOOM FURTHER YET");
@@ -467,6 +592,7 @@ self.onmessage = (evt) => {
     }
     case "zoom_out": {
       _zoom = 0;
+      // sizeAllCanvasses(_angle, _fullRotW, _fullRotH, _zoom);
       renderAllCanvasses(backgroundImage, overlayImage);
       break;
     }
