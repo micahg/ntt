@@ -1,5 +1,6 @@
 import {
   Rect,
+  calculateScaleSteps,
   getMaxContainerSize,
   getScaledContainerSize,
   rotateBackToBackgroundOrientation,
@@ -22,6 +23,7 @@ let buff: ImageData;
 let fullBuff: ImageData;
 let _angle: number;
 let _zoom = 0;
+let _min_zoom: number;
 let _containerW: number;
 let _containerH: number;
 let _scaleW: number;
@@ -57,13 +59,16 @@ function renderImage(
    */
   const [cw, ch] = [ctx.canvas.width, ctx.canvas.height];
   const [rcw, rch] = rotatedWidthAndHeight(-angle, cw, ch);
+  // const [dw, dh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
+  // const [sw, sh] = zoom ? [zoom * rcw, zoom * rch] : [img.width, img.height];
+  // const [dw, dh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
+  // ctx.drawImage(img, 0, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
   const [sw, sh] = zoom ? [zoom * rcw, zoom * rch] : [img.width, img.height];
-  const [dw, dh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
   ctx.translate(cw / 2, ch / 2);
   ctx.rotate((angle * Math.PI) / 180);
-  ctx.drawImage(img, 0, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
+  ctx.drawImage(img, 0, 0, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
   ctx.restore();
 }
 
@@ -140,6 +145,7 @@ function loadAllImages(background: string, overlay?: string) {
     // keep a copy of these to prevent having to recreate them from the image buffer
     backgroundImage = bgImg;
     if (ovImg) overlayImage = ovImg;
+    else storeOverlay(false);
     return [bgImg, ovImg];
   });
 }
@@ -265,11 +271,32 @@ function restoreOverlay() {
   fullCtx.putImageData(fullBuff, 0, 0);
 }
 
+function fullRerender() {
+  calcualteCanvasses(
+    _angle,
+    backgroundImage.width,
+    backgroundImage.height,
+    _containerW,
+    _containerH,
+  );
+  const steps = calculateScaleSteps(
+    _containerW,
+    _containerH,
+    _fullRotW,
+    _fullRotH,
+  );
+  _min_zoom = _fullRotW / _containerW; //1 / steps[0];
+  renderAllCanvasses(backgroundImage, overlayImage);
+}
+
 /**
  * Store the updated overlay canvas buffers, update the un-rotated image, and
- * ship it to the main thread for upload.
+ * ship it to the main thread for upload unless told not to.
+ *
+ * @param post flag indicating if the image should be sent to the main thread
+ *             for upload.
  */
-function storeOverlay() {
+function storeOverlay(post = true) {
   fullBuff = fullCtx.getImageData(
     0,
     0,
@@ -282,12 +309,13 @@ function storeOverlay() {
     overlayCtx.canvas.width,
     overlayCtx.canvas.height,
   );
-  fullOverlayCanvas
-    .convertToBlob()
-    .then((blob: Blob) => postMessage({ cmd: "overlay", blob: blob }))
-    .catch((err) =>
-      console.error(`Unable to post blob: ${JSON.stringify(err)}`),
-    );
+  if (post)
+    fullOverlayCanvas
+      .convertToBlob()
+      .then((blob: Blob) => postMessage({ cmd: "overlay", blob: blob }))
+      .catch((err) =>
+        console.error(`Unable to post blob: ${JSON.stringify(err)}`),
+      );
   overlayImage = fullOverlayCanvas.transferToImageBitmap();
 }
 
@@ -332,18 +360,10 @@ self.onmessage = (evt) => {
       }
 
       loadAllImages(evt.data.values.background, evt.data.values.overlay)
-        .then(([bgImg, ovImg]) => {
+        .then(([bgImg]) => {
           if (bgImg) {
-            backgroundImage = bgImg;
-            calcualteCanvasses(
-              _angle,
-              bgImg.width,
-              bgImg.height,
-              _containerW,
-              _containerH,
-            );
+            fullRerender();
           }
-          renderAllCanvasses(bgImg, ovImg);
         })
         .then(() => {
           postMessage({
@@ -381,14 +401,7 @@ self.onmessage = (evt) => {
        * already be rotated, you end up over-rotating and things get really bad.
        */
       _angle = evt.data.angle;
-      calcualteCanvasses(
-        _angle,
-        backgroundImage.width,
-        backgroundImage.height,
-        _containerW,
-        _containerH,
-      );
-      renderAllCanvasses(backgroundImage, overlayImage);
+      fullRerender();
       break;
     }
     case "record": {
@@ -458,8 +471,14 @@ self.onmessage = (evt) => {
     }
     case "zoom_in": {
       if (!_zoom) {
-        _zoom = 1;
+        // _zoom = 1;
+        _zoom = _min_zoom;
+        console.log(_zoom);
         // sizeAllCanvasses(_angle, _fullRotW, _fullRotH, _zoom);
+        renderAllCanvasses(backgroundImage, overlayImage);
+      } else if (_zoom === _min_zoom) {
+        _zoom = 1;
+        console.log(_zoom);
         renderAllCanvasses(backgroundImage, overlayImage);
       } else {
         console.log("CANT ZOOM FURTHER YET");

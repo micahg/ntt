@@ -72,6 +72,41 @@ export function calculateBounds(
   return { x: 0, y: t, width: canvasWidth, height: h };
 }
 
+export function calculateScaleSteps(
+  screenWidth: number,
+  screenHeight: number,
+  imageWidth: number,
+  imageHeight: number,
+) {
+  /**
+   * Need to think about drawImage -- in the end, after rotation, we call:
+   *
+   *   ctx.drawImage(
+   *     img,
+   *     0,
+   *     0,
+   *     img.width,
+   *     img.height,
+   *     -dimensions.width / 2,
+   *     -dimensions.height / 2,
+   *     dimensions.width,
+   *     dimensions.height,
+   *   );
+   *
+   * In this 0, 0, img.width, img.heigh are the source dimensions. If we want to zoom
+   * in we need to be able to calculate the offset (0,0) or (sx, sy) and width and height
+   * (img.width, img.heigh) or (sWidth, sHeight). Think through the math on these values
+   * for an image of 2008x4160 and a screen of 1438*549
+   *
+   * If we set our baseline of zoom 1 as sWidth and sHeight our min zoom would fit the
+   * entire width or height (depending on the image and screen dimensions).
+   */
+  const wr = screenWidth / imageWidth;
+  const sr = screenHeight / imageHeight;
+
+  return [Math.min(wr, sr), Math.max(wr, sr), 1];
+}
+
 /**
  * Rotate a point around the origin
  * @param angle angle of rotation
@@ -102,10 +137,10 @@ export function rotateBackToBackgroundOrientation(
   oh: number,
 ): number[] {
   /**
-   * This is a modified rotration algorithm that does its final transposition
+   * This is a modified rotation algorithm that does its final transposition
    * after rotation assuming that instead of returning to the starting point,
-   * you are returning to the origin of your unrotated image based on its
-   * unrotated width and height.
+   * you are returning to the origin of your un-rotated image based on its
+   * un-rotated width and height.
    */
   const d_x = x - w / 2;
   const d_y = y - h / 2;
@@ -159,7 +194,7 @@ export function scaleSelection(
  * rotate and fill viewport to fit screen/window/canvas
  * @param screen screen [width, height]
  * @param image image [width, height] (actual -- might get shrunk by browser)
- * @param oImage image [width, height] (original -- as the editor saw it -- possibly shrunk but we dont' handle that yet)
+ * @param oImage image [width, height] (original -- as the editor saw it -- possibly shrunk but we don't handle that yet)
  * @param angle angle of rotation
  * @param viewport viewport withing the original image {x, y, w, h}
  * @returns

@@ -70,6 +70,7 @@ const ContentEditor = ({
   const [ovRev, setOvRev] = useState<number>(0);
   const [sceneId, setSceneId] = useState<string>(); // used to track flipping between scenes
   const [worker, setWorker] = useState<Worker>();
+  const [canvasListening, setCanvasListening] = useState<boolean>(false);
   const [canvassesTransferred, setCanvassesTransferred] =
     useState<boolean>(false); // avoid transfer errors
 
@@ -330,6 +331,7 @@ const ContentEditor = ({
     if (!canvasSize || !canvasSize.length) return;
     if (!imageSize || !imageSize.length) return;
     if (!worker) return;
+    if (canvasListening) return;
 
     setCallback(sm, "wait", () => {
       sm.resetCoordinates();
@@ -439,6 +441,7 @@ const ContentEditor = ({
         worker.postMessage({ cmd: "zoom_out" });
       }
     });
+    setCanvasListening(true);
   }, [
     canvasSize,
     dispatch,
@@ -449,6 +452,7 @@ const ContentEditor = ({
     selectOverlay,
     updateObscure,
     worker,
+    canvasListening,
   ]);
 
   /**
