@@ -19,9 +19,13 @@ let overlayCtx: OffscreenCanvasRenderingContext2D;
 let fullOverlayCanvas: OffscreenCanvas;
 let fullCtx: OffscreenCanvasRenderingContext2D;
 let recording = false;
+let selecting = false;
+let panning = false;
 let buff: ImageData;
 let fullBuff: ImageData;
 let _angle: number;
+let _pan_x = 0;
+let _pan_y = 0;
 let _zoom = 0;
 let _min_zoom: number;
 let _containerW: number;
@@ -57,6 +61,7 @@ function renderImage(
    * means we're fully zoomed in (1:1 pixel scale) and less zooms out to a max of either the
    * width or height of the image (whichever fits first)
    */
+  // TODO calculate this statically
   const [cw, ch] = [ctx.canvas.width, ctx.canvas.height];
   const [rcw, rch] = rotatedWidthAndHeight(-angle, cw, ch);
   // const [dw, dh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
@@ -64,11 +69,14 @@ function renderImage(
   // const [dw, dh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
   // ctx.drawImage(img, 0, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
   const [sw, sh] = zoom ? [zoom * rcw, zoom * rch] : [img.width, img.height];
+  if (_pan_x + sw > _fullRotW) _pan_x = _fullRotW - sw;
+  if (_pan_y + sh > _fullRotH) _pan_y = _fullRotH - sh;
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
   ctx.translate(cw / 2, ch / 2);
   ctx.rotate((angle * Math.PI) / 180);
-  ctx.drawImage(img, 0, 0, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
+  // ctx.drawImage(img, 0, 0, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
+  ctx.drawImage(img, _pan_x, _pan_y, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
   ctx.restore();
 }
 
@@ -148,6 +156,11 @@ function loadAllImages(background: string, overlay?: string) {
     else storeOverlay(false);
     return [bgImg, ovImg];
   });
+}
+
+function renderVisibleCanvasses() {
+  renderImage(backgroundCtx, backgroundImage, _angle, _zoom);
+  renderImage(overlayCtx, overlayImage, _angle, _zoom);
 }
 
 function renderAllCanvasses(
@@ -321,8 +334,19 @@ function storeOverlay(post = true) {
 
 function animateSelection() {
   if (!recording) return;
-  restoreOverlay();
-  renderBox(startX, startY, endX, endY, "rgba(255, 255, 255, 0.25)", false);
+  if (selecting) {
+    restoreOverlay();
+    renderBox(startX, startY, endX, endY, "rgba(255, 255, 255, 0.25)", false);
+  } else if (panning) {
+    if (_zoom === 0) return;
+    _pan_x += endX - startX;
+    _pan_y += endY - startY;
+    if (_pan_x <= 0) _pan_x = 0;
+    if (_pan_y <= 0) _pan_y = 0;
+    startX = endX;
+    startY = endY;
+    renderVisibleCanvasses();
+  }
   requestAnimationFrame(animateSelection);
 }
 
@@ -404,6 +428,11 @@ self.onmessage = (evt) => {
       fullRerender();
       break;
     }
+    case "start_recording": {
+      if (selecting) restoreOverlay();
+      selecting = false;
+      break;
+    }
     case "record": {
       startX = evt.data.x1;
       startY = evt.data.y1;
@@ -411,13 +440,20 @@ self.onmessage = (evt) => {
       endY = evt.data.y2;
       if (!recording) {
         recording = true;
+        selecting = evt.data.buttons === 1;
+        panning = evt.data.buttons === 2;
         restoreOverlay();
         requestAnimationFrame(animateSelection);
       }
       break;
     }
     case "endrecording": {
+      if (panning) storeOverlay(false);
+      // when we're done recording we're done panning BUT not selecting
+      // we still have a selection on screen. Selection ends at the start
+      // of the next mouse recording
       recording = false;
+      panning = false;
       break;
     }
     case "obscure": {
@@ -474,11 +510,9 @@ self.onmessage = (evt) => {
         // _zoom = 1;
         _zoom = _min_zoom;
         console.log(_zoom);
-        // sizeAllCanvasses(_angle, _fullRotW, _fullRotH, _zoom);
         renderAllCanvasses(backgroundImage, overlayImage);
       } else if (_zoom === _min_zoom) {
         _zoom = 1;
-        console.log(_zoom);
         renderAllCanvasses(backgroundImage, overlayImage);
       } else {
         console.log("CANT ZOOM FURTHER YET");
@@ -488,7 +522,8 @@ self.onmessage = (evt) => {
     case "zoom_out": {
       if (_zoom) {
         _zoom = 0;
-        // sizeAllCanvasses(_angle, _fullRotW, _fullRotH, _zoom);
+        _pan_x = 0;
+        _pan_y = 0;
         renderAllCanvasses(backgroundImage, overlayImage);
       } else console.log("CANT ZOOM OUT ANY FURTHER");
       break;

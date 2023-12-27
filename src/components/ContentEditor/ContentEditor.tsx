@@ -160,9 +160,16 @@ const ContentEditor = ({
   };
 
   const selectOverlay = useCallback(
-    (x1: number, y1: number, x2: number, y2: number) => {
+    (buttons: number, x1: number, y1: number, x2: number, y2: number) => {
       if (!worker) return;
-      worker.postMessage({ cmd: "record", x1: x1, y1: y1, x2: x2, y2: y2 });
+      worker.postMessage({
+        cmd: "record",
+        buttons: buttons,
+        x1: x1,
+        y1: y1,
+        x2: x2,
+        y2: y2,
+      });
     },
     [worker],
   );
@@ -333,6 +340,12 @@ const ContentEditor = ({
     if (!worker) return;
     if (canvasListening) return;
 
+    // prevent right click context menu on canvas
+    overlayCanvasRef.current.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
     setCallback(sm, "wait", () => {
       sm.resetCoordinates();
       setShowBackgroundMenu(false);
@@ -413,7 +426,7 @@ const ContentEditor = ({
     setCallback(sm, "update_render_opacity", (args) =>
       worker.postMessage({ cmd: "opacity", opacity: args[0] }),
     );
-
+    sm.setStartCallback(() => worker.postMessage({ cmd: "start_recording" }));
     sm.setMoveCallback(selectOverlay);
     setCallback(sm, "push", () => dispatch({ type: "content/push" }));
     setCallback(sm, "clear", () => {
