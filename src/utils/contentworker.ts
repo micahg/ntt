@@ -1,6 +1,6 @@
 import {
   Rect,
-  calculateScaleSteps,
+  // calculateScaleSteps,
   getMaxContainerSize,
   getScaledContainerSize,
   rotateBackToBackgroundOrientation,
@@ -36,6 +36,10 @@ let _scaleOriginW: number;
 let _scaleOriginH: number;
 let _fullRotW: number;
 let _fullRotH: number;
+let _vpW: number;
+let _vpH: number;
+let _rvpW: number;
+let _rvpH: number;
 
 let startX: number, startY: number, endX: number, endY: number;
 let scale: number;
@@ -62,21 +66,35 @@ function renderImage(
    * width or height of the image (whichever fits first)
    */
   // TODO calculate this statically
-  const [cw, ch] = [ctx.canvas.width, ctx.canvas.height];
-  const [rcw, rch] = rotatedWidthAndHeight(-angle, cw, ch);
-  // const [dw, dh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
+  // const [cw, ch] = [ctx.canvas.width, ctx.canvas.height];
+  // const [rcw, rch] = rotatedWidthAndHeight(-angle, cw, ch);
   // const [sw, sh] = zoom ? [zoom * rcw, zoom * rch] : [img.width, img.height];
-  // const [dw, dh] = zoom ? [zoom * rcw, zoom * rch] : [rcw, rch];
-  // ctx.drawImage(img, 0, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
-  const [sw, sh] = zoom ? [zoom * rcw, zoom * rch] : [img.width, img.height];
-  if (_pan_x + sw > _fullRotW) _pan_x = _fullRotW - sw;
-  if (_pan_y + sh > _fullRotH) _pan_y = _fullRotH - sh;
+  // if (_pan_x + sw > _fullRotW) _pan_x = _fullRotW - sw;
+  // if (_pan_y + sh > _fullRotH) _pan_y = _fullRotH - sh;
+  // if (_pan_x + _vpW > _fullRotW) _pan_x = _fullRotW - _vpW;
+  // if (_pan_y + _vpH > _fullRotH) _pan_y = _fullRotH - _vpH;
+  if (_pan_x + _vpW > img.width) _pan_x = img.width - _vpW;
+  if (_pan_y + _vpH > img.height) _pan_y = img.height - _vpH;
+
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
-  ctx.translate(cw / 2, ch / 2);
+  ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
   ctx.rotate((angle * Math.PI) / 180);
   // ctx.drawImage(img, 0, 0, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
-  ctx.drawImage(img, _pan_x, _pan_y, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
+  // ctx.drawImage(img, _pan_x, _pan_y, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
+  ctx.drawImage(
+    img,
+    _pan_x,
+    _pan_y,
+    // MICAH, you linear algebraically challenged donkey - we rotate the context
+    // so REMEMBER: the actual source viewport SHOULD NOT BE ROTATED
+    _vpW, // 1394
+    _vpH, // 550
+    -_rvpW / 2, // - 1394 /2
+    -_rvpH / 2, // - 550 / 2
+    _rvpW, // 1394
+    _rvpH, // 550
+  );
   ctx.restore();
 }
 
@@ -118,8 +136,26 @@ function calcualteCanvasses(
   _scaleOriginH = scaleH;
   _scaleW = scaleContW;
   _scaleH = scaleContH;
+
+  [_rvpW, _rvpH] = [_scaleOriginW, _scaleOriginH];
+  [_vpW, _vpH] = [width, height];
   return;
 }
+
+function calculateViewport(
+  angle: number,
+  zoom: number,
+  containerWidth: number,
+  containerHeight: number,
+) {
+  const [cw, ch] = [containerWidth, containerHeight];
+  [_rvpW, _rvpH] = rotatedWidthAndHeight(-angle, cw, ch);
+  [_vpW, _vpH] = [zoom * _rvpW, zoom * _rvpH];
+}
+
+// function calculateViewport(zoom: number, width: number, height: number) {
+//   const [vw, vh] = zoom ? [zoom * _scaleOriginW, zoom * _scaleOriginH] : [img.width, img.height];
+// }
 
 /**
  * Resize all canvasses based on the angle of background image rotation, screen
@@ -292,12 +328,12 @@ function fullRerender() {
     _containerW,
     _containerH,
   );
-  const steps = calculateScaleSteps(
-    _containerW,
-    _containerH,
-    _fullRotW,
-    _fullRotH,
-  );
+  // const steps = calculateScaleSteps(
+  //   _containerW,
+  //   _containerH,
+  //   _fullRotW,
+  //   _fullRotH,
+  // );
   _min_zoom = _fullRotW / _containerW; //1 / steps[0];
   renderAllCanvasses(backgroundImage, overlayImage);
 }
@@ -506,13 +542,39 @@ self.onmessage = (evt) => {
       break;
     }
     case "zoom_in": {
+      /*
+
+      const [scaleContW, scaleContH] = zoom
+        ? [_containerW, _containerH]
+        : getScaledContainerSize(_containerW, _containerH, _fullRotW, _fullRotH);
+      // set the canvases
+      backgroundCanvas.width = scaleContW;
+      backgroundCanvas.height = scaleContH;
+      overlayCanvas.width = scaleContW;
+      overlayCanvas.height = scaleContH;
+
+      _scaleW = scaleContW;
+      _scaleH = scaleContH;
+
+      const [cw, ch] = [ctx.canvas.width, ctx.canvas.height]; //... [_containerW, _containerH]
+      const [rcw, rch] = rotatedWidthAndHeight(-angle, cw, ch); //... [_scaleOriginW, _scaleOriginH]
+      const [sw, sh] = zoom ? [zoom * rcw, zoom * rch] : [img.width, img.height];
+      ctx.drawImage(img, _pan_x, _pan_y, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
+
+      ...
+
+      MICAH WHEN YOU COME BACK we're not storing the rotated canvas dimensions (container dimensions)
+      so the viewport calculation that should happen on zoom should start there using the formulas above
+
+      */
       if (!_zoom) {
-        // _zoom = 1;
         _zoom = _min_zoom;
         console.log(_zoom);
+        calculateViewport(_angle, _zoom, _containerW, _containerH);
         renderAllCanvasses(backgroundImage, overlayImage);
       } else if (_zoom === _min_zoom) {
         _zoom = 1;
+        calculateViewport(_angle, _zoom, _containerW, _containerH);
         renderAllCanvasses(backgroundImage, overlayImage);
       } else {
         console.log("CANT ZOOM FURTHER YET");
@@ -522,8 +584,9 @@ self.onmessage = (evt) => {
     case "zoom_out": {
       if (_zoom) {
         _zoom = 0;
-        _pan_x = 0;
-        _pan_y = 0;
+        [_pan_x, _pan_y] = [0, 0];
+        [_rvpW, _rvpH] = [_scaleOriginW, _scaleOriginH];
+        [_vpW, _vpH] = [backgroundImage.width, backgroundImage.height];
         renderAllCanvasses(backgroundImage, overlayImage);
       } else console.log("CANT ZOOM OUT ANY FURTHER");
       break;

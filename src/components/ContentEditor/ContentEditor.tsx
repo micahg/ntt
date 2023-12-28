@@ -110,15 +110,6 @@ const ContentEditor = ({
     if (manageScene) manageScene();
   }, [manageScene]);
 
-  const rotateClockwise = useCallback(() => {
-    if (!worker) return;
-    if (!scene) return;
-    const angle = ((scene.angle || 0) + 90) % 360;
-    worker.postMessage({ cmd: "rotate", angle: angle });
-    // angle is part of the viewport call
-    dispatch({ type: "content/zoom", payload: { angle: angle } });
-  }, [dispatch, worker, scene]);
-
   const gmSelectColor = () => {
     if (!internalState.color.current) return;
     const ref = internalState.color.current;
@@ -334,17 +325,14 @@ const ContentEditor = ({
   }, [scene, canvasSize, internalState, redrawToolbar]);
 
   useEffect(() => {
+    /**
+     * For now, we do want to run this every render, because we need
+     * updated state for some of the callbacks (eg: rotation).
+     */
     if (!overlayCanvasRef.current) return;
     if (!canvasSize || !canvasSize.length) return;
     if (!imageSize || !imageSize.length) return;
-    if (!worker) return;
-    if (canvasListening) return;
-
-    // prevent right click context menu on canvas
-    overlayCanvasRef.current.oncontextmenu = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
+    if (!scene || !worker) return;
 
     setCallback(sm, "wait", () => {
       sm.resetCoordinates();
@@ -434,39 +422,47 @@ const ContentEditor = ({
       sm.transition("done");
     });
     setCallback(sm, "rotate_clock", () => {
-      rotateClockwise();
+      const angle = ((scene.angle || 0) + 90) % 360;
+      worker.postMessage({ cmd: "rotate", angle: angle });
+      dispatch({ type: "content/zoom", payload: { angle: angle } });
       sm.transition("done");
     });
-
-    overlayCanvasRef.current.addEventListener("mousedown", (evt: MouseEvent) =>
-      sm.transition("down", evt),
-    );
-    overlayCanvasRef.current.addEventListener("mouseup", (evt: MouseEvent) =>
-      sm.transition("up", evt),
-    );
-    overlayCanvasRef.current.addEventListener("mousemove", (evt: MouseEvent) =>
-      sm.transition("move", evt),
-    );
-    overlayCanvasRef.current.addEventListener("wheel", (evt: WheelEvent) => {
-      if (evt.deltaY > 0) {
-        worker.postMessage({ cmd: "zoom_in" });
-      } else if (evt.deltaY < 0) {
-        worker.postMessage({ cmd: "zoom_out" });
-      }
-    });
-    setCanvasListening(true);
   }, [
     canvasSize,
     dispatch,
     imageSize,
-    overlayCanvasRef,
-    rotateClockwise,
     sceneManager,
     selectOverlay,
     updateObscure,
+    scene,
+    overlayCanvasRef,
     worker,
-    canvasListening,
   ]);
+
+  useEffect(() => {
+    /**
+     * We avoid adding listeners on every rerender, otherwise, you start
+     * stacking up events.
+     */
+    const canvas = overlayCanvasRef.current;
+    if (!worker || !canvas || canvasListening) return;
+    // prevent right click context menu on canvas
+    canvas.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    canvas.addEventListener("mousedown", (e) => sm.transition("down", e));
+    canvas.addEventListener("mouseup", (e) => sm.transition("up", e));
+    canvas.addEventListener("mousemove", (e) => sm.transition("move", e));
+    canvas.addEventListener("wheel", (e) => {
+      if (e.deltaY > 0) {
+        worker.postMessage({ cmd: "zoom_in" });
+      } else if (e.deltaY < 0) {
+        worker.postMessage({ cmd: "zoom_out" });
+      }
+    });
+    setCanvasListening(true);
+  }, [canvasListening, overlayCanvasRef, worker]);
 
   /**
    * This is the main rendering loop. Its a bit odd looking but we're working really hard to avoid repainting
@@ -522,7 +518,7 @@ const ContentEditor = ({
       const angle = scene.angle || 0;
       const [scrW, scrH] = getWidthAndHeight();
 
-      // hencefourth canvas is transferred -- this doesn't take effect until the next render
+      // henceforth canvas is transferred -- this doesn't take effect until the next render
       // so the on this pass it is false when passed to setCanvassesTransferred even if set
       setCanvassesTransferred(true);
       const wrkr = setupOffscreenCanvas(
