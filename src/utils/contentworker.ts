@@ -53,7 +53,6 @@ function renderImage(
   ctx: OffscreenCanvasRenderingContext2D,
   img: ImageBitmap,
   angle: number,
-  zoom: number,
 ) {
   /**
    * math!
@@ -75,6 +74,17 @@ function renderImage(
   // if (_pan_y + _vpH > _fullRotH) _pan_y = _fullRotH - _vpH;
   if (_pan_x + _vpW > img.width) _pan_x = img.width - _vpW;
   if (_pan_y + _vpH > img.height) _pan_y = img.height - _vpH;
+
+  // if (debug) {
+  //   console.log(`*****`);
+  //   console.log(`translate ${ctx.canvas.width / 2}, ${ctx.canvas.height / 2}`);
+  //   console.log(
+  //     `draw ${_pan_x}, ${_pan_y}, ${_vpW}, ${_vpH}, ${-_rvpW / 2}, ${
+  //       -_rvpH / 2
+  //     }, ${_rvpW}, ${_rvpH}`,
+  //   );
+  //   console.log(`*****`);
+  // }
 
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.save();
@@ -168,7 +178,7 @@ function calculateViewport(
  * @param height
  * @returns
  */
-function sizeAllCanvasses(width: number, height: number, zoom: number) {
+function sizeVisibleCanvasses(width: number, height: number, zoom: number) {
   const [scaleContW, scaleContH] = zoom
     ? [_containerW, _containerH]
     : getScaledContainerSize(_containerW, _containerH, _fullRotW, _fullRotH);
@@ -177,9 +187,6 @@ function sizeAllCanvasses(width: number, height: number, zoom: number) {
   backgroundCanvas.height = scaleContH;
   overlayCanvas.width = scaleContW;
   overlayCanvas.height = scaleContH;
-  // we actually un-rotate all updates...  this might become problematic with free-drawing
-  fullOverlayCanvas.width = width;
-  fullOverlayCanvas.height = height;
 }
 
 function loadAllImages(background: string, overlay?: string) {
@@ -195,8 +202,8 @@ function loadAllImages(background: string, overlay?: string) {
 }
 
 function renderVisibleCanvasses() {
-  renderImage(backgroundCtx, backgroundImage, _angle, _zoom);
-  renderImage(overlayCtx, overlayImage, _angle, _zoom);
+  renderImage(backgroundCtx, backgroundImage, _angle);
+  renderImage(overlayCtx, overlayImage, _angle);
 }
 
 function renderAllCanvasses(
@@ -204,23 +211,21 @@ function renderAllCanvasses(
   overlay: ImageBitmap | null,
 ) {
   if (background) {
-    sizeAllCanvasses(_fullRotW, _fullRotH, _zoom);
-    renderImage(backgroundCtx, background, _angle, _zoom);
+    sizeVisibleCanvasses(_fullRotW, _fullRotH, _zoom);
+    renderImage(backgroundCtx, background, _angle);
     if (overlay) {
-      renderImage(overlayCtx, overlay, _angle, _zoom);
+      renderImage(overlayCtx, overlay, _angle);
       buff = overlayCtx.getImageData(
         0,
         0,
         overlayCtx.canvas.width,
         overlayCtx.canvas.height,
       );
-      renderImage(fullCtx, overlay, 0, 0);
-      fullBuff = fullCtx.getImageData(
-        0,
-        0,
-        fullCtx.canvas.width,
-        fullCtx.canvas.height,
-      );
+      // sync full overlay to background size and draw un-scaled/un-rotated image
+      fullOverlayCanvas.width = background.width;
+      fullOverlayCanvas.height = background.height;
+      fullCtx.drawImage(overlay, 0, 0);
+      fullBuff = fullCtx.getImageData(0, 0, overlay.width, overlay.height);
     }
   }
 }
@@ -465,7 +470,7 @@ self.onmessage = (evt) => {
       break;
     }
     case "start_recording": {
-      if (selecting) restoreOverlay();
+      restoreOverlay();
       selecting = false;
       break;
     }
@@ -478,7 +483,6 @@ self.onmessage = (evt) => {
         recording = true;
         selecting = evt.data.buttons === 1;
         panning = evt.data.buttons === 2;
-        restoreOverlay();
         requestAnimationFrame(animateSelection);
       }
       break;
@@ -569,7 +573,6 @@ self.onmessage = (evt) => {
       */
       if (!_zoom) {
         _zoom = _min_zoom;
-        console.log(_zoom);
         calculateViewport(_angle, _zoom, _containerW, _containerH);
         renderAllCanvasses(backgroundImage, overlayImage);
       } else if (_zoom === _min_zoom) {
