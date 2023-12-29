@@ -36,6 +36,8 @@ let _scaleH: number;
 let _scaleOriginW: number;
 let _scaleOriginH: number;
 let _fullRotW: number;
+let _unrotCanvasW: number;
+let _unrotCanvasH: number;
 let _fullRotH: number;
 let _vpW: number;
 let _vpH: number;
@@ -119,7 +121,7 @@ function loadImage(url: string): Promise<ImageBitmap> {
     .then((blob) => createImageBitmap(blob));
 }
 
-function calcualteCanvasses(
+function calculateCanvasses(
   angle: number,
   width: number,
   height: number,
@@ -128,6 +130,11 @@ function calcualteCanvasses(
 ) {
   // rotate the full sized hidden canvas (holds the full-sized overlay)
   [_fullRotW, _fullRotH] = rotatedWidthAndHeight(angle, width, height);
+  [_unrotCanvasW, _unrotCanvasH] = rotatedWidthAndHeight(
+    -angle,
+    containerWidth,
+    containerHeight,
+  );
 
   // scale the rotated full size image down be contained within our container bounds
   const [scaleContW, scaleContH] = getScaledContainerSize(
@@ -271,26 +278,23 @@ function unrotateAndScaleRect(rect: Rect): Rect {
  * Given to points on the overlay, un-rotate and scale to the full size overlay
  */
 function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
-  const [rx1, ry1] = rotateBackToBackgroundOrientation(
-    -_angle,
-    x1,
-    y1,
-    _scaleW,
-    _scaleH,
-    _scaleOriginW,
-    _scaleOriginH,
-  );
-  const [rx2, ry2] = rotateBackToBackgroundOrientation(
-    -_angle,
-    x2,
-    y2,
-    _scaleW,
-    _scaleH,
-    _scaleOriginW,
-    _scaleOriginH,
-  );
+  // a few things - when zoomed, use _containerW, _containerH (scaleW/scaleH only makes
+  // sense zoomed out)
+  const [w, h, ow, oh] = _zoom
+    ? [_containerW, _containerH, _unrotCanvasW, _unrotCanvasH]
+    : [_scaleW, _scaleH, _scaleOriginW, _scaleOriginH];
+  const op = rotateBackToBackgroundOrientation;
+  let [rx1, ry1] = op(-_angle, x1, y1, w, h, ow, oh);
+  let [rx2, ry2] = op(-_angle, x2, y2, w, h, ow, oh);
+  console.log(_zoom);
+  rx1 += _pan_x;
+  ry1 += _pan_y;
+  rx2 += _pan_x;
+  ry2 += _pan_y;
+  // const [rw, rh] = [rx2 - rx1, ry2 - ry1];
   const [rw, rh] = [rx2 - rx1, ry2 - ry1];
-  return [scale * rx1, scale * ry1, scale * rw, scale * rh];
+  const co = _zoom ? _zoom : scale;
+  return [co * rx1, co * ry1, co * rw, co * rh];
 }
 
 function renderBox(
@@ -331,7 +335,7 @@ function restoreOverlay() {
 }
 
 function fullRerender() {
-  calcualteCanvasses(
+  calculateCanvasses(
     _angle,
     backgroundImage.width,
     backgroundImage.height,
