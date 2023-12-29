@@ -3,6 +3,7 @@ import {
   // calculateScaleSteps,
   getMaxContainerSize,
   getScaledContainerSize,
+  rot,
   rotateBackToBackgroundOrientation,
   rotatedWidthAndHeight,
 } from "./geometry";
@@ -42,6 +43,8 @@ let _rvpW: number;
 let _rvpH: number;
 
 let startX: number, startY: number, endX: number, endY: number;
+let lastAnimX = -1;
+let lastAnimY = -1;
 let scale: number;
 
 let opacity = "1";
@@ -72,8 +75,10 @@ function renderImage(
   // if (_pan_y + sh > _fullRotH) _pan_y = _fullRotH - sh;
   // if (_pan_x + _vpW > _fullRotW) _pan_x = _fullRotW - _vpW;
   // if (_pan_y + _vpH > _fullRotH) _pan_y = _fullRotH - _vpH;
-  if (_pan_x + _vpW > img.width) _pan_x = img.width - _vpW;
-  if (_pan_y + _vpH > img.height) _pan_y = img.height - _vpH;
+
+  // MICAH THIS WORKED
+  // if (_pan_x + _vpW > img.width) _pan_x = img.width - _vpW;
+  // if (_pan_y + _vpH > img.height) _pan_y = img.height - _vpH;
 
   // if (debug) {
   //   console.log(`*****`);
@@ -380,12 +385,22 @@ function animateSelection() {
     renderBox(startX, startY, endX, endY, "rgba(255, 255, 255, 0.25)", false);
   } else if (panning) {
     if (_zoom === 0) return;
-    _pan_x += endX - startX;
-    _pan_y += endY - startY;
+    // calculate the (rotated) movement since the last frame and update for the next
+    const [w, h] = rot(-_angle, endX - lastAnimX, endY - lastAnimY);
+    [lastAnimX, lastAnimY] = [endX, endY];
+
+    // move the panning offsets
+    _pan_x += w;
+    _pan_y += h;
+
+    // ensure panning offsets are within image boundaries
     if (_pan_x <= 0) _pan_x = 0;
+    if (_pan_x + _vpW > backgroundImage.width)
+      _pan_x = backgroundImage.width - _vpW;
     if (_pan_y <= 0) _pan_y = 0;
-    startX = endX;
-    startY = endY;
+    if (_pan_y + _vpH > backgroundImage.height)
+      _pan_y = backgroundImage.height - _vpH;
+
     renderVisibleCanvasses();
   }
   requestAnimationFrame(animateSelection);
@@ -475,6 +490,12 @@ self.onmessage = (evt) => {
       break;
     }
     case "record": {
+      if (lastAnimX < 0) {
+        // less than 0 indicates a new recording so initialize the last
+        // animation x and y coordinates
+        lastAnimX = evt.data.x1;
+        lastAnimY = evt.data.y1;
+      }
       startX = evt.data.x1;
       startY = evt.data.y1;
       endX = evt.data.x2;
@@ -494,6 +515,9 @@ self.onmessage = (evt) => {
       // of the next mouse recording
       recording = false;
       panning = false;
+      // reset last animation coordinates
+      lastAnimX = -1;
+      lastAnimY = -1;
       break;
     }
     case "obscure": {
