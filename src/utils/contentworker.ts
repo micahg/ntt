@@ -513,7 +513,10 @@ self.onmessage = (evt) => {
       break;
     }
     case "endrecording": {
-      if (panning) storeOverlay(false);
+      if (panning) {
+        storeOverlay(false);
+        postMessage({ cmd: "pan_complete" });
+      }
       // when we're done recording we're done panning BUT not selecting
       // we still have a selection on screen. Selection ends at the start
       // of the next mouse recording

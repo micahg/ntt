@@ -211,6 +211,9 @@ const ContentEditor = ({
         }
         setCanvasSize([evt.data.width, evt.data.height]);
         setImageSize([evt.data.fullWidth, evt.data.fullHeight]);
+      } else if (evt.data.cmd === "pan_complete") {
+        // after panning is done, we can go back to waiting state
+        sm.transition("wait");
       }
     },
     [dispatch, ovRev],
