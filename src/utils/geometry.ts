@@ -72,39 +72,27 @@ export function calculateBounds(
   return { x: 0, y: t, width: canvasWidth, height: h };
 }
 
-export function calculateScaleSteps(
-  screenWidth: number,
-  screenHeight: number,
-  imageWidth: number,
-  imageHeight: number,
-) {
-  /**
-   * Need to think about drawImage -- in the end, after rotation, we call:
-   *
-   *   ctx.drawImage(
-   *     img,
-   *     0,
-   *     0,
-   *     img.width,
-   *     img.height,
-   *     -dimensions.width / 2,
-   *     -dimensions.height / 2,
-   *     dimensions.width,
-   *     dimensions.height,
-   *   );
-   *
-   * In this 0, 0, img.width, img.heigh are the source dimensions. If we want to zoom
-   * in we need to be able to calculate the offset (0,0) or (sx, sy) and width and height
-   * (img.width, img.heigh) or (sWidth, sHeight). Think through the math on these values
-   * for an image of 2008x4160 and a screen of 1438*549
-   *
-   * If we set our baseline of zoom 1 as sWidth and sHeight our min zoom would fit the
-   * entire width or height (depending on the image and screen dimensions).
-   */
-  const wr = screenWidth / imageWidth;
-  const sr = screenHeight / imageHeight;
-
-  return [Math.min(wr, sr), Math.max(wr, sr), 1];
+/**
+ * Determine the first step of zooming.
+ *
+ * Example: if the maxZoom is 2.9 and the step is 0.5 (assuming 1 is a 1:1
+ * pixel view and 2.9 would fit the entire width of the image), this should
+ * return 2.5 so we can descend in clean intervals.
+ */
+export function firstZoomStep(maxZoom: number, step: number): number {
+  let magnitude = 0;
+  let multStep = step;
+  while (multStep < 1) {
+    multStep *= 10;
+    magnitude++;
+  }
+  const scaleScale = Math.pow(10, magnitude);
+  const scaledFactor = step * scaleScale;
+  return (
+    (Math.floor(Math.floor(maxZoom * scaleScale) / scaledFactor) *
+      scaledFactor) /
+    scaleScale
+  );
 }
 
 /**

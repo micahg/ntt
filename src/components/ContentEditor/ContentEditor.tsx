@@ -181,10 +181,8 @@ const ContentEditor = ({
         } else console.error("Error: no blob in worker message");
       } else if (evt.data.cmd === "viewport") {
         if ("viewport" in evt.data) {
-          dispatch({
-            type: "content/zoom",
-            payload: { viewport: evt.data.viewport },
-          });
+          const vp = evt.data.viewport;
+          dispatch({ type: "content/zoom", payload: { viewport: vp } });
         } else console.error("No viewport in worker message");
       } else if (evt.data.cmd === "initialized") {
         if (!("width" in evt.data) || typeof evt.data.width !== "number") {

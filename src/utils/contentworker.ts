@@ -1,6 +1,6 @@
 import {
   Rect,
-  // calculateScaleSteps,
+  firstZoomStep,
   getMaxContainerSize,
   getScaledContainerSize,
   rot,
@@ -28,7 +28,9 @@ let _angle: number;
 let _pan_x = 0;
 let _pan_y = 0;
 let _zoom = 0;
-let _min_zoom: number;
+const _zoom_step = 0.5;
+let _max_zoom: number;
+let _first_zoom_step: number;
 let _containerW: number;
 let _containerH: number;
 let _scaleW: number;
@@ -175,10 +177,6 @@ function calculateViewport(
   [_vpW, _vpH] = [zoom * _rvpW, zoom * _rvpH];
 }
 
-// function calculateViewport(zoom: number, width: number, height: number) {
-//   const [vw, vh] = zoom ? [zoom * _scaleOriginW, zoom * _scaleOriginH] : [img.width, img.height];
-// }
-
 /**
  * Resize all canvasses based on the angle of background image rotation, screen
  * size, and image width and height.
@@ -286,7 +284,6 @@ function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
   const op = rotateBackToBackgroundOrientation;
   let [rx1, ry1] = op(-_angle, x1, y1, w, h, ow, oh);
   let [rx2, ry2] = op(-_angle, x2, y2, w, h, ow, oh);
-  console.log(_zoom);
   rx1 += _pan_x;
   ry1 += _pan_y;
   rx2 += _pan_x;
@@ -342,13 +339,8 @@ function fullRerender() {
     _containerW,
     _containerH,
   );
-  // const steps = calculateScaleSteps(
-  //   _containerW,
-  //   _containerH,
-  //   _fullRotW,
-  //   _fullRotH,
-  // );
-  _min_zoom = _fullRotW / _containerW; //1 / steps[0];
+  _max_zoom = _fullRotW / _containerW; //1 / steps[0];
+  _first_zoom_step = firstZoomStep(_max_zoom, _zoom_step);
   renderAllCanvasses(backgroundImage, overlayImage);
 }
 
@@ -577,52 +569,29 @@ self.onmessage = (evt) => {
       break;
     }
     case "zoom_in": {
-      /*
+      if (!_zoom) _zoom = _max_zoom;
+      else if (_zoom === _max_zoom) _zoom = _first_zoom_step;
+      else if (_zoom > _zoom_step) _zoom -= _zoom_step;
 
-      const [scaleContW, scaleContH] = zoom
-        ? [_containerW, _containerH]
-        : getScaledContainerSize(_containerW, _containerH, _fullRotW, _fullRotH);
-      // set the canvases
-      backgroundCanvas.width = scaleContW;
-      backgroundCanvas.height = scaleContH;
-      overlayCanvas.width = scaleContW;
-      overlayCanvas.height = scaleContH;
-
-      _scaleW = scaleContW;
-      _scaleH = scaleContH;
-
-      const [cw, ch] = [ctx.canvas.width, ctx.canvas.height]; //... [_containerW, _containerH]
-      const [rcw, rch] = rotatedWidthAndHeight(-angle, cw, ch); //... [_scaleOriginW, _scaleOriginH]
-      const [sw, sh] = zoom ? [zoom * rcw, zoom * rch] : [img.width, img.height];
-      ctx.drawImage(img, _pan_x, _pan_y, sw, sh, -rcw / 2, -rch / 2, rcw, rch);
-
-      ...
-
-      MICAH WHEN YOU COME BACK we're not storing the rotated canvas dimensions (container dimensions)
-      so the viewport calculation that should happen on zoom should start there using the formulas above
-
-      */
-      if (!_zoom) {
-        _zoom = _min_zoom;
-        calculateViewport(_angle, _zoom, _containerW, _containerH);
-        renderAllCanvasses(backgroundImage, overlayImage);
-      } else if (_zoom === _min_zoom) {
-        _zoom = 1;
-        calculateViewport(_angle, _zoom, _containerW, _containerH);
-        renderAllCanvasses(backgroundImage, overlayImage);
-      } else {
-        console.log("CANT ZOOM FURTHER YET");
-      }
+      calculateViewport(_angle, _zoom, _containerW, _containerH);
+      renderAllCanvasses(backgroundImage, overlayImage);
       break;
     }
     case "zoom_out": {
-      if (_zoom) {
+      // fully zoomed out already
+      if (_zoom === 0) return;
+      if (_zoom === _first_zoom_step) {
+        // zoom out completely and fit canvas to scaled image size
         _zoom = 0;
         [_pan_x, _pan_y] = [0, 0];
         [_rvpW, _rvpH] = [_scaleOriginW, _scaleOriginH];
         [_vpW, _vpH] = [backgroundImage.width, backgroundImage.height];
         renderAllCanvasses(backgroundImage, overlayImage);
-      } else console.log("CANT ZOOM OUT ANY FURTHER");
+        return;
+      }
+      _zoom += _zoom_step;
+      calculateViewport(_angle, _zoom, _containerW, _containerH);
+      renderAllCanvasses(backgroundImage, overlayImage);
       break;
     }
     default: {
