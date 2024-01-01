@@ -27,7 +27,7 @@ let fullBuff: ImageData;
 let _angle: number;
 let _pan_x = 0;
 let _pan_y = 0;
-let _zoom = 0;
+let _zoom: number;
 const _zoom_step = 0.5;
 let _max_zoom: number;
 let _first_zoom_step: number;
@@ -55,6 +55,19 @@ let opacity = "1";
 let red = "255";
 let green = "0";
 let blue = "0";
+
+function trimPanning() {
+  if (_pan_x <= 0) _pan_x = 0;
+  if (_pan_y <= 0) _pan_y = 0;
+
+  // if viewport > image then panning gets weird
+  if (_vpW >= backgroundImage.width) _pan_x = 0;
+  else if (_pan_x + _vpW > backgroundImage.width)
+    _pan_x = backgroundImage.width - _vpW;
+  if (_vpH >= backgroundImage.height) _pan_y = 0;
+  else if (_pan_y + _vpH > backgroundImage.height)
+    _pan_y = backgroundImage.height - _vpH;
+}
 
 function renderImage(
   ctx: OffscreenCanvasRenderingContext2D,
@@ -175,6 +188,13 @@ function calculateViewport(
   const [cw, ch] = [containerWidth, containerHeight];
   [_rvpW, _rvpH] = rotatedWidthAndHeight(-angle, cw, ch);
   [_vpW, _vpH] = [zoom * _rvpW, zoom * _rvpH];
+  if (_vpW > backgroundImage.width) {
+    _vpW = backgroundImage.width;
+    _rvpW = Math.round((_rvpH * _vpW) / _vpH);
+  } else if (_vpH > backgroundImage.height) {
+    _vpH = backgroundImage.height;
+    _rvpH = Math.round((_rvpW * _vpH) / _vpW);
+  }
 }
 
 /**
@@ -282,16 +302,19 @@ function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
     ? [_containerW, _containerH, _unrotCanvasW, _unrotCanvasH]
     : [_scaleW, _scaleH, _scaleOriginW, _scaleOriginH];
   const op = rotateBackToBackgroundOrientation;
-  let [rx1, ry1] = op(-_angle, x1, y1, w, h, ow, oh);
-  let [rx2, ry2] = op(-_angle, x2, y2, w, h, ow, oh);
+  const xOffset = _containerW > _rvpW ? (_containerW - _rvpW) / 2 : 0;
+  const yOffset = _containerH > _rvpH ? (_containerH - _rvpH) / 2 : 0;
+  let [rx1, ry1] = op(-_angle, x1 - xOffset, y1 - yOffset, w, h, ow, oh).map(
+    (n) => n * _zoom,
+  );
+  let [rx2, ry2] = op(-_angle, x2 - xOffset, y2 - yOffset, w, h, ow, oh).map(
+    (n) => n * _zoom,
+  );
   rx1 += _pan_x;
   ry1 += _pan_y;
   rx2 += _pan_x;
   ry2 += _pan_y;
-  // const [rw, rh] = [rx2 - rx1, ry2 - ry1];
-  const [rw, rh] = [rx2 - rx1, ry2 - ry1];
-  const co = _zoom ? _zoom : scale;
-  return [co * rx1, co * ry1, co * rw, co * rh];
+  return [rx1, ry1, rx2 - rx1, ry2 - ry1];
 }
 
 function renderBox(
@@ -339,8 +362,9 @@ function fullRerender() {
     _containerW,
     _containerH,
   );
-  _max_zoom = _fullRotW / _containerW; //1 / steps[0];
+  _max_zoom = Math.max(_fullRotW / _containerW, _fullRotH / _containerH);
   _first_zoom_step = firstZoomStep(_max_zoom, _zoom_step);
+  _zoom = _max_zoom;
   renderAllCanvasses(backgroundImage, overlayImage);
 }
 
@@ -380,22 +404,17 @@ function animateSelection() {
     restoreOverlay();
     renderBox(startX, startY, endX, endY, "rgba(255, 255, 255, 0.25)", false);
   } else if (panning) {
-    if (_zoom === 0) return;
+    // if (_zoom === 0) return;
     // calculate the (rotated) movement since the last frame and update for the next
     const [w, h] = rot(-_angle, endX - lastAnimX, endY - lastAnimY);
     [lastAnimX, lastAnimY] = [endX, endY];
 
     // move the panning offsets
-    _pan_x += w;
-    _pan_y += h;
+    _pan_x += Math.round((w * _max_zoom) / _zoom);
+    _pan_y += Math.round((h * _max_zoom) / _zoom);
 
     // ensure panning offsets are within image boundaries
-    if (_pan_x <= 0) _pan_x = 0;
-    if (_pan_x + _vpW > backgroundImage.width)
-      _pan_x = backgroundImage.width - _vpW;
-    if (_pan_y <= 0) _pan_y = 0;
-    if (_pan_y + _vpH > backgroundImage.height)
-      _pan_y = backgroundImage.height - _vpH;
+    trimPanning();
 
     renderVisibleCanvasses();
   }
@@ -572,25 +591,16 @@ self.onmessage = (evt) => {
       if (!_zoom) _zoom = _max_zoom;
       else if (_zoom === _max_zoom) _zoom = _first_zoom_step;
       else if (_zoom > _zoom_step) _zoom -= _zoom_step;
-
       calculateViewport(_angle, _zoom, _containerW, _containerH);
       renderAllCanvasses(backgroundImage, overlayImage);
       break;
     }
     case "zoom_out": {
-      // fully zoomed out already
-      if (_zoom === 0) return;
-      if (_zoom === _first_zoom_step) {
-        // zoom out completely and fit canvas to scaled image size
-        _zoom = 0;
-        [_pan_x, _pan_y] = [0, 0];
-        [_rvpW, _rvpH] = [_scaleOriginW, _scaleOriginH];
-        [_vpW, _vpH] = [backgroundImage.width, backgroundImage.height];
-        renderAllCanvasses(backgroundImage, overlayImage);
-        return;
-      }
-      _zoom += _zoom_step;
+      if (_zoom === _max_zoom) return;
+      if (_zoom === _first_zoom_step) _zoom = _max_zoom;
+      else _zoom += _zoom_step;
       calculateViewport(_angle, _zoom, _containerW, _containerH);
+      trimPanning();
       renderAllCanvasses(backgroundImage, overlayImage);
       break;
     }

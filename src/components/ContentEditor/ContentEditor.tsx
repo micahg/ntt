@@ -455,11 +455,11 @@ const ContentEditor = ({
     canvas.addEventListener("mousedown", (e) => sm.transition("down", e));
     canvas.addEventListener("mouseup", (e) => sm.transition("up", e));
     canvas.addEventListener("mousemove", (e) => sm.transition("move", e));
-    canvas.addEventListener("wheel", (e) => {
+    canvas.addEventListener("wheel", (e: WheelEvent) => {
       if (e.deltaY > 0) {
-        worker.postMessage({ cmd: "zoom_in" });
+        worker.postMessage({ cmd: "zoom_in", x: e.offsetX, y: e.offsetY });
       } else if (e.deltaY < 0) {
-        worker.postMessage({ cmd: "zoom_out" });
+        worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
       }
     });
     setCanvasListening(true);
