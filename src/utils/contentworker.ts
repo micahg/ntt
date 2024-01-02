@@ -241,7 +241,7 @@ function renderAllCanvasses(
   overlay: ImageBitmap | null,
 ) {
   if (background) {
-    sizeVisibleCanvasses(_fullRotW, _fullRotH, _zoom);
+    // sizeVisibleCanvasses(_fullRotW, _fullRotH, _zoom);
     renderImage(backgroundCtx, background, _angle);
     if (overlay) {
       renderImage(overlayCtx, overlay, _angle);
@@ -457,6 +457,11 @@ self.onmessage = (evt) => {
 
       if (evt.data.background) {
         backgroundCanvas = evt.data.background;
+        _containerW = backgroundCanvas.width;
+        _containerH = backgroundCanvas.height;
+        backgroundCanvas.addEventListener("resize", (ev) => {
+          console.log(ev);
+        });
         backgroundCtx = backgroundCanvas.getContext("2d", {
           alpha: true,
         }) as OffscreenCanvasRenderingContext2D;

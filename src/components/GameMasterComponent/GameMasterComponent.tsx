@@ -35,9 +35,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppReducerState } from "../../reducers/AppReducer";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import SceneComponent from "../SceneComponent/SceneComponent.lazy";
+// import Stubby from "../stubby/stubby.lazy";
 import { Scene } from "../../reducers/ContentReducer";
 
 const drawerWidth = 240;
+const appBarHeight = 64;
 
 enum FocusedComponent {
   ContentEditor,
@@ -48,7 +50,11 @@ const Main = styled("main", { shouldForwardProp: (prop) => prop !== "open" })<{
   open?: boolean;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  padding: theme.spacing(3),
+  // padding: theme.spacing(3),
+  // width: `calc(100% - ${drawerWidth}px)`,
+  // height: `calc(100% - ${appBarHeight})`,
+  // top: appBarHeight,
+  padding: theme.spacing(0),
   transition: theme.transitions.create("margin", {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
@@ -61,6 +67,7 @@ const Main = styled("main", { shouldForwardProp: (prop) => prop !== "open" })<{
     }),
     marginLeft: 0,
   }),
+  marginTop: `${appBarHeight}px`,
 }));
 
 interface GameMasterAppBarProps extends AppBarProps {
@@ -262,7 +269,7 @@ const GameMasterComponent = () => {
         </List>
       </Drawer>
       <Main open={open}>
-        <DrawerHeader />
+        {/* <Stubby /> */}
         {focusedComponent === FocusedComponent.ContentEditor && (
           <ContentEditor
             populateToolbar={handlePopulateToolbar}

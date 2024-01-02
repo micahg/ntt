@@ -566,15 +566,23 @@ const ContentEditor = ({
   }, [apiUrl, dispatch, toolbarPopulated, auth, noauth]);
 
   return (
-    <div
-      className={styles.ContentEditor}
-      data-testid="ContentEditor"
-      onFocus={() => {
-        if (sm.current === "background_upload") {
-          sm.transition("done");
-        }
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
       }}
     >
+      {/* // <div
+    //   className={styles.ContentEditor}
+    //   data-testid="ContentEditor"
+    //   onFocus={() => {
+    //     if (sm.current === "background_upload") {
+    //       sm.transition("done");
+    //     }
+    //   }}
+    // > */}
       {/* TODO make content a DIV, per https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas#use_plain_css_for_large_background_images */}
       <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>
         Sorry, your browser does not support canvas.
@@ -620,7 +628,8 @@ const ContentEditor = ({
           />
         </Box>
       </Popover>
-    </div>
+    </Box>
+    // </div>
   );
 };
 
