@@ -298,12 +298,34 @@ function unrotateAndScaleRect(rect: Rect): Rect {
 function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
   // a few things - when zoomed, use _containerW, _containerH (scaleW/scaleH only makes
   // sense zoomed out)
-  const [w, h, ow, oh] = _zoom
-    ? [_containerW, _containerH, _unrotCanvasW, _unrotCanvasH]
-    : [_scaleW, _scaleH, _scaleOriginW, _scaleOriginH];
+  const [w, h, ow, oh] = [
+    _containerW,
+    _containerH,
+    _unrotCanvasW,
+    _unrotCanvasH,
+  ];
+
   const op = rotateBackToBackgroundOrientation;
-  const xOffset = _containerW > _rvpW ? (_containerW - _rvpW) / 2 : 0;
-  const yOffset = _containerH > _rvpH ? (_containerH - _rvpH) / 2 : 0;
+  // un-rotate the zoomed out viewport
+  // this should be precalculated. And while we're there, we should
+  // think of better names than vpW rvpW etc... there might be
+  // better terminology too
+  const [vpW, vpH] = rotatedWidthAndHeight(-_angle, _rvpW, _rvpH);
+  const xOffset = _containerW > vpW ? (_containerW - vpW) / 2 : 0;
+  const yOffset = _containerH > vpH ? (_containerH - vpH) / 2 : 0;
+
+  // trim selection to viewport
+  const [minY, maxY] = [yOffset, yOffset + vpH];
+  const [minX, maxX] = [xOffset, xOffset + vpW];
+  if (y1 < minY) y1 = minY;
+  if (y2 < minY) y2 = minY;
+  if (x1 < minX) x1 = minX;
+  if (x2 < minX) x2 = minX;
+  if (y1 > maxY) y1 = maxY;
+  if (y2 > maxY) y2 = maxY;
+  if (x1 > maxX) x1 = maxX;
+  if (x2 > maxX) x2 = maxX;
+
   let [rx1, ry1] = op(-_angle, x1 - xOffset, y1 - yOffset, w, h, ow, oh).map(
     (n) => n * _zoom,
   );
