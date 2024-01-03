@@ -462,6 +462,14 @@ const ContentEditor = ({
         worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
       }
     });
+
+    // watch for canvas size changes and report to worker
+    const observer = new ResizeObserver((e) => {
+      const [w, h] = [e[0].contentRect.width, e[0].contentRect.height];
+      if (w === 0 && h === 0) return; // when the component is hidden or destroyed
+      worker.postMessage({ cmd: "resize", width: w, height: h });
+    });
+    observer.observe(canvas);
     setCanvasListening(true);
   }, [canvasListening, overlayCanvasRef, worker]);
 
@@ -566,13 +574,12 @@ const ContentEditor = ({
   }, [apiUrl, dispatch, toolbarPopulated, auth, noauth]);
 
   return (
-    <div
-      className={styles.ContentEditor}
-      data-testid="ContentEditor"
-      onFocus={() => {
-        if (sm.current === "background_upload") {
-          sm.transition("done");
-        }
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
       }}
     >
       {/* TODO make content a DIV, per https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas#use_plain_css_for_large_background_images */}
@@ -620,7 +627,7 @@ const ContentEditor = ({
           />
         </Box>
       </Popover>
-    </div>
+    </Box>
   );
 };
 
