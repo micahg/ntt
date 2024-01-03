@@ -35,7 +35,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppReducerState } from "../../reducers/AppReducer";
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import SceneComponent from "../SceneComponent/SceneComponent.lazy";
-// import Stubby from "../stubby/stubby.lazy";
 import { Scene } from "../../reducers/ContentReducer";
 
 const drawerWidth = 240;
@@ -265,7 +264,6 @@ const GameMasterComponent = () => {
         </List>
       </Drawer>
       <Main open={open}>
-        {/* <Stubby /> */}
         {focusedComponent === FocusedComponent.ContentEditor && (
           <ContentEditor
             populateToolbar={handlePopulateToolbar}

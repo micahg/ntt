@@ -167,17 +167,12 @@ function calculateCanvasses(
   );
 
   // calculate pre-rotation scale
-  // scale = width / scaleW;
   scale = width / _unrotCanvasW;
 
   _scaleOriginW = scaleW;
   _scaleOriginH = scaleH;
   _scaleW = scaleContW;
   _scaleH = scaleContH;
-  // _scaleOriginW = _unrotCanvasW;
-  // _scaleOriginH = _unrotCanvasH; // 1078
-  // _scaleW = containerWidth; // 1078
-  // _scaleH = containerHeight;
 
   [_rvpW, _rvpH] = [scaleW, scaleH];
   [_vpW, _vpH] = [width, height];
@@ -214,14 +209,6 @@ function calculateViewport(
  * @returns
  */
 function sizeVisibleCanvasses(width: number, height: number) {
-  // const [scaleContW, scaleContH] = zoom
-  //   ? [_containerW, _containerH]
-  //   : getScaledContainerSize(_containerW, _containerH, _fullRotW, _fullRotH);
-  // // set the canvases
-  // backgroundCanvas.width = scaleContW;
-  // backgroundCanvas.height = scaleContH;
-  // overlayCanvas.width = scaleContW;
-  // overlayCanvas.height = scaleContH;
   backgroundCanvas.width = width;
   backgroundCanvas.height = height;
   overlayCanvas.width = width;
@@ -456,12 +443,6 @@ function animateSelection() {
 self.onmessage = (evt) => {
   switch (evt.data.cmd) {
     case "init": {
-      // console.log(evt.data);
-      // [_containerW, _containerH] = getMaxContainerSize(
-      //   evt.data.values.screenWidth,
-      //   evt.data.values.screenHeight,
-      // );
-      // TODO get the angle from the viewport on load
       _angle = evt.data.values.angle;
 
       if (evt.data.background) {
@@ -522,8 +503,6 @@ self.onmessage = (evt) => {
       break;
     }
     case "resize": {
-      console.log(evt);
-      console.log(`${backgroundCanvas.width},${backgroundCanvas.height}`);
       _containerW = evt.data.width;
       _containerH = evt.data.height;
       if (backgroundImage) fullRerender();
