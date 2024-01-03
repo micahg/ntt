@@ -167,14 +167,19 @@ function calculateCanvasses(
   );
 
   // calculate pre-rotation scale
-  scale = width / scaleW;
+  // scale = width / scaleW;
+  scale = width / _unrotCanvasW;
 
   _scaleOriginW = scaleW;
   _scaleOriginH = scaleH;
   _scaleW = scaleContW;
   _scaleH = scaleContH;
+  // _scaleOriginW = _unrotCanvasW;
+  // _scaleOriginH = _unrotCanvasH; // 1078
+  // _scaleW = containerWidth; // 1078
+  // _scaleH = containerHeight;
 
-  [_rvpW, _rvpH] = [_scaleOriginW, _scaleOriginH];
+  [_rvpW, _rvpH] = [scaleW, scaleH];
   [_vpW, _vpH] = [width, height];
   return;
 }
@@ -208,15 +213,19 @@ function calculateViewport(
  * @param height
  * @returns
  */
-function sizeVisibleCanvasses(width: number, height: number, zoom: number) {
-  const [scaleContW, scaleContH] = zoom
-    ? [_containerW, _containerH]
-    : getScaledContainerSize(_containerW, _containerH, _fullRotW, _fullRotH);
-  // set the canvases
-  backgroundCanvas.width = scaleContW;
-  backgroundCanvas.height = scaleContH;
-  overlayCanvas.width = scaleContW;
-  overlayCanvas.height = scaleContH;
+function sizeVisibleCanvasses(width: number, height: number) {
+  // const [scaleContW, scaleContH] = zoom
+  //   ? [_containerW, _containerH]
+  //   : getScaledContainerSize(_containerW, _containerH, _fullRotW, _fullRotH);
+  // // set the canvases
+  // backgroundCanvas.width = scaleContW;
+  // backgroundCanvas.height = scaleContH;
+  // overlayCanvas.width = scaleContW;
+  // overlayCanvas.height = scaleContH;
+  backgroundCanvas.width = width;
+  backgroundCanvas.height = height;
+  overlayCanvas.width = width;
+  overlayCanvas.height = height;
 }
 
 function loadAllImages(background: string, overlay?: string) {
@@ -241,7 +250,7 @@ function renderAllCanvasses(
   overlay: ImageBitmap | null,
 ) {
   if (background) {
-    // sizeVisibleCanvasses(_fullRotW, _fullRotH, _zoom);
+    sizeVisibleCanvasses(_containerW, _containerH);
     renderImage(backgroundCtx, background, _angle);
     if (overlay) {
       renderImage(overlayCtx, overlay, _angle);
@@ -447,11 +456,11 @@ function animateSelection() {
 self.onmessage = (evt) => {
   switch (evt.data.cmd) {
     case "init": {
-      console.log(evt.data);
-      [_containerW, _containerH] = getMaxContainerSize(
-        evt.data.values.screenWidth,
-        evt.data.values.screenHeight,
-      );
+      // console.log(evt.data);
+      // [_containerW, _containerH] = getMaxContainerSize(
+      //   evt.data.values.screenWidth,
+      //   evt.data.values.screenHeight,
+      // );
       // TODO get the angle from the viewport on load
       _angle = evt.data.values.angle;
 
@@ -459,11 +468,8 @@ self.onmessage = (evt) => {
         backgroundCanvas = evt.data.background;
         _containerW = backgroundCanvas.width;
         _containerH = backgroundCanvas.height;
-        backgroundCanvas.addEventListener("resize", (ev) => {
-          console.log(ev);
-        });
         backgroundCtx = backgroundCanvas.getContext("2d", {
-          alpha: true,
+          alpha: false,
         }) as OffscreenCanvasRenderingContext2D;
       }
 
@@ -513,6 +519,14 @@ self.onmessage = (evt) => {
             `Unable to load image ${evt.data.url}: ${JSON.stringify(err)}`,
           );
         });
+      break;
+    }
+    case "resize": {
+      console.log(evt);
+      console.log(`${backgroundCanvas.width},${backgroundCanvas.height}`);
+      _containerW = evt.data.width;
+      _containerH = evt.data.height;
+      if (backgroundImage) fullRerender();
       break;
     }
     case "rotate": {

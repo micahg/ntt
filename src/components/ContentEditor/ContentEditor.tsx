@@ -462,6 +462,17 @@ const ContentEditor = ({
         worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
       }
     });
+
+    // watch for canvas size changes and report to worker
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0].contentRect;
+      worker.postMessage({
+        cmd: "resize",
+        width: rect.width,
+        height: rect.height,
+      });
+    });
+    observer.observe(canvas);
     setCanvasListening(true);
   }, [canvasListening, overlayCanvasRef, worker]);
 
