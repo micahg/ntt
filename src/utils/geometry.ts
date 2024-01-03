@@ -34,15 +34,6 @@ export function getWidthAndHeight(): number[] {
   return [width, height];
 }
 
-export function getMaxContainerSize(screenWidth: number, screenHeight: number) {
-  const padding = 48; // 2 * 24 vertically and horizontally
-  const vOffset = screenWidth < 600 ? 48 : 64 + padding; // App Bar changes based on window width
-  const hOffset = padding;
-  const width = screenWidth - hOffset;
-  const height = screenHeight - vOffset;
-  return [width, height];
-}
-
 export function getScaledContainerSize(
   screenWidth: number,
   screenHeight: number,

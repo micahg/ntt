@@ -1,7 +1,6 @@
 import {
   Rect,
   firstZoomStep,
-  getMaxContainerSize,
   getScaledContainerSize,
   rot,
   rotateBackToBackgroundOrientation,
