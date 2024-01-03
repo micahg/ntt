@@ -464,13 +464,10 @@ const ContentEditor = ({
     });
 
     // watch for canvas size changes and report to worker
-    const observer = new ResizeObserver((entries) => {
-      const rect = entries[0].contentRect;
-      worker.postMessage({
-        cmd: "resize",
-        width: rect.width,
-        height: rect.height,
-      });
+    const observer = new ResizeObserver((e) => {
+      const [w, h] = [e[0].contentRect.width, e[0].contentRect.height];
+      if (w === 0 && h === 0) return; // when the component is hidden or destroyed
+      worker.postMessage({ cmd: "resize", width: w, height: h });
     });
     observer.observe(canvas);
     setCanvasListening(true);
