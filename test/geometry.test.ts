@@ -7,7 +7,6 @@ import {
   calculateBounds,
   scaleSelection,
   rotatedWidthAndHeight,
-  getScaledContainerSize,
   rotateBackToBackgroundOrientation,
   fillRotatedViewport,
   normalizeRect,
@@ -159,12 +158,6 @@ describe("Geometry", () => {
       [x, y] = rotatedWidthAndHeight(360, 2, 4);
       expect(x).toBe(2);
       expect(y).toBe(4);
-    });
-
-    it("Should figure out the scaled container size", () => {
-      const [w, h] = getScaledContainerSize(3, 1, 4, 2);
-      expect(w).toBe(2);
-      expect(h).toBe(1);
     });
   });
 

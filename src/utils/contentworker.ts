@@ -2,7 +2,6 @@ import {
   Rect,
   createRect,
   firstZoomStep,
-  getScaledContainerSize,
   normalizeRect,
   rot,
   rotateBackToBackgroundOrientation,
@@ -35,10 +34,6 @@ let _first_zoom_step: number;
 let _canvasW: number;
 let _canvasH: number;
 
-// canvas width but un-rotated (used for calculating)
-let _unrotCanvasW: number;
-let _unrotCanvasH: number;
-
 // region of images to display
 let _imgX = 0;
 let _imgY = 0;
@@ -53,15 +48,9 @@ let _vpH: number;
 let _fullRotW: number;
 let _fullRotH: number;
 
-let _scaleW: number;
-let _scaleH: number;
-let _scaleOriginW: number;
-let _scaleOriginH: number;
-
 let startX: number, startY: number, endX: number, endY: number;
 let lastAnimX = -1;
 let lastAnimY = -1;
-let scale: number;
 
 let opacity = "1";
 let red = "255";
@@ -86,17 +75,6 @@ function renderImage(
   img: ImageBitmap,
   angle: number,
 ) {
-  /**
-   * math! | (• ◡•)| (❍ᴥ❍ʋ)
-   *
-   * Zoomed out we just base the canvas size off the image size with rotation applied. Hence,
-   * we render img.width and img.height when full zoomed out - the canvas already compensates.
-   *
-   * Zoomed in is a little more complicated.  Our zoom factor is based on the canvas size. 1
-   * means we're fully zoomed in (1:1 pixel scale) and less zooms out to a max of either the
-   * width or height of the image (whichever fits first)
-   */
-
   // if (debug) {
   // console.log(`*****`);
   // console.log(`translate ${ctx.canvas.width / 2}, ${ctx.canvas.height / 2}`);
@@ -135,45 +113,6 @@ function loadImage(url: string): Promise<ImageBitmap> {
     .then((blob) => createImageBitmap(blob));
 }
 
-function calculateCanvasses(
-  angle: number,
-  width: number,
-  height: number,
-  containerWidth: number,
-  containerHeight: number,
-) {
-  // rotate the full sized hidden canvas (holds the full-sized overlay)
-  [_fullRotW, _fullRotH] = rotatedWidthAndHeight(angle, width, height);
-  [_unrotCanvasW, _unrotCanvasH] = rotatedWidthAndHeight(
-    -angle,
-    containerWidth,
-    containerHeight,
-  );
-
-  // scale the rotated full size image down be contained within our container bounds
-  const [scaleContW, scaleContH] = getScaledContainerSize(
-    containerWidth,
-    containerHeight,
-    _fullRotW,
-    _fullRotH,
-  );
-
-  // rotate backwards to get the original height/width scaled down (we need it to drawImage)
-  const [scaleW, scaleH] = rotatedWidthAndHeight(
-    -angle,
-    scaleContW,
-    scaleContH,
-  );
-
-  // calculate pre-rotation scale
-  scale = width / _unrotCanvasW;
-
-  _scaleOriginW = scaleW;
-  _scaleOriginH = scaleH;
-  _scaleW = scaleContW;
-  _scaleH = scaleContH;
-}
-
 function calculateViewport(
   angle: number,
   zoom: number,
@@ -193,10 +132,7 @@ function calculateViewport(
 }
 
 /**
- * Resize all canvasses based on the angle of background image rotation, screen
- * size, and image width and height.
- *
- * TODO: This is leaning on global variables. It should not.
+ * Resize all visible canvasses.
  *
  * @param angle
  * @param width
@@ -325,12 +261,14 @@ function restoreOverlay() {
 }
 
 function fullRerender() {
-  calculateCanvasses(
+  /**
+   * Full render is called when the image, angle or zoom changes - hence the
+   * recalculation of rotated width and height, zoom, and viewports
+   */
+  [_fullRotW, _fullRotH] = rotatedWidthAndHeight(
     _angle,
     backgroundImage.width,
     backgroundImage.height,
-    _canvasW,
-    _canvasH,
   );
   _max_zoom = Math.max(_fullRotW / _canvasW, _fullRotH / _canvasH);
   _first_zoom_step = firstZoomStep(_max_zoom, _zoom_step);
@@ -378,7 +316,6 @@ function animateSelection() {
     restoreOverlay();
     renderBox(startX, startY, endX, endY, "rgba(255, 255, 255, 0.25)", false);
   } else if (panning) {
-    // if (_zoom === 0) return;
     // calculate the (rotated) movement since the last frame and update for the next
     const [w, h] = rot(-_angle, endX - lastAnimX, endY - lastAnimY);
     [lastAnimX, lastAnimY] = [endX, endY];
@@ -435,8 +372,8 @@ self.onmessage = (evt) => {
         .then(() => {
           postMessage({
             cmd: "initialized",
-            width: _scaleW, // could use vp
-            height: _scaleH, // could use vp
+            width: _vpW,
+            height: _vpH,
             fullWidth: backgroundImage.width,
             fullHeight: backgroundImage.height,
           });

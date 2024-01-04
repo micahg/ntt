@@ -37,16 +37,6 @@ export function getWidthAndHeight(): number[] {
   return [width, height];
 }
 
-export function getScaledContainerSize(
-  screenWidth: number,
-  screenHeight: number,
-  imageWidth: number,
-  imageHeight: number,
-) {
-  const scale = Math.min(screenWidth / imageWidth, screenHeight / imageHeight);
-  return [Math.round(imageWidth * scale), Math.round(imageHeight * scale)];
-}
-
 export function calculateBounds(
   canvasWidth: number,
   canvasHeight: number,

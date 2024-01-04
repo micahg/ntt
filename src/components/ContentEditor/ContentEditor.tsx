@@ -63,7 +63,7 @@ const ContentEditor = ({
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
   const [showOpacitySlider, setShowOpacitySlider] = useState<boolean>(false);
-  const [canvasSize, setCanvasSize] = useState<number[] | null>(null);
+  const [viewportSize, setViewportSize] = useState<number[] | null>(null);
   const [imageSize, setImageSize] = useState<number[] | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [bgRev, setBgRev] = useState<number>(0);
@@ -207,7 +207,7 @@ const ContentEditor = ({
           console.error("Invalid fullHeight in worker initialized message");
           return;
         }
-        setCanvasSize([evt.data.width, evt.data.height]);
+        setViewportSize([evt.data.width, evt.data.height]);
         setImageSize([evt.data.fullWidth, evt.data.fullHeight]);
       } else if (evt.data.cmd === "pan_complete") {
         // after panning is done, we can go back to waiting state
@@ -308,7 +308,7 @@ const ContentEditor = ({
   useEffect(() => {
     if (!scene || !scene.viewport || !scene.backgroundSize) return;
     // if (!viewport) return;
-    if (!canvasSize) return;
+    if (!viewportSize) return;
     if (!redrawToolbar) return;
 
     const v = scene.viewport;
@@ -323,7 +323,7 @@ const ContentEditor = ({
     internalState.zoom = !zoomedOut;
     redrawToolbar();
     sm.transition("wait");
-  }, [scene, canvasSize, internalState, redrawToolbar]);
+  }, [scene, viewportSize, internalState, redrawToolbar]);
 
   useEffect(() => {
     /**
@@ -331,7 +331,7 @@ const ContentEditor = ({
      * updated state for some of the callbacks (eg: rotation).
      */
     if (!overlayCanvasRef.current) return;
-    if (!canvasSize || !canvasSize.length) return;
+    if (!viewportSize || !viewportSize.length) return;
     if (!imageSize || !imageSize.length) return;
     if (!scene || !worker) return;
 
@@ -429,7 +429,7 @@ const ContentEditor = ({
       sm.transition("done");
     });
   }, [
-    canvasSize,
+    viewportSize,
     dispatch,
     imageSize,
     sceneManager,
