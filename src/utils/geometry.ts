@@ -15,6 +15,9 @@ export interface ImageBound {
   rotate: boolean;
 }
 
+export function createRect(values: number[]) {
+  return { x: values[0], y: values[1], width: values[2], height: values[3] };
+}
 /**
  * Get the screen width and height, taking into consideration the offsets.
  * @returns an array of two numbers: width & height.
@@ -127,6 +130,19 @@ export function rotateBackToBackgroundOrientation(
   const o_x = ow / 2;
   const o_y = oh / 2;
   return [r_x + o_x, r_y + o_y];
+}
+
+export function normalizeRect(r: Rect) {
+  if (r.width < 0) {
+    r.width = Math.abs(r.width);
+    r.x -= r.width;
+  }
+  if (r.height < 0) {
+    r.height = Math.abs(r.height);
+    r.y -= r.height;
+  }
+
+  return r;
 }
 
 /**

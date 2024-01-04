@@ -1,7 +1,9 @@
 import {
   Rect,
+  createRect,
   firstZoomStep,
   getScaledContainerSize,
+  normalizeRect,
   rot,
   rotateBackToBackgroundOrientation,
   rotatedWidthAndHeight,
@@ -33,7 +35,7 @@ let _first_zoom_step: number;
 let _canvasW: number;
 let _canvasH: number;
 
-// canvas width but unrotated (used for calculating)
+// canvas width but un-rotated (used for calculating)
 let _unrotCanvasW: number;
 let _unrotCanvasH: number;
 
@@ -147,8 +149,6 @@ function calculateCanvasses(
     containerWidth,
     containerHeight,
   );
-  console.log(`_unrotCanvasH = ${_unrotCanvasH}`);
-  console.log(`_unrotCanvasW = ${_unrotCanvasW}`);
 
   // scale the rotated full size image down be contained within our container bounds
   const [scaleContW, scaleContH] = getScaledContainerSize(
@@ -172,15 +172,6 @@ function calculateCanvasses(
   _scaleOriginH = scaleH;
   _scaleW = scaleContW;
   _scaleH = scaleContH;
-
-  console.log(`_scaleW = ${_scaleW}`);
-  console.log(`_scaleH = ${_scaleH}`);
-  console.log(`_scaleOriginW = ${_scaleOriginW}`);
-  console.log(`_scaleOriginH = ${_scaleOriginH}`);
-
-  // [_rvpW, _rvpH] = [scaleW, scaleH];
-  // [_vpW, _vpH] = [width, height];
-  return;
 }
 
 function calculateViewport(
@@ -199,8 +190,6 @@ function calculateViewport(
     _imgH = backgroundImage.height;
     _vpH = Math.round((_vpW * _imgH) / _imgW);
   }
-  console.log(`_vpW = ${_vpW}`);
-  console.log(`_vpW = ${_vpH}`);
 }
 
 /**
@@ -262,58 +251,20 @@ function renderAllCanvasses(
   }
 }
 
-function unrotateAndScaleRect(rect: Rect): Rect {
-  const [rx1, ry1] = rotateBackToBackgroundOrientation(
-    -_angle,
-    rect.x,
-    rect.y,
-    _scaleW,
-    _scaleH,
-    _scaleOriginW,
-    _scaleOriginH,
-  );
-  const [rx2, ry2] = rotateBackToBackgroundOrientation(
-    -_angle,
-    rect.x + rect.width,
-    rect.y + rect.height,
-    _scaleW,
-    _scaleH,
-    _scaleOriginW,
-    _scaleOriginH,
-  );
-  // this isn't necessary but just keep values positive
-  const x1 = Math.min(rx1, rx2);
-  const x2 = Math.max(rx1, rx2);
-  const y1 = Math.min(ry1, ry2);
-  const y2 = Math.max(ry1, ry2);
-  return {
-    x: Math.round(scale * x1),
-    y: Math.round(scale * y1),
-    width: Math.round(scale * (x2 - x1)),
-    height: Math.round(scale * (y2 - y1)),
-  };
-}
-
 /**
  * Given to points on the overlay, un-rotate and scale to the full size overlay
  */
 function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
-  // a few things - when zoomed, use _containerW, _containerH (scaleW/scaleH only makes
-  // sense zoomed out)
-  const [w, h, ow, oh] = [_canvasW, _canvasH, _unrotCanvasW, _unrotCanvasH];
-
   const op = rotateBackToBackgroundOrientation;
-  // un-rotate the zoomed out viewport
-  // this should be precalculated. And while we're there, we should
-  // think of better names than vpW rvpW etc... there might be
-  // better terminology too
-  const [vpW, vpH] = rotatedWidthAndHeight(-_angle, _vpW, _vpH);
-  const xOffset = _canvasW > vpW ? (_canvasW - vpW) / 2 : 0;
-  const yOffset = _canvasH > vpH ? (_canvasH - vpH) / 2 : 0;
+  // un-rotate the zoomed out viewport. this should be precalculated.
+  const [w, h] = rotatedWidthAndHeight(-_angle, _vpW, _vpH);
+  const [ow, oh] = [_vpW, _vpH];
+  const xOffset = _canvasW > w ? (_canvasW - w) / 2 : 0;
+  const yOffset = _canvasH > h ? (_canvasH - h) / 2 : 0;
 
   // trim selection to viewport
-  const [minY, maxY] = [yOffset, yOffset + vpH];
-  const [minX, maxX] = [xOffset, xOffset + vpW];
+  const [minY, maxY] = [yOffset, yOffset + h];
+  const [minX, maxX] = [xOffset, xOffset + w];
   if (y1 < minY) y1 = minY;
   if (y2 < minY) y2 = minY;
   if (x1 < minX) x1 = minX;
@@ -484,8 +435,8 @@ self.onmessage = (evt) => {
         .then(() => {
           postMessage({
             cmd: "initialized",
-            width: _scaleW,
-            height: _scaleH,
+            width: _scaleW, // could use vp
+            height: _scaleH, // could use vp
             fullWidth: backgroundImage.width,
             fullHeight: backgroundImage.height,
           });
@@ -610,8 +561,8 @@ self.onmessage = (evt) => {
        */
       // get the scaled down viewport
       const vp: Rect = evt.data.rect;
-      // project onto un-rotated full size origin
-      const fullVp = unrotateAndScaleRect(vp);
+      const [x, y, w, h] = [vp.x, vp.y, vp.x + vp.width, vp.y + vp.height];
+      const fullVp = normalizeRect(createRect(unrotateBox(x, y, w, h)));
       // post back the full viewport
       postMessage({ cmd: "viewport", viewport: fullVp });
       // clear selection

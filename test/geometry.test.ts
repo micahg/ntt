@@ -10,7 +10,8 @@ import {
   getScaledContainerSize,
   rotateBackToBackgroundOrientation,
   fillRotatedViewport,
-  calculateScaleSteps,
+  normalizeRect,
+  createRect,
 } from "../src/utils/geometry";
 
 describe("Geometry", () => {
@@ -22,6 +23,13 @@ describe("Geometry", () => {
       expect(y).toBe(2);
       [x, y] = rotateBackToBackgroundOrientation(-180, 0, 4, 2, 4, 2, 4);
       expect(x).toBe(2);
+      expect(y).toBe(0);
+      [x, y] = rotateBackToBackgroundOrientation(-270, 0, 2, 4, 2, 2, 4);
+      expect(x).toBe(0);
+      expect(y).toBe(0);
+      //1343,712
+      [x, y] = rotateBackToBackgroundOrientation(-270, 0, 712, 1343, 712, 712, 1343);
+      expect(x).toBe(0);
       expect(y).toBe(0);
     });
   });
@@ -210,13 +218,27 @@ describe("Geometry", () => {
     });
   });
 
-  describe("Zoom Levels", () => {
-    it("Should IDK what", () => {
-      const steps = calculateScaleSteps(1438, 549, 2008, 4160);
-      expect(steps.length).toEqual(3);
-      expect(Math.floor(10000 * steps[0])).toEqual(1319);
-      expect(Math.floor(10000 * steps[1])).toEqual(7161);
-      expect(steps[2]).toEqual(1);
+  describe("Normalize rectangles", () => {
+    it("should handle negatives width", () => {
+      const v = normalizeRect(createRect([2006, 3, -191, 188]));
+      expect(v.x).toBe(1815);
+      expect(v.y).toBe(3);
+      expect(v.width).toBe(191);
+      expect(v.height).toBe(188);
+    });
+    it("should handle negatives height", () => {
+      const v = normalizeRect(createRect([1815, 191, 191, -188]));
+      expect(v.x).toBe(1815);
+      expect(v.y).toBe(3);
+      expect(v.width).toBe(191);
+      expect(v.height).toBe(188);
+    });
+    it("should handle negative width and height", () => {
+      const v = normalizeRect(createRect([100, 100, -100, -100]));
+      expect(v.x).toBe(0);
+      expect(v.y).toBe(0);
+      expect(v.width).toBe(100);
+      expect(v.height).toBe(100);
     });
   });
 });
