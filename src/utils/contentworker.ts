@@ -154,7 +154,10 @@ function loadAllImages(background: string, overlay?: string) {
     // keep a copy of these to prevent having to recreate them from the image buffer
     backgroundImage = bgImg;
     if (ovImg) overlayImage = ovImg;
-    else storeOverlay(false);
+    else {
+      clearCanvas();
+      storeOverlay(false);
+    }
     return [bgImg, ovImg];
   });
 }
@@ -367,6 +370,7 @@ self.onmessage = (evt) => {
   switch (evt.data.cmd) {
     case "init": {
       _angle = evt.data.values.angle;
+      console.log("INIT");
 
       if (evt.data.background) {
         backgroundCanvas = evt.data.background;
