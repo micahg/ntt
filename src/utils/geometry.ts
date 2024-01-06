@@ -188,22 +188,38 @@ export function rotatedWidthAndHeight(
   return [w, h];
 }
 
-export function scaleSelection(
-  selection: Rect,
-  viewport: Rect,
-  width: number,
-  height: number,
-) {
-  const v_w = viewport.width - viewport.x;
-  const v_h = viewport.height - viewport.y;
-  const h_scale = width / v_w;
-  const v_scale = height / v_h;
-  return {
-    x: selection.x * h_scale,
-    y: selection.y * v_scale,
-    width: selection.width * h_scale,
-    height: selection.height * v_scale,
-  };
+export function unrotatePoints(
+  angle: number,
+  vp: Rect,
+  canvas: Rect,
+  points: Point[],
+): Point[] {
+  const op = rotateBackToBackgroundOrientation;
+  // un-rotate the zoomed out viewport. this should be precalculated.
+  const [ow, oh] = [vp.width, vp.height];
+  const [w, h] = rotatedWidthAndHeight(-angle, ow, oh);
+  const xOffset = canvas.width > w ? (canvas.width - w) / 2 : 0;
+  const yOffset = canvas.height > h ? (canvas.height - h) / 2 : 0;
+  // trim selection to viewport
+  const [minY, maxY] = [yOffset, yOffset + h];
+  const [minX, maxX] = [xOffset, xOffset + w];
+  const uPoints: Point[] = [];
+  for (const p of points) {
+    if (p.y < minY) p.y = minY;
+    if (p.x < minX) p.x = minX;
+    if (p.y > maxY) p.y = maxY;
+    if (p.x > maxX) p.x = maxX;
+    uPoints.push(op(-angle, p.x - xOffset, p.y - yOffset, w, h, ow, oh));
+  }
+  return uPoints;
+}
+
+export function scalePoints(points: Point[], zoom: number) {
+  const sPoints: Point[] = [];
+  for (const p of points) {
+    sPoints.push({ x: p.x * zoom, y: p.y * zoom });
+  }
+  return sPoints;
 }
 
 /**
