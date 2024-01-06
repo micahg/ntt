@@ -222,6 +222,14 @@ export function scalePoints(points: Point[], zoom: number) {
   return sPoints;
 }
 
+export function translatePoints(points: Point[], x: number, y: number) {
+  const tPoints: Point[] = [];
+  for (const p of points) {
+    tPoints.push({ x: p.x + x, y: p.y + y });
+  }
+  return tPoints;
+}
+
 /**
  * rotate and fill viewport to fit screen/window/canvas
  * @param screen screen [width, height]

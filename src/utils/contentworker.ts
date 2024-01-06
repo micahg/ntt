@@ -11,6 +11,7 @@ import {
   rotatedWidthAndHeight,
   unrotatePoints,
   scalePoints,
+  translatePoints,
 } from "./geometry";
 
 /**
@@ -540,7 +541,8 @@ self.onmessage = (evt) => {
       // get the scaled down viewport
       const points = pointsFromRect(evt.data.rect);
       const rPoints = unrotateAndScalePoints(points);
-      const fullVp = normalizeRect(rectFromPoints(rPoints));
+      const tPoints = translatePoints(rPoints, _imgX, _imgY);
+      const fullVp = normalizeRect(rectFromPoints(tPoints));
       // post back the full viewport
       postMessage({ cmd: "viewport", viewport: fullVp });
       // clear selection
