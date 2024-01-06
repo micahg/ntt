@@ -10,25 +10,26 @@ import {
   fillRotatedViewport,
   normalizeRect,
   createRect,
+  Point,
 } from "../src/utils/geometry";
 
 describe("Geometry", () => {
   describe("Rotation", () => {
     it("Should rotate a points back to the origin of the prerotated width", () => {
-      let x: number, y: number;
-      [x, y] = rotateBackToBackgroundOrientation(-90, 0, 4, 2, 4, 4, 2);
-      expect(x).toBe(4);
-      expect(y).toBe(2);
-      [x, y] = rotateBackToBackgroundOrientation(-180, 0, 4, 2, 4, 2, 4);
-      expect(x).toBe(2);
-      expect(y).toBe(0);
-      [x, y] = rotateBackToBackgroundOrientation(-270, 0, 2, 4, 2, 2, 4);
-      expect(x).toBe(0);
-      expect(y).toBe(0);
+      let p: Point;
+      p = rotateBackToBackgroundOrientation(-90, 0, 4, 2, 4, 4, 2);
+      expect(p.x).toBe(4);
+      expect(p.y).toBe(2);
+      p = rotateBackToBackgroundOrientation(-180, 0, 4, 2, 4, 2, 4);
+      expect(p.x).toBe(2);
+      expect(p.y).toBe(0);
+      p = rotateBackToBackgroundOrientation(-270, 0, 2, 4, 2, 2, 4);
+      expect(p.x).toBe(0);
+      expect(p.y).toBe(0);
       //1343,712
-      [x, y] = rotateBackToBackgroundOrientation(-270, 0, 712, 1343, 712, 712, 1343);
-      expect(x).toBe(0);
-      expect(y).toBe(0);
+      p = rotateBackToBackgroundOrientation(-270, 0, 712, 1343, 712, 712, 1343);
+      expect(p.x).toBe(0);
+      expect(p.y).toBe(0);
     });
   });
 
