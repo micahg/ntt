@@ -5,7 +5,6 @@
 import {
   Rect,
   calculateBounds,
-  scaleSelection,
   rotatedWidthAndHeight,
   rotateBackToBackgroundOrientation,
   fillRotatedViewport,
@@ -88,42 +87,6 @@ describe("Geometry", () => {
       expect(result.y).toEqual(49);
       expect(result.width).toEqual(1422);
       expect(result.height).toEqual(549);
-    });
-  });
-
-  describe("Scale Selection", () => {
-    it("Should scale horizontally", () => {
-      const viewport: Rect = { x: 0, y: 0, width: 3, height: 3 };
-      const selection: Rect = { x: 1, y: 1, width: 1, height: 1 };
-      const width = 6;
-      const height = 3;
-      const result = scaleSelection(selection, viewport, width, height);
-      expect(result.x).toEqual(2);
-      expect(result.y).toEqual(1);
-      expect(result.width).toEqual(2);
-      expect(result.height).toEqual(1);
-    });
-    it("Should scale vertically", () => {
-      const viewport: Rect = { x: 0, y: 0, width: 3, height: 3 };
-      const selection: Rect = { x: 1, y: 1, width: 1, height: 1 };
-      const width = 3;
-      const height = 6;
-      const result = scaleSelection(selection, viewport, width, height);
-      expect(result.x).toEqual(1);
-      expect(result.y).toEqual(2);
-      expect(result.width).toEqual(1);
-      expect(result.height).toEqual(2);
-    });
-    it("Should scale in both directions", () => {
-      const viewport: Rect = { x: 0, y: 0, width: 3, height: 3 };
-      const selection: Rect = { x: 1, y: 1, width: 1, height: 1 };
-      const width = 6;
-      const height = 6;
-      const result = scaleSelection(selection, viewport, width, height);
-      expect(result.x).toEqual(2);
-      expect(result.y).toEqual(2);
-      expect(result.width).toEqual(2);
-      expect(result.height).toEqual(2);
     });
   });
 

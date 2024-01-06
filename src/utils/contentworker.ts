@@ -1,11 +1,17 @@
 import {
+  Point,
   Rect,
-  createRect,
+  createPoints,
   firstZoomStep,
   normalizeRect,
+  pointsFromRect,
+  rectFromPoints,
   rot,
   rotateBackToBackgroundOrientation,
   rotatedWidthAndHeight,
+  unrotatePoints,
+  scalePoints,
+  translatePoints,
 } from "./geometry";
 
 /**
@@ -31,18 +37,13 @@ let _max_zoom: number;
 let _first_zoom_step: number;
 
 // canvas width and height (sent from main thread)
-let _canvasW: number;
-let _canvasH: number;
+const _canvas: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 // region of images to display
-let _imgX = 0;
-let _imgY = 0;
-let _imgW: number;
-let _imgH: number;
+const _img: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 // viewport
-let _vpW: number;
-let _vpH: number;
+const _vp: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 // rotated image width and height - cached to avoid recalculation after load
 let _fullRotW: number;
@@ -58,16 +59,16 @@ let green = "0";
 let blue = "0";
 
 function trimPanning() {
-  if (_imgX <= 0) _imgX = 0;
-  if (_imgY <= 0) _imgY = 0;
+  if (_img.x <= 0) _img.x = 0;
+  if (_img.y <= 0) _img.y = 0;
 
   // if viewport > image then panning gets weird
-  if (_imgW >= backgroundImage.width) _imgX = 0;
-  else if (_imgX + _imgW > backgroundImage.width)
-    _imgX = backgroundImage.width - _imgW;
-  if (_imgH >= backgroundImage.height) _imgY = 0;
-  else if (_imgY + _imgH > backgroundImage.height)
-    _imgY = backgroundImage.height - _imgH;
+  if (_img.width >= backgroundImage.width) _img.x = 0;
+  else if (_img.x + _img.width > backgroundImage.width)
+    _img.x = backgroundImage.width - _img.width;
+  if (_img.height >= backgroundImage.height) _img.y = 0;
+  else if (_img.y + _img.height > backgroundImage.height)
+    _img.y = backgroundImage.height - _img.height;
 }
 
 function renderImage(
@@ -79,9 +80,9 @@ function renderImage(
   // console.log(`*****`);
   // console.log(`translate ${ctx.canvas.width / 2}, ${ctx.canvas.height / 2}`);
   // console.log(
-  //   `draw ${_imgX}, ${_imgY}, ${_imgW}, ${_imgH}, ${-_vpW / 2}, ${
-  //     -_vpH / 2
-  //   }, ${_vpW}, ${_vpH}`,
+  //   `draw ${_img.x}, ${_img.y}, ${_img.width}, ${_img.height}, ${-_vp.width / 2}, ${
+  //     -_vp.height / 2
+  //   }, ${_vp.width}, ${_vp.height}`,
   // );
   // console.log(`*****`);
   // }
@@ -93,16 +94,16 @@ function renderImage(
   ctx.drawImage(
     img,
     // we ctx.rotate above, so REMEMBER: the actual source image SHOULD NOT BE ROTATED
-    _imgX,
-    _imgY,
-    _imgW,
-    _imgH,
+    _img.x,
+    _img.y,
+    _img.width,
+    _img.height,
     // the viewport, on the other hand, does need to accommodate that rotation since
     // we are on a mostly statically sized canvas but width and height might be rotated
-    -_vpW / 2,
-    -_vpH / 2,
-    _vpW,
-    _vpH,
+    -_vp.width / 2,
+    -_vp.height / 2,
+    _vp.width,
+    _vp.height,
   );
   ctx.restore();
 }
@@ -120,14 +121,14 @@ function calculateViewport(
   containerHeight: number,
 ) {
   const [cw, ch] = [containerWidth, containerHeight];
-  [_vpW, _vpH] = rotatedWidthAndHeight(-angle, cw, ch);
-  [_imgW, _imgH] = [zoom * _vpW, zoom * _vpH];
-  if (_imgW > backgroundImage.width) {
-    _imgW = backgroundImage.width;
-    _vpW = Math.round((_vpH * _imgW) / _imgH);
-  } else if (_imgH > backgroundImage.height) {
-    _imgH = backgroundImage.height;
-    _vpH = Math.round((_vpW * _imgH) / _imgW);
+  [_vp.width, _vp.height] = rotatedWidthAndHeight(-angle, cw, ch);
+  [_img.width, _img.height] = [zoom * _vp.width, zoom * _vp.height];
+  if (_img.width > backgroundImage.width) {
+    _img.width = backgroundImage.width;
+    _vp.width = Math.round((_vp.height * _img.width) / _img.height);
+  } else if (_img.height > backgroundImage.height) {
+    _img.height = backgroundImage.height;
+    _vp.height = Math.round((_vp.width * _img.height) / _img.width);
   }
 }
 
@@ -168,7 +169,7 @@ function renderAllCanvasses(
   overlay: ImageBitmap | null,
 ) {
   if (background) {
-    sizeVisibleCanvasses(_canvasW, _canvasH);
+    sizeVisibleCanvasses(_canvas.width, _canvas.height);
     renderImage(backgroundCtx, background, _angle);
     if (overlay) {
       renderImage(overlayCtx, overlay, _angle);
@@ -188,15 +189,22 @@ function renderAllCanvasses(
 }
 
 /**
+ * Given a single point on the overlay, un-rotate and scale to the full size overlay
+ */
+function unrotateAndScalePoints(points: Point[]) {
+  return scalePoints(unrotatePoints(_angle, _vp, _canvas, points), _zoom);
+}
+
+/**
  * Given to points on the overlay, un-rotate and scale to the full size overlay
  */
 function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
   const op = rotateBackToBackgroundOrientation;
   // un-rotate the zoomed out viewport. this should be precalculated.
-  const [w, h] = rotatedWidthAndHeight(-_angle, _vpW, _vpH);
-  const [ow, oh] = [_vpW, _vpH];
-  const xOffset = _canvasW > w ? (_canvasW - w) / 2 : 0;
-  const yOffset = _canvasH > h ? (_canvasH - h) / 2 : 0;
+  const [w, h] = rotatedWidthAndHeight(-_angle, _vp.width, _vp.height);
+  const [ow, oh] = [_vp.width, _vp.height];
+  const xOffset = _canvas.width > w ? (_canvas.width - w) / 2 : 0;
+  const yOffset = _canvas.height > h ? (_canvas.height - h) / 2 : 0;
 
   // trim selection to viewport
   const [minY, maxY] = [yOffset, yOffset + h];
@@ -210,17 +218,19 @@ function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
   if (x1 > maxX) x1 = maxX;
   if (x2 > maxX) x2 = maxX;
 
-  let [rx1, ry1] = op(-_angle, x1 - xOffset, y1 - yOffset, w, h, ow, oh).map(
-    (n) => n * _zoom,
-  );
-  let [rx2, ry2] = op(-_angle, x2 - xOffset, y2 - yOffset, w, h, ow, oh).map(
-    (n) => n * _zoom,
-  );
-  rx1 += _imgX;
-  ry1 += _imgY;
-  rx2 += _imgX;
-  ry2 += _imgY;
-  return [rx1, ry1, rx2 - rx1, ry2 - ry1];
+  const p1 = scalePoints(
+    [op(-_angle, x1 - xOffset, y1 - yOffset, w, h, ow, oh)],
+    _zoom,
+  )[0];
+  const p2 = scalePoints(
+    [op(-_angle, x2 - xOffset, y2 - yOffset, w, h, ow, oh)],
+    _zoom,
+  )[0];
+  p1.x += _img.x;
+  p1.y += _img.y;
+  p2.x += _img.x;
+  p2.y += _img.y;
+  return [p1.x, p1.y, p2.x - p1.x, p2.y - p1.y];
 }
 
 function renderBox(
@@ -270,13 +280,13 @@ function fullRerender() {
     backgroundImage.width,
     backgroundImage.height,
   );
-  _max_zoom = Math.max(_fullRotW / _canvasW, _fullRotH / _canvasH);
+  _max_zoom = Math.max(_fullRotW / _canvas.width, _fullRotH / _canvas.height);
   _first_zoom_step = firstZoomStep(_max_zoom, _zoom_step);
   // this might get weird for rotation -- maybe it belongs in calculateCanvasses...
   if (_zoom === undefined || _zoom > _max_zoom) {
     _zoom = _max_zoom;
   }
-  calculateViewport(_angle, _zoom, _canvasW, _canvasH);
+  calculateViewport(_angle, _zoom, _canvas.width, _canvas.height);
   renderAllCanvasses(backgroundImage, overlayImage);
 }
 
@@ -321,8 +331,8 @@ function animateSelection() {
     [lastAnimX, lastAnimY] = [endX, endY];
 
     // move the panning offsets
-    _imgX += Math.round((w * _max_zoom) / _zoom);
-    _imgY += Math.round((h * _max_zoom) / _zoom);
+    _img.x += Math.round((w * _max_zoom) / _zoom);
+    _img.y += Math.round((h * _max_zoom) / _zoom);
 
     // ensure panning offsets are within image boundaries
     trimPanning();
@@ -332,6 +342,26 @@ function animateSelection() {
   requestAnimationFrame(animateSelection);
 }
 
+function adjustZoom(zoom: number, x: number, y: number) {
+  const [cW, cH] = rotatedWidthAndHeight(_angle, _canvas.width, _canvas.height);
+  const p = unrotatePoints(_angle, _vp, _canvas, createPoints([x, y]))[0];
+  const q = scalePoints([p], _zoom)[0];
+  q.x += _img.x;
+  q.y += _img.y;
+  _zoom = zoom;
+  calculateViewport(_angle, _zoom, _canvas.width, _canvas.height);
+  // calculate any offsets for where we are completely zoomed in in one dimension
+  // note that we accommodate for the rotation
+  const yOffset = _vp.height < cH ? cH - _vp.height : 0;
+  const xOffset = _vp.width < cW ? cW - _vp.width : 0;
+  // calculate point relative to new viewport
+  const newX = p.x - xOffset;
+  const newY = p.y - yOffset;
+  _img.x = q.x - _zoom * newX;
+  _img.y = q.y - _zoom * newY;
+  trimPanning();
+  renderAllCanvasses(backgroundImage, overlayImage);
+}
 // eslint-disable-next-line no-restricted-globals
 self.onmessage = (evt) => {
   switch (evt.data.cmd) {
@@ -340,8 +370,8 @@ self.onmessage = (evt) => {
 
       if (evt.data.background) {
         backgroundCanvas = evt.data.background;
-        _canvasW = backgroundCanvas.width;
-        _canvasH = backgroundCanvas.height;
+        _canvas.width = Math.round(backgroundCanvas.width);
+        _canvas.height = Math.round(backgroundCanvas.height);
         backgroundCtx = backgroundCanvas.getContext("2d", {
           alpha: false,
         }) as OffscreenCanvasRenderingContext2D;
@@ -364,7 +394,7 @@ self.onmessage = (evt) => {
       loadAllImages(evt.data.values.background, evt.data.values.overlay)
         .then(([bgImg]) => {
           if (bgImg) {
-            calculateViewport(_angle, _zoom, _canvasW, _canvasH);
+            calculateViewport(_angle, _zoom, _canvas.width, _canvas.height);
             trimPanning();
             fullRerender();
           }
@@ -372,8 +402,8 @@ self.onmessage = (evt) => {
         .then(() => {
           postMessage({
             cmd: "initialized",
-            width: _vpW,
-            height: _vpH,
+            width: _vp.width,
+            height: _vp.height,
             fullWidth: backgroundImage.width,
             fullHeight: backgroundImage.height,
           });
@@ -398,10 +428,10 @@ self.onmessage = (evt) => {
       break;
     }
     case "resize": {
-      _canvasW = evt.data.width;
-      _canvasH = evt.data.height;
+      _canvas.width = evt.data.width;
+      _canvas.height = evt.data.height;
       if (backgroundImage) {
-        calculateViewport(_angle, _zoom, _canvasW, _canvasH);
+        calculateViewport(_angle, _zoom, _canvas.width, _canvas.height);
         trimPanning();
         fullRerender();
       }
@@ -492,14 +522,21 @@ self.onmessage = (evt) => {
     case "zoom": {
       /**
        * TODO this shouldn't be called zoom -- instead we should have a generic
-       * "get the un-rotated rectangle projected on the full sized image" call.
+       * "get the un-rotated rectangle projected on the full sized image that has
+       * been selected" call.  Maybe selection
        *
-       * Then the caller and choose to zoom out or do something else...
+       * TODO call this "selection"
        */
       // get the scaled down viewport
-      const vp: Rect = evt.data.rect;
-      const [x, y, w, h] = [vp.x, vp.y, vp.x + vp.width, vp.y + vp.height];
-      const fullVp = normalizeRect(createRect(unrotateBox(x, y, w, h)));
+      const fullVp = normalizeRect(
+        rectFromPoints(
+          translatePoints(
+            unrotateAndScalePoints(pointsFromRect(evt.data.rect)),
+            _img.x,
+            _img.y,
+          ),
+        ),
+      );
       // post back the full viewport
       postMessage({ cmd: "viewport", viewport: fullVp });
       // clear selection
@@ -507,20 +544,19 @@ self.onmessage = (evt) => {
       break;
     }
     case "zoom_in": {
-      if (!_zoom) _zoom = _max_zoom;
-      else if (_zoom === _max_zoom) _zoom = _first_zoom_step;
-      else if (_zoom > _zoom_step) _zoom -= _zoom_step;
-      calculateViewport(_angle, _zoom, _canvasW, _canvasH);
-      renderAllCanvasses(backgroundImage, overlayImage);
+      let zoom = _zoom;
+      if (!_zoom) zoom = _max_zoom;
+      else if (_zoom === _max_zoom) zoom = _first_zoom_step;
+      else if (_zoom > _zoom_step) zoom -= _zoom_step;
+      if (zoom !== _zoom) adjustZoom(zoom, evt.data.x, evt.data.y);
       break;
     }
     case "zoom_out": {
-      if (_zoom === _max_zoom) return;
-      if (_zoom === _first_zoom_step) _zoom = _max_zoom;
-      else _zoom += _zoom_step;
-      calculateViewport(_angle, _zoom, _canvasW, _canvasH);
-      trimPanning();
-      renderAllCanvasses(backgroundImage, overlayImage);
+      let zoom = _zoom;
+      if (zoom === _max_zoom) return;
+      if (zoom === _first_zoom_step) zoom = _max_zoom;
+      else zoom += _zoom_step;
+      if (zoom !== _zoom) adjustZoom(zoom, evt.data.x, evt.data.y);
       break;
     }
     default: {

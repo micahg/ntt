@@ -1,5 +1,11 @@
 import { getRect } from "./drawing";
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
+// TODO should be able to make a rect from two points
 export interface Rect {
   x: number;
   y: number;
@@ -15,9 +21,34 @@ export interface ImageBound {
   rotate: boolean;
 }
 
-export function createRect(values: number[]) {
+export function createPoints(values: number[]): Point[] {
+  const points: Point[] = [];
+  for (let i = 0; i < values.length; i += 2) {
+    const p = { x: values[i], y: values[i + 1] };
+    points.push(p);
+  }
+  return points;
+}
+
+export function createRect(values: number[]): Rect {
   return { x: values[0], y: values[1], width: values[2], height: values[3] };
 }
+
+export function pointsFromRect(rect: Rect): Point[] {
+  const p1: Point = { x: rect.x, y: rect.y };
+  const p2: Point = { x: p1.x + rect.width, y: p1.y + rect.height };
+  return [p1, p2];
+}
+
+export function rectFromPoints(points: Point[]): Rect {
+  return {
+    x: points[0].x,
+    y: points[0].y,
+    width: points[1].x - points[0].x,
+    height: points[1].y - points[0].y,
+  };
+}
+
 /**
  * Get the screen width and height, taking into consideration the offsets.
  * @returns an array of two numbers: width & height.
@@ -107,7 +138,7 @@ export function rotateBackToBackgroundOrientation(
   h: number,
   ow: number,
   oh: number,
-): number[] {
+): Point {
   /**
    * This is a modified rotation algorithm that does its final transposition
    * after rotation assuming that instead of returning to the starting point,
@@ -119,7 +150,7 @@ export function rotateBackToBackgroundOrientation(
   const [r_x, r_y] = rot(angle, d_x, d_y);
   const o_x = ow / 2;
   const o_y = oh / 2;
-  return [r_x + o_x, r_y + o_y];
+  return { x: r_x + o_x, y: r_y + o_y };
 }
 
 export function normalizeRect(r: Rect) {
@@ -157,22 +188,46 @@ export function rotatedWidthAndHeight(
   return [w, h];
 }
 
-export function scaleSelection(
-  selection: Rect,
-  viewport: Rect,
-  width: number,
-  height: number,
-) {
-  const v_w = viewport.width - viewport.x;
-  const v_h = viewport.height - viewport.y;
-  const h_scale = width / v_w;
-  const v_scale = height / v_h;
-  return {
-    x: selection.x * h_scale,
-    y: selection.y * v_scale,
-    width: selection.width * h_scale,
-    height: selection.height * v_scale,
-  };
+export function unrotatePoints(
+  angle: number,
+  vp: Rect,
+  canvas: Rect,
+  points: Point[],
+): Point[] {
+  const op = rotateBackToBackgroundOrientation;
+  // un-rotate the zoomed out viewport. this should be precalculated.
+  const [ow, oh] = [vp.width, vp.height];
+  const [w, h] = rotatedWidthAndHeight(-angle, ow, oh);
+  const xOffset = canvas.width > w ? (canvas.width - w) / 2 : 0;
+  const yOffset = canvas.height > h ? (canvas.height - h) / 2 : 0;
+  // trim selection to viewport
+  const [minY, maxY] = [yOffset, yOffset + h];
+  const [minX, maxX] = [xOffset, xOffset + w];
+  const uPoints: Point[] = [];
+  for (const p of points) {
+    if (p.y < minY) p.y = minY;
+    if (p.x < minX) p.x = minX;
+    if (p.y > maxY) p.y = maxY;
+    if (p.x > maxX) p.x = maxX;
+    uPoints.push(op(-angle, p.x - xOffset, p.y - yOffset, w, h, ow, oh));
+  }
+  return uPoints;
+}
+
+export function scalePoints(points: Point[], zoom: number) {
+  const sPoints: Point[] = [];
+  for (const p of points) {
+    sPoints.push({ x: p.x * zoom, y: p.y * zoom });
+  }
+  return sPoints;
+}
+
+export function translatePoints(points: Point[], x: number, y: number) {
+  const tPoints: Point[] = [];
+  for (const p of points) {
+    tPoints.push({ x: p.x + x, y: p.y + y });
+  }
+  return tPoints;
 }
 
 /**
