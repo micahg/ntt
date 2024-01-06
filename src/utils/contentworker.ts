@@ -539,10 +539,15 @@ self.onmessage = (evt) => {
        * TODO call this "selection"
        */
       // get the scaled down viewport
-      const points = pointsFromRect(evt.data.rect);
-      const rPoints = unrotateAndScalePoints(points);
-      const tPoints = translatePoints(rPoints, _imgX, _imgY);
-      const fullVp = normalizeRect(rectFromPoints(tPoints));
+      const fullVp = normalizeRect(
+        rectFromPoints(
+          translatePoints(
+            unrotateAndScalePoints(pointsFromRect(evt.data.rect)),
+            _imgX,
+            _imgY,
+          ),
+        ),
+      );
       // post back the full viewport
       postMessage({ cmd: "viewport", viewport: fullVp });
       // clear selection
