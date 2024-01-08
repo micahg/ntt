@@ -43,7 +43,11 @@ function sendFile(
     getToken(state, { "Content-Type": contentType })
       .then((headers) => axios.put(url, formData, { headers: headers }))
       .then((value) => resolve(value))
-      .catch((err) => reject(err));
+      .catch((err) => {
+        // tack on the scene
+        err.scene = scene;
+        reject(err);
+      });
   });
 }
 
@@ -163,6 +167,12 @@ export const ContentMiddleware: Middleware =
             if (err.response.status === 413) {
               error.msg = "Asset too big";
               next({ type: "content/error", payload: error });
+            }
+            if (err.scene) {
+              storeAPI.dispatch({
+                type: "content/deletescene",
+                payload: err.scene,
+              });
             }
           });
         break;
