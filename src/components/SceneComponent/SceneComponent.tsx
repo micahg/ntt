@@ -1,5 +1,13 @@
 // import styles from './SceneComponent.module.css';
-import { Alert, Box, Button, TextField, Tooltip } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  IconButton,
+  TextField,
+  Tooltip,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Scene } from "../../reducers/ContentReducer";
@@ -28,7 +36,7 @@ const SceneComponent = ({
   /**
    * Regarding *Url, *File and *WH below, I do not love storing basically the
    * same thing three times, but there doesn't seem to be one object that holds
-   * this well at thes same time. Why do we need each? URL is so we pickup the
+   * this well at the same time. Why do we need each? URL is so we pickup the
    * changed image when the display repaints. File is for when we upload when
    * the user submits, WH is so we can show an error if the sizes don't match.
    */
@@ -45,11 +53,13 @@ const SceneComponent = ({
   const [creating, setCreating] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>();
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
+  const error = useSelector((state: AppReducerState) => state.content.err);
   const disabledCreate =
     creating || // currently already creating or updating
     (!name && !scene) || // neither name nor scene (existing scene would have name)
-    !!nameError || // dont' create with name error
+    !!nameError || // don't create with name error
     !(playerUpdated || detailUpdated) || // don't send if neither updated
+    error !== undefined ||
     resolutionMismatch; // for now, don't send on resolution mismatch
   // we should probably send if resolution is different but aspect ratio same
 
@@ -164,7 +174,7 @@ const SceneComponent = ({
         .then((file) => setDetailFile(file))
         .catch((err) =>
           console.error(
-            `Unable to sync detail contenet: ${JSON.stringify(err)}`,
+            `Unable to sync detail content: ${JSON.stringify(err)}`,
           ),
         );
     }
@@ -193,6 +203,26 @@ const SceneComponent = ({
       {resolutionMismatch && (
         <Alert severity="error">
           Image resolution does not match (they must match).
+        </Alert>
+      )}
+      {error?.msg && (
+        <Alert
+          severity="error"
+          action={
+            <IconButton
+              aria-label="close"
+              color="inherit"
+              size="small"
+              onClick={() => {
+                setCreating(false);
+                dispatch({ type: "content/error" });
+              }}
+            >
+              <CloseIcon fontSize="inherit" />
+            </IconButton>
+          }
+        >
+          {error.msg}
         </Alert>
       )}
       <TextField

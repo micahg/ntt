@@ -2,7 +2,7 @@ import { Middleware } from "redux";
 import axios, { AxiosResponse } from "axios";
 import { AppReducerState } from "../reducers/AppReducer";
 import { getToken } from "../utils/auth";
-import { Scene } from "../reducers/ContentReducer";
+import { ContentReducerError, Scene } from "../reducers/ContentReducer";
 import { Rect } from "../utils/geometry";
 
 export interface ViewportBundle {
@@ -154,7 +154,17 @@ export const ContentMiddleware: Middleware =
               ? setViewport(state, data.data, bundle.viewport)
               : data,
           )
-          .then((data) => next({ type: "content/scene", payload: data.data }));
+          .then((data) => next({ type: "content/scene", payload: data.data }))
+          .catch((err) => {
+            // const status = err.response.status;
+            console.log("hi there");
+            console.log(err);
+            const error: ContentReducerError = { msg: "Unkown error happened" };
+            if (err.response.status === 413) {
+              error.msg = "Asset too big";
+              next({ type: "content/error", payload: error });
+            }
+          });
         break;
       }
       case "content/deletescene": {
