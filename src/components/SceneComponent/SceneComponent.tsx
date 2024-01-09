@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   IconButton,
+  LinearProgress,
   TextField,
   Tooltip,
 } from "@mui/material";
@@ -159,6 +160,10 @@ const SceneComponent = ({
     populateToolbar(actions);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (error) setCreating(false);
+  }, [error]);
+
   /**
    * If the scene comes with image assets already (it should have a player
    * visible image) then set the URL so that the <Box> image can pick it up.
@@ -196,6 +201,11 @@ const SceneComponent = ({
         flexDirection: "column",
       }}
     >
+      {creating && (
+        <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
+          <LinearProgress />
+        </Box>
+      )}
       {resolutionMismatch && (
         <Alert severity="error">
           Image resolution does not match (they must match).
