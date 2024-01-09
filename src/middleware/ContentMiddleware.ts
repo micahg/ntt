@@ -112,9 +112,13 @@ export const ContentMiddleware: Middleware = (store) => (next) => (action) => {
       // if we have an overlay payload then send it
       sendFile(state, scene, action.payload, action.type.split("/")[1])
         .then((value) => next({ type: "content/scene", payload: value.data }))
-        .catch((err) =>
-          console.error(`Unable to update overlay: ${JSON.stringify(err)}`),
-        );
+        .catch((err) => {
+          const error: ContentReducerError = { msg: "Unkown error happened" };
+          if (err.response.status === 413) {
+            error.msg = "Asset too big";
+            next({ type: "content/error", payload: error });
+          }
+        });
       break;
     }
     case "content/zoom": {

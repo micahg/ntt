@@ -111,7 +111,7 @@ const SceneComponent = ({
         setDetailUpdated(false);
       }
       dispatch({ type: "content/zoom", payload: vpData });
-      if (editScene) editScene();
+      // if (editScene) editScene();
       return;
     }
     if (!name) return; // TODO ERROR
