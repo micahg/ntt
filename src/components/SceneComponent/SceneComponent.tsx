@@ -111,7 +111,6 @@ const SceneComponent = ({
         setDetailUpdated(false);
       }
       dispatch({ type: "content/zoom", payload: vpData });
-      // if (editScene) editScene();
       return;
     }
     if (!name) return; // TODO ERROR
@@ -157,9 +156,6 @@ const SceneComponent = ({
   useEffect(() => {
     if (!populateToolbar) return;
     const actions: GameMasterAction[] = [];
-    //   { icon: SaveIcon, tooltip: scene ? "Update" : "Create", hidden: () => false, disabled: () => internalState.disabledCreate, callback: updateScene}
-    // ];
-    // if (editScene) actions.push({ icon: EditIcon, tooltip: "Edit", hidden: () => false, disabled: () => false, callback: () => editScene()});
     populateToolbar(actions);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -205,9 +201,29 @@ const SceneComponent = ({
           Image resolution does not match (they must match).
         </Alert>
       )}
-      {error?.msg && (
+      {error?.success === false && (
         <Alert
           severity="error"
+          action={
+            <IconButton
+              aria-label="close"
+              color="inherit"
+              size="small"
+              onClick={() => {
+                setCreating(false);
+                dispatch({ type: "content/error" });
+              }}
+            >
+              <CloseIcon fontSize="inherit" />
+            </IconButton>
+          }
+        >
+          {error.msg}
+        </Alert>
+      )}
+      {error?.success === true && (
+        <Alert
+          severity="success"
           action={
             <IconButton
               aria-label="close"
