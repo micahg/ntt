@@ -15,6 +15,7 @@ import { Scene } from "../../reducers/ContentReducer";
 import { AppReducerState } from "../../reducers/AppReducer";
 import { NewSceneBundle } from "../../middleware/ContentMiddleware";
 import { GameMasterAction } from "../GameMasterActionComponent/GameMasterActionComponent";
+import { AxiosProgressEvent } from "axios";
 
 const NAME_REGEX = /^[\w\s]{1,64}$/;
 
@@ -53,6 +54,7 @@ const SceneComponent = ({
   const [name, setName] = useState<string>();
   const [creating, setCreating] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>();
+  const [progress, setProgress] = useState<number>(0);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const error = useSelector((state: AppReducerState) => state.content.err);
   const disabledCreate =
@@ -74,6 +76,11 @@ const SceneComponent = ({
     } else if (!match && !nameError) {
       setNameError("Invalid scene name");
     }
+  };
+
+  const progressHandler = (event: AxiosProgressEvent) => {
+    setProgress(event.progress ? event.progress * 100 : 0);
+    console.log(event);
   };
 
   const selectFile = (layer: string) => {
@@ -121,6 +128,7 @@ const SceneComponent = ({
       player: playerFile,
       detail: detailFile,
       viewport: vpData,
+      progress: progressHandler,
     };
     dispatch({ type: "content/createscene", payload: data });
   };
@@ -203,7 +211,7 @@ const SceneComponent = ({
     >
       {creating && (
         <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
-          <LinearProgress />
+          <LinearProgress variant="determinate" value={progress} />
         </Box>
       )}
       {resolutionMismatch && (

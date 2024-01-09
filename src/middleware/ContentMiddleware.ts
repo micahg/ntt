@@ -1,5 +1,5 @@
 import { Middleware } from "redux";
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosProgressEvent, AxiosResponse } from "axios";
 import { AppReducerState } from "../reducers/AppReducer";
 import { getToken } from "../utils/auth";
 import { ContentReducerError, Scene } from "../reducers/ContentReducer";
@@ -16,6 +16,7 @@ export interface NewSceneBundle {
   player: File;
   detail?: File;
   viewport?: ViewportBundle;
+  progress: (evt: AxiosProgressEvent) => void;
 }
 
 function isBlob(payload: URL | Blob): payload is File {
@@ -27,6 +28,7 @@ function sendFile(
   scene: Scene,
   blob: File | URL,
   layer: string,
+  progress?: (evt: AxiosProgressEvent) => void,
 ): Promise<AxiosResponse> {
   return new Promise((resolve, reject) => {
     const url = `${state.environment.api}/scene/${scene._id}/content`;
@@ -41,7 +43,12 @@ function sendFile(
     formData.append("image", content);
 
     getToken(state, { "Content-Type": contentType })
-      .then((headers) => axios.put(url, formData, { headers: headers }))
+      .then((headers) =>
+        axios.put(url, formData, {
+          headers: headers,
+          onUploadProgress: progress,
+        }),
+      )
       .then((value) => resolve(value))
       .catch((err) => {
         // tack on the scene
@@ -159,12 +166,14 @@ export const ContentMiddleware: Middleware = (store) => (next) => (action) => {
         .then((headers) => axios.put(url, bundle, { headers: headers }))
         .then((data) => {
           next({ type: "content/scene", payload: data.data });
-          return sendFile(state, data.data, bundle.player, "player");
+          const asset = bundle.player;
+          return sendFile(state, data.data, asset, "player", bundle.progress);
         })
         .then((data) => {
           if (!bundle.detail) return data; // skip if there is no detailed view
           next({ type: "content/scene", payload: data.data });
-          return sendFile(state, data.data, bundle.detail, "detail");
+          const asset = bundle.detail;
+          return sendFile(state, data.data, asset, "detail", bundle.progress);
         })
         .then((data) =>
           bundle.viewport
