@@ -111,9 +111,19 @@ export const ContentMiddleware: Middleware = (store) => (next) => (action) => {
       const scene: Scene = state.content.currentScene;
       // if we have an overlay payload then send it
       sendFile(state, scene, action.payload, action.type.split("/")[1])
-        .then((value) => next({ type: "content/scene", payload: value.data }))
+        .then((value) => {
+          next({ type: "content/scene", payload: value.data });
+          const err: ContentReducerError = {
+            msg: "Update successful",
+            success: true,
+          };
+          next({ type: "content/error", payload: err });
+        })
         .catch((err) => {
-          const error: ContentReducerError = { msg: "Unkown error happened" };
+          const error: ContentReducerError = {
+            msg: "Unkown error happened",
+            success: false,
+          };
           if (err.response.status === 413) {
             error.msg = "Asset too big";
             next({ type: "content/error", payload: error });
@@ -161,9 +171,19 @@ export const ContentMiddleware: Middleware = (store) => (next) => (action) => {
             ? setViewport(state, data.data, bundle.viewport)
             : data,
         )
-        .then((data) => next({ type: "content/scene", payload: data.data }))
+        .then((data) => {
+          next({ type: "content/scene", payload: data.data });
+          const err: ContentReducerError = {
+            msg: "Update successful",
+            success: true,
+          };
+          next({ type: "content/error", payload: err });
+        })
         .catch((err) => {
-          const error: ContentReducerError = { msg: "Unkown error happened" };
+          const error: ContentReducerError = {
+            msg: "Unkown error happened",
+            success: false,
+          };
           if (err.response.status === 413) {
             error.msg = "Asset too big";
             next({ type: "content/error", payload: error });

@@ -26,6 +26,7 @@ interface TableTop {
 
 export type ContentReducerError = {
   msg: string;
+  success: boolean;
 };
 
 export type ContentReducerState = {
