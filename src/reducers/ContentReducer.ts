@@ -85,7 +85,7 @@ export const ContentReducer = (state = initialState, action: PayloadAction) => {
     case "content/deletescene": {
       const scene: Scene = action.payload as unknown as Scene;
       const scenes = state.scenes.filter((s) => s._id !== scene._id);
-      return { ...state, scenes: scenes, currentScene: scene };
+      return { ...state, scenes: scenes };
     }
     case "content/currentscene": {
       const scene: Scene = action.payload as unknown as Scene;
