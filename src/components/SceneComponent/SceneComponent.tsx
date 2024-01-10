@@ -54,7 +54,8 @@ const SceneComponent = ({
   const [name, setName] = useState<string>();
   const [creating, setCreating] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>();
-  const [progress, setProgress] = useState<number>(0);
+  const [playerProgress, setPlayerProgress] = useState<number>(0);
+  const [detailProgress, setDetailProgress] = useState<number>(0);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const error = useSelector((state: AppReducerState) => state.content.err);
   const disabledCreate =
@@ -78,10 +79,11 @@ const SceneComponent = ({
     }
   };
 
-  const progressHandler = (event: AxiosProgressEvent) => {
-    setProgress(event.progress ? event.progress * 100 : 0);
-    console.log(event);
-  };
+  const playerProgressHandler = (event: AxiosProgressEvent) =>
+    setPlayerProgress(event.progress ? event.progress * 100 : 0);
+
+  const detailProgressHandler = (event: AxiosProgressEvent) =>
+    setDetailProgress(event.progress ? event.progress * 100 : 0);
 
   const selectFile = (layer: string) => {
     const input = document.createElement("input");
@@ -111,11 +113,13 @@ const SceneComponent = ({
     if (scene) {
       // TODO clear overlay
       if (playerFile && playerUpdated) {
-        dispatch({ type: "content/player", payload: playerFile });
+        const payload = { asset: playerFile, progress: playerProgressHandler };
+        dispatch({ type: "content/player", payload: payload });
         setPlayerUpdated(false);
       }
       if (detailFile && detailUpdated) {
-        dispatch({ type: "content/detail", payload: detailFile });
+        const payload = { asset: detailFile, progress: detailProgressHandler };
+        dispatch({ type: "content/detail", payload: payload });
         setDetailUpdated(false);
       }
       dispatch({ type: "content/zoom", payload: vpData });
@@ -128,7 +132,8 @@ const SceneComponent = ({
       player: playerFile,
       detail: detailFile,
       viewport: vpData,
-      progress: progressHandler,
+      playerProgress: playerProgressHandler,
+      detailProgress: detailProgressHandler,
     };
     dispatch({ type: "content/createscene", payload: data });
   };
@@ -166,6 +171,10 @@ const SceneComponent = ({
     if (!populateToolbar) return;
     const actions: GameMasterAction[] = [];
     populateToolbar(actions);
+    return () => {
+      // clear the error if there is one
+      dispatch({ type: "content/error" });
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -209,11 +218,6 @@ const SceneComponent = ({
         flexDirection: "column",
       }}
     >
-      {creating && (
-        <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
-          <LinearProgress variant="determinate" value={progress} />
-        </Box>
-      )}
       {resolutionMismatch && (
         <Alert severity="error">
           Image resolution does not match (they must match).
@@ -296,6 +300,9 @@ const SceneComponent = ({
             sx={{ width: "100%" }}
             onLoad={(e) => imageLoaded("player", e)}
           />
+          {playerProgress > 0 && playerProgress < 100 && (
+            <LinearProgress variant="determinate" value={playerProgress} />
+          )}
         </Box>
         <Box
           sx={{
@@ -316,6 +323,9 @@ const SceneComponent = ({
             sx={{ width: "100%" }}
             onLoad={(e) => imageLoaded("detail", e)}
           />
+          {detailProgress > 0 && detailProgress < 100 && (
+            <LinearProgress variant="determinate" value={detailProgress} />
+          )}
         </Box>
       </Box>
       <Box

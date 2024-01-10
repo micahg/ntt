@@ -16,7 +16,17 @@ export interface NewSceneBundle {
   player: File;
   detail?: File;
   viewport?: ViewportBundle;
-  progress: (evt: AxiosProgressEvent) => void;
+  playerProgress: (evt: AxiosProgressEvent) => void;
+  detailProgress: (evt: AxiosProgressEvent) => void;
+}
+
+export interface AssetUpdate {
+  asset: File;
+  progress?: (evt: AxiosProgressEvent) => void;
+}
+
+function isAssetUpdate(payload: File | AssetUpdate): payload is AssetUpdate {
+  return (payload as AssetUpdate).asset !== undefined;
 }
 
 function isBlob(payload: URL | Blob): payload is File {
@@ -114,10 +124,18 @@ export const ContentMiddleware: Middleware = (store) => (next) => (action) => {
     case "content/overlay": {
       // undefined means we're wiping the canvas... probably a new background
       if (action.payload === undefined) return next(action);
+      let asset = action.payload;
+      let progress;
+      if (isAssetUpdate(action.payload)) {
+        asset = action.payload.asset;
+        progress = action.payload.progress;
+      } else {
+        asset = action.payload;
+      }
 
       const scene: Scene = state.content.currentScene;
       // if we have an overlay payload then send it
-      sendFile(state, scene, action.payload, action.type.split("/")[1])
+      sendFile(state, scene, asset, action.type.split("/")[1], progress)
         .then((value) => {
           next({ type: "content/scene", payload: value.data });
           const err: ContentReducerError = {
@@ -167,13 +185,15 @@ export const ContentMiddleware: Middleware = (store) => (next) => (action) => {
         .then((data) => {
           next({ type: "content/scene", payload: data.data });
           const asset = bundle.player;
-          return sendFile(state, data.data, asset, "player", bundle.progress);
+          const progress = bundle.playerProgress;
+          return sendFile(state, data.data, asset, "player", progress);
         })
         .then((data) => {
           if (!bundle.detail) return data; // skip if there is no detailed view
           next({ type: "content/scene", payload: data.data });
           const asset = bundle.detail;
-          return sendFile(state, data.data, asset, "detail", bundle.progress);
+          const progress = bundle.detailProgress;
+          return sendFile(state, data.data, asset, "detail", progress);
         })
         .then((data) =>
           bundle.viewport
