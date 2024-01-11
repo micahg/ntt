@@ -582,7 +582,9 @@ const ContentEditor = ({
         position: "relative",
       }}
     >
-      {/* TODO make content a DIV, per https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas#use_plain_css_for_large_background_images */}
+      {/* <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
+        <LinearProgress />
+      </Box> */}
       <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>
         Sorry, your browser does not support canvas.
       </canvas>
