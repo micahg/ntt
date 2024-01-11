@@ -184,9 +184,12 @@ const SceneComponent = ({
   /**
    * If the scene comes with image assets already (it should have a player
    * visible image) then set the URL so that the <Box> image can pick it up.
+   * Don't bother fetching the files more than once though - they don't change
+   * and doing so causes rendering issues and wastes bandwidth (if there was a
+   * change, its because we'd have just uploaded, we don't need to download it)
    */
   useEffect(() => {
-    if (scene?.detailContent) {
+    if (scene?.detailContent && detailFile === undefined) {
       setDetailUrl(`${apiUrl}/${scene.detailContent}`);
       syncSceneAsset(scene.detailContent)
         .then((file) => setDetailFile(file))
@@ -196,7 +199,7 @@ const SceneComponent = ({
           ),
         );
     }
-    if (scene?.playerContent) {
+    if (scene?.playerContent && playerFile === undefined) {
       setPlayerUrl(`${apiUrl}/${scene.playerContent}`);
       syncSceneAsset(scene.playerContent)
         .then((file) => setPlayerFile(file))
@@ -206,7 +209,7 @@ const SceneComponent = ({
           ),
         );
     }
-  }, [apiUrl, scene]);
+  }, [apiUrl, detailFile, playerFile, scene]);
 
   return (
     <Box
