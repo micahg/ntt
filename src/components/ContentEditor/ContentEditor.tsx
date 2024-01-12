@@ -34,6 +34,7 @@ import {
   LinearProgress,
 } from "@mui/material";
 import { setupOffscreenCanvas } from "../../utils/offscreencanvas";
+import { DownloadProgress } from "../../utils/contentworker";
 
 const sm = new MouseStateMachine();
 
@@ -80,6 +81,8 @@ const ContentEditor = ({
   const [canvasListening, setCanvasListening] = useState<boolean>(false);
   const [canvassesTransferred, setCanvassesTransferred] =
     useState<boolean>(false); // avoid transfer errors
+  const [downloads] = useState<Record<string, number>>({});
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
 
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
@@ -219,9 +222,27 @@ const ContentEditor = ({
       } else if (evt.data.cmd === "pan_complete") {
         // after panning is done, we can go back to waiting state
         sm.transition("wait");
+      } else if (evt.data.cmd === "progress") {
+        if ("evt" in evt.data) {
+          const e = evt.data.evt as DownloadProgress;
+          // console.log(e);
+          if (e.progress === 1) {
+            delete downloads[e.img];
+          } else {
+            downloads[e.img] = e.progress;
+          }
+          let value = 0;
+          const length = Object.keys(downloads).length;
+          if (length === 0) {
+            return setDownloadProgress(100);
+          }
+          for (const [, v] of Object.entries(downloads)) value += v;
+          const x = (value * 100) / length;
+          setDownloadProgress(x);
+        }
       }
     },
-    [dispatch, ovRev],
+    [dispatch, downloads, ovRev],
   );
 
   useEffect(() => {
@@ -640,9 +661,11 @@ const ContentEditor = ({
           />
         </Box>
       </Popover>
-      <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
-        <LinearProgress />
-      </Box>
+      {downloadProgress > 0 && downloadProgress < 100 && (
+        <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
+          <LinearProgress variant="determinate" value={downloadProgress} />
+        </Box>
+      )}
     </Box>
   );
 };
