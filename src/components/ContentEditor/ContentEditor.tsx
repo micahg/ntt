@@ -25,7 +25,14 @@ import {
   Visibility,
 } from "@mui/icons-material";
 import { GameMasterAction } from "../GameMasterActionComponent/GameMasterActionComponent";
-import { Box, Menu, MenuItem, Popover, Slider } from "@mui/material";
+import {
+  Box,
+  Menu,
+  MenuItem,
+  Popover,
+  Slider,
+  LinearProgress,
+} from "@mui/material";
 import { setupOffscreenCanvas } from "../../utils/offscreencanvas";
 
 const sm = new MouseStateMachine();
@@ -633,6 +640,9 @@ const ContentEditor = ({
           />
         </Box>
       </Popover>
+      <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
+        <LinearProgress />
+      </Box>
     </Box>
   );
 };
