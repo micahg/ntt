@@ -491,7 +491,6 @@ const ContentEditor = ({
       }
     });
 
-
     // watch for canvas size changes and report to worker
     const observer = new ResizeObserver((e) => {
       const [w, h] = [e[0].contentRect.width, e[0].contentRect.height];
