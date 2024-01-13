@@ -575,6 +575,7 @@ self.onmessage = (evt) => {
       if (zoom === _max_zoom) return;
       if (zoom === _first_zoom_step) zoom = _max_zoom;
       else zoom += _zoom_step;
+      if (zoom >= _max_zoom) zoom = _max_zoom; // after a resize this can happen
       if (zoom !== _zoom) adjustZoom(zoom, evt.data.x, evt.data.y);
       break;
     }
