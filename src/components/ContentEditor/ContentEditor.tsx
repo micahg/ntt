@@ -103,6 +103,9 @@ const ContentEditor = ({
     (state: AppReducerState) => state.content.currentScene,
   );
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
+  const bearer = useSelector(
+    (state: AppReducerState) => state.environment.bearer,
+  );
   const pushTime = useSelector(
     (state: AppReducerState) => state.content.pushTime,
   );
@@ -512,6 +515,7 @@ const ContentEditor = ({
     if (
       !apiUrl ||
       !scene ||
+      !bearer ||
       !contentCanvasRef?.current ||
       !overlayCanvasRef?.current ||
       !fullCanvasRef?.current
@@ -562,6 +566,7 @@ const ContentEditor = ({
       // so the on this pass it is false when passed to setCanvassesTransferred even if set
       setCanvassesTransferred(true);
       const wrkr = setupOffscreenCanvas(
+        bearer,
         backgroundCanvas,
         overlayCanvas,
         fullCanvas,
@@ -577,6 +582,7 @@ const ContentEditor = ({
     }
   }, [
     apiUrl,
+    bearer,
     bgRev,
     canvassesTransferred,
     contentCanvasRef,
