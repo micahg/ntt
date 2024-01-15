@@ -16,6 +16,7 @@ import { AppReducerState } from "../../reducers/AppReducer";
 import { NewSceneBundle } from "../../middleware/ContentMiddleware";
 import { GameMasterAction } from "../GameMasterActionComponent/GameMasterActionComponent";
 import { AxiosProgressEvent } from "axios";
+import { loadImage } from "../../utils/content";
 
 const NAME_REGEX = /^[\w\s]{1,64}$/;
 
@@ -58,6 +59,10 @@ const SceneComponent = ({
   const [detailProgress, setDetailProgress] = useState<number>(0);
   const apiUrl = useSelector((state: AppReducerState) => state.environment.api);
   const error = useSelector((state: AppReducerState) => state.content.err);
+  const bearer = useSelector(
+    (state: AppReducerState) => state.environment.bearer,
+  );
+
   const disabledCreate =
     creating || // currently already creating or updating
     (!name && !scene) || // neither name nor scene (existing scene would have name)
@@ -161,12 +166,6 @@ const SceneComponent = ({
     setResolutionMismatch(a[0] !== b[0] || a[1] !== b[1]);
   };
 
-  const syncSceneAsset = (url: string) => {
-    return fetch(url)
-      .then((value) => value.blob())
-      .then((blob) => new File([blob], url, { type: blob.type }));
-  };
-
   useEffect(() => {
     if (!populateToolbar) return;
     const actions: GameMasterAction[] = [];
@@ -181,6 +180,20 @@ const SceneComponent = ({
     if (error) setCreating(false);
   }, [error]);
 
+  function doot(url: string, bearer: string): Promise<Blob> {
+    return loadImage(url, bearer).then((i: ImageBitmap) => {
+      const canvas = document.createElement("canvas");
+      [canvas.width, canvas.height] = [i.width, i.height];
+      canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(i);
+      // canvas.toBlob((blob) => { if (blob) img.src = URL.createObjectURL(blob) });
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject("NO_BLOB");
+        });
+      });
+    });
+  }
   /**
    * If the scene comes with image assets already (it should have a player
    * visible image) then set the URL so that the <Box> image can pick it up.
@@ -189,27 +202,49 @@ const SceneComponent = ({
    * change, its because we'd have just uploaded, we don't need to download it)
    */
   useEffect(() => {
+    if (!bearer) return;
     if (scene?.detailContent && detailFile === undefined) {
-      setDetailUrl(`${apiUrl}/${scene.detailContent}`);
-      syncSceneAsset(scene.detailContent)
-        .then((file) => setDetailFile(file))
-        .catch((err) =>
-          console.error(
-            `Unable to sync detail content: ${JSON.stringify(err)}`,
-          ),
-        );
+      const url = `${apiUrl}/${scene.detailContent}`;
+      // setDetailUrl(url);
+      doot(url, bearer).then((blob) => {
+        setDetailUrl(URL.createObjectURL(blob));
+      });
+      // syncSceneAsset(scene.detailContent)
+      //   .then((file) => setDetailFile(file))
+      //   .catch((err) =>
+      //     console.error(
+      //       `Unable to sync detail content: ${JSON.stringify(err)}`,
+      //     ),
+      //   );
     }
     if (scene?.playerContent && playerFile === undefined) {
-      setPlayerUrl(`${apiUrl}/${scene.playerContent}`);
-      syncSceneAsset(scene.playerContent)
-        .then((file) => setPlayerFile(file))
-        .catch((err) =>
-          console.error(
-            `Unable to sync player content: ${JSON.stringify(err)}`,
-          ),
-        );
+      doot(`${apiUrl}/${scene.playerContent}`, bearer).then((blob) =>
+        setPlayerUrl(URL.createObjectURL(blob)),
+      );
+      // setPlayerUrl(`${apiUrl}/${scene.playerContent}`);
+      // syncSceneAsset(scene.playerContent)
+      //   .then((file) => setPlayerFile(file))
+      //   .catch((err) =>
+      //     console.error(
+      //       `Unable to sync player content: ${JSON.stringify(err)}`,
+      //     ),
+      //   );
     }
-  }, [apiUrl, detailFile, playerFile, scene]);
+  }, [apiUrl, bearer, detailFile, playerFile, scene]);
+
+  // useEffect(() => {
+  //   if (!scene?.playerContent) return;
+  //   if (!bearer) return;
+  //   const url = `${apiUrl}/${scene.playerContent}`;
+  //   loadImage(url, bearer).then((i: ImageBitmap) => {
+  //     const canvas = document.createElement("canvas");
+  //     [canvas.width, canvas.height] = [i.width, i.height];
+  //     canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(i);
+  //     canvas.toBlob((blob) => {
+
+  //     });
+  //   });
+  // }, []);
 
   return (
     <Box
