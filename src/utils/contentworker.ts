@@ -1,3 +1,4 @@
+import { DownloadProgress, loadImage } from "./content";
 import {
   Point,
   Rect,
@@ -13,12 +14,6 @@ import {
   scalePoints,
   translatePoints,
 } from "./geometry";
-import axios, { AxiosProgressEvent, AxiosRequestConfig } from "axios";
-
-export type DownloadProgress = {
-  img: string;
-  progress: number;
-};
 
 /**
  * Worker for offscreen drawing in the content editor.
@@ -114,31 +109,6 @@ function renderImage(
   ctx.restore();
 }
 
-function postProgress(evt: AxiosProgressEvent, url: string) {
-  const pe: DownloadProgress = { progress: evt.progress || 1, img: url };
-  postMessage({ cmd: "progress", evt: pe });
-}
-
-function loadImage(url: string, bearer: string): Promise<ImageBitmap> {
-  // getToken().then(token => axios
-  //   .get(url, {
-  //     responseType: "blob",
-  //     headers: {
-  //       Authorization: `Bearer ${token}`,
-  //     }
-  //     onDownloadProgress: (e) => postProgress(e, url),
-  //   }))
-  //   .then((resp) => createImageBitmap(resp.data));
-  const config: AxiosRequestConfig<unknown> = {
-    responseType: "blob",
-    headers: {
-      Authorization: `Bearer ${bearer}`,
-    },
-    onDownloadProgress: (e) => postProgress(e, url),
-  };
-  return axios.get(url, config).then((resp) => createImageBitmap(resp.data));
-}
-
 function calculateViewport(
   angle: number,
   zoom: number,
@@ -173,8 +143,12 @@ function sizeVisibleCanvasses(width: number, height: number) {
 }
 
 function loadAllImages(bearer: string, background: string, overlay?: string) {
-  const bgP = loadImage(background, bearer);
-  const ovP = overlay ? loadImage(overlay, bearer) : Promise.resolve(null);
+  const progress = (p: DownloadProgress) =>
+    postMessage({ cmd: "progress", evt: p });
+  const bgP = loadImage(background, bearer, progress);
+  const ovP = overlay
+    ? loadImage(overlay, bearer, progress)
+    : Promise.resolve(null);
   // TODO signal an error if either promise fails
   return Promise.all([bgP, ovP]).then(([bgImg, ovImg]) => {
     // keep a copy of these to prevent having to recreate them from the image buffer

@@ -34,8 +34,8 @@ import {
   LinearProgress,
 } from "@mui/material";
 import { setupOffscreenCanvas } from "../../utils/offscreencanvas";
-import { DownloadProgress } from "../../utils/contentworker";
 import { debounce } from "lodash";
+import { DownloadProgress } from "../../utils/content";
 
 const sm = new MouseStateMachine();
 
