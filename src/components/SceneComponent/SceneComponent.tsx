@@ -1,4 +1,4 @@
-// import styles from './SceneComponent.module.css';
+import styles from "./SceneComponent.module.css";
 import {
   Alert,
   Box,
@@ -9,7 +9,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useEffect, useState } from "react";
+import { createRef, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Scene } from "../../reducers/ContentReducer";
 import { AppReducerState } from "../../reducers/AppReducer";
@@ -35,6 +35,9 @@ const SceneComponent = ({
   editScene,
 }: SceneComponentProps) => {
   const dispatch = useDispatch();
+
+  const playerCanvasRef = createRef<HTMLCanvasElement>();
+  const detailCanvasRef = createRef<HTMLCanvasElement>();
 
   /**
    * Regarding *Url, *File and *WH below, I do not love storing basically the
@@ -91,6 +94,10 @@ const SceneComponent = ({
     setDetailProgress(event.progress ? event.progress * 100 : 0);
 
   const selectFile = (layer: string) => {
+    const dCanvas = detailCanvasRef?.current;
+    const pCanvas = playerCanvasRef?.current;
+    if (!dCanvas) return;
+    if (!pCanvas) return;
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = false;
@@ -98,10 +105,28 @@ const SceneComponent = ({
       if (!input.files) return;
       const file = input.files[0];
       if (layer === "detail") {
+        createImageBitmap(file).then((i) => {
+          const a = [i.width, i.height];
+          const b = playerWH;
+          renderImage(i, dCanvas);
+          setDetailWH(a);
+          setResolutionMismatch(
+            b.length === 2 && (a[0] !== b[0] || a[1] !== b[1]),
+          );
+        });
         setDetailFile(file);
         setDetailUrl(URL.createObjectURL(file));
         setDetailUpdated(true);
       } else if (layer === "player") {
+        createImageBitmap(file).then((i) => {
+          const a = [i.width, i.height];
+          const b = detailWH;
+          setPlayerWH(a);
+          renderImage(i, pCanvas);
+          setResolutionMismatch(
+            b.length === 2 && (a[0] !== b[0] || a[1] !== b[1]),
+          );
+        });
         setPlayerFile(file);
         setPlayerUrl(URL.createObjectURL(file));
         setPlayerUpdated(true);
@@ -143,29 +168,6 @@ const SceneComponent = ({
     dispatch({ type: "content/createscene", payload: data });
   };
 
-  const imageLoaded = (
-    name: string,
-    event?: React.SyntheticEvent<HTMLImageElement, Event>,
-  ) => {
-    const img: HTMLImageElement = event?.currentTarget as HTMLImageElement;
-    // to avoid waiting for set{Detail,Player}WH to rerender AND THEN compare them, just get
-    // what we know NOW to do the comparison so we can also set the mismatch flag
-    let a: number[], b: number[];
-    if (name === "detail") {
-      a = [img.naturalWidth, img.naturalHeight];
-      b = playerWH;
-      setDetailWH(a);
-    } else if (name === "player") {
-      a = [img.naturalWidth, img.naturalHeight];
-      b = detailWH;
-      setPlayerWH(a);
-    } else return;
-
-    if (!detailWH.length || !playerWH.length) return;
-
-    setResolutionMismatch(a[0] !== b[0] || a[1] !== b[1]);
-  };
-
   useEffect(() => {
     if (!populateToolbar) return;
     const actions: GameMasterAction[] = [];
@@ -180,19 +182,12 @@ const SceneComponent = ({
     if (error) setCreating(false);
   }, [error]);
 
-  function doot(url: string, bearer: string): Promise<Blob> {
-    return loadImage(url, bearer).then((i: ImageBitmap) => {
-      const canvas = document.createElement("canvas");
-      [canvas.width, canvas.height] = [i.width, i.height];
-      canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(i);
-      // canvas.toBlob((blob) => { if (blob) img.src = URL.createObjectURL(blob) });
-      return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject("NO_BLOB");
-        });
-      });
-    });
+  function renderImage(i: ImageBitmap, canvas: HTMLCanvasElement) {
+    const w = canvas.width;
+    const h = (i.height * w) / i.width;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d")?.drawImage(i, 0, 0, w, h);
   }
   /**
    * If the scene comes with image assets already (it should have a player
@@ -202,49 +197,30 @@ const SceneComponent = ({
    * change, its because we'd have just uploaded, we don't need to download it)
    */
   useEffect(() => {
+    const dCanvas = detailCanvasRef?.current;
+    const pCanvas = playerCanvasRef?.current;
     if (!bearer) return;
-    if (scene?.detailContent && detailFile === undefined) {
+    if (scene?.detailContent && detailFile === undefined && dCanvas) {
       const url = `${apiUrl}/${scene.detailContent}`;
-      // setDetailUrl(url);
-      doot(url, bearer).then((blob) => {
-        setDetailUrl(URL.createObjectURL(blob));
-      });
-      // syncSceneAsset(scene.detailContent)
-      //   .then((file) => setDetailFile(file))
-      //   .catch((err) =>
-      //     console.error(
-      //       `Unable to sync detail content: ${JSON.stringify(err)}`,
-      //     ),
-      //   );
+      setDetailUrl(url);
+      loadImage(url, bearer).then((img) => renderImage(img, dCanvas));
     }
-    if (scene?.playerContent && playerFile === undefined) {
-      doot(`${apiUrl}/${scene.playerContent}`, bearer).then((blob) =>
-        setPlayerUrl(URL.createObjectURL(blob)),
-      );
-      // setPlayerUrl(`${apiUrl}/${scene.playerContent}`);
-      // syncSceneAsset(scene.playerContent)
-      //   .then((file) => setPlayerFile(file))
-      //   .catch((err) =>
-      //     console.error(
-      //       `Unable to sync player content: ${JSON.stringify(err)}`,
-      //     ),
-      //   );
+    if (scene?.playerContent && playerFile === undefined && pCanvas) {
+      const url = `${apiUrl}/${scene.playerContent}`;
+      setPlayerUrl(url);
+      loadImage(url, bearer).then((img) => renderImage(img, pCanvas));
     }
-  }, [apiUrl, bearer, detailFile, playerFile, scene]);
-
-  // useEffect(() => {
-  //   if (!scene?.playerContent) return;
-  //   if (!bearer) return;
-  //   const url = `${apiUrl}/${scene.playerContent}`;
-  //   loadImage(url, bearer).then((i: ImageBitmap) => {
-  //     const canvas = document.createElement("canvas");
-  //     [canvas.width, canvas.height] = [i.width, i.height];
-  //     canvas.getContext("bitmaprenderer")?.transferFromImageBitmap(i);
-  //     canvas.toBlob((blob) => {
-
-  //     });
-  //   });
-  // }, []);
+  }, [
+    apiUrl,
+    bearer,
+    detailCanvasRef,
+    detailFile,
+    detailWH,
+    playerCanvasRef,
+    playerFile,
+    playerWH,
+    scene,
+  ]);
 
   return (
     <Box
@@ -331,12 +307,10 @@ const SceneComponent = ({
             width: "25vw",
           }}
         >
-          <Box
-            component="img"
-            src={playerUrl}
+          <canvas
             onClick={() => selectFile("player")}
-            sx={{ width: "100%" }}
-            onLoad={(e) => imageLoaded("player", e)}
+            ref={playerCanvasRef}
+            className={styles.canvas}
           />
           {playerProgress > 0 && playerProgress < 100 && (
             <LinearProgress variant="determinate" value={playerProgress} />
@@ -354,12 +328,10 @@ const SceneComponent = ({
             width: "25vw",
           }}
         >
-          <Box
-            component="img"
-            src={detailUrl}
+          <canvas
             onClick={() => selectFile("detail")}
-            sx={{ width: "100%" }}
-            onLoad={(e) => imageLoaded("detail", e)}
+            ref={detailCanvasRef}
+            className={styles.canvas}
           />
           {detailProgress > 0 && detailProgress < 100 && (
             <LinearProgress variant="determinate" value={detailProgress} />
