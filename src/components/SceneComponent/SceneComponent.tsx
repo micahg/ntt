@@ -15,8 +15,7 @@ import { Scene } from "../../reducers/ContentReducer";
 import { AppReducerState } from "../../reducers/AppReducer";
 import { NewSceneBundle } from "../../middleware/ContentMiddleware";
 import { GameMasterAction } from "../GameMasterActionComponent/GameMasterActionComponent";
-import { AxiosProgressEvent } from "axios";
-import { loadImage } from "../../utils/content";
+import { LoadProgress, loadImage } from "../../utils/content";
 
 const NAME_REGEX = /^[\w\s]{1,64}$/;
 
@@ -55,6 +54,8 @@ const SceneComponent = ({
   const [resolutionMismatch, setResolutionMismatch] = useState<boolean>(false);
   const [name, setName] = useState<string>();
   const [creating, setCreating] = useState<boolean>(false);
+  const [loadingPlayer, setLoadingPlayer] = useState<boolean>(false);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>();
   const [playerProgress, setPlayerProgress] = useState<number>(0);
   const [detailProgress, setDetailProgress] = useState<number>(0);
@@ -85,10 +86,10 @@ const SceneComponent = ({
     }
   };
 
-  const playerProgressHandler = (event: AxiosProgressEvent) =>
+  const playerProgressHandler = (event: LoadProgress) =>
     setPlayerProgress(event.progress ? event.progress * 100 : 0);
 
-  const detailProgressHandler = (event: AxiosProgressEvent) =>
+  const detailProgressHandler = (event: LoadProgress) =>
     setDetailProgress(event.progress ? event.progress * 100 : 0);
 
   const selectFile = (layer: string) => {
@@ -175,7 +176,8 @@ const SceneComponent = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (error) setCreating(false);
+    if (!error) return;
+    setCreating(false);
   }, [error]);
 
   function renderImage(i: ImageBitmap, canvas: HTMLCanvasElement) {
@@ -196,13 +198,29 @@ const SceneComponent = ({
     const dCanvas = detailCanvasRef?.current;
     const pCanvas = playerCanvasRef?.current;
     if (!bearer) return;
-    if (scene?.detailContent && detailFile === undefined && dCanvas) {
+    if (
+      scene?.detailContent &&
+      detailFile === undefined &&
+      dCanvas &&
+      !loadingDetail
+    ) {
+      setLoadingDetail(true);
       const url = `${apiUrl}/${scene.detailContent}`;
-      loadImage(url, bearer).then((img) => renderImage(img, dCanvas));
+      loadImage(url, bearer, detailProgressHandler).then((img) =>
+        renderImage(img, dCanvas),
+      );
     }
-    if (scene?.playerContent && playerFile === undefined && pCanvas) {
+    if (
+      scene?.playerContent &&
+      playerFile === undefined &&
+      pCanvas &&
+      !loadingPlayer
+    ) {
+      setLoadingPlayer(true);
       const url = `${apiUrl}/${scene.playerContent}`;
-      loadImage(url, bearer).then((img) => renderImage(img, pCanvas));
+      loadImage(url, bearer, playerProgressHandler).then((img) =>
+        renderImage(img, pCanvas),
+      );
     }
   }, [
     apiUrl,
@@ -214,6 +232,8 @@ const SceneComponent = ({
     playerFile,
     playerWH,
     scene,
+    loadingDetail,
+    loadingPlayer,
   ]);
 
   return (

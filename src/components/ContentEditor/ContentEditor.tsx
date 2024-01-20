@@ -35,7 +35,7 @@ import {
 } from "@mui/material";
 import { setupOffscreenCanvas } from "../../utils/offscreencanvas";
 import { debounce } from "lodash";
-import { DownloadProgress } from "../../utils/content";
+import { LoadProgress } from "../../utils/content";
 
 const sm = new MouseStateMachine();
 
@@ -234,7 +234,7 @@ const ContentEditor = ({
         sm.transition("wait");
       } else if (evt.data.cmd === "progress") {
         if ("evt" in evt.data) {
-          const e = evt.data.evt as DownloadProgress;
+          const e = evt.data.evt as LoadProgress;
 
           // on complete (progress of 1) remove the download
           if (e.progress === 1) delete downloads[e.img];

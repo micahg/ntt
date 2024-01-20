@@ -5,6 +5,7 @@ import { getToken } from "../utils/auth";
 import { ContentReducerError, Scene } from "../reducers/ContentReducer";
 import { Rect } from "../utils/geometry";
 import { AnyAction, Dispatch, MiddlewareAPI } from "@reduxjs/toolkit";
+import { LoadProgress } from "../utils/content";
 
 export interface ViewportBundle {
   backgroundSize?: Rect;
@@ -17,8 +18,8 @@ export interface NewSceneBundle {
   player: File;
   detail?: File;
   viewport?: ViewportBundle;
-  playerProgress: (evt: AxiosProgressEvent) => void;
-  detailProgress: (evt: AxiosProgressEvent) => void;
+  playerProgress: (evt: LoadProgress) => void;
+  detailProgress: (evt: LoadProgress) => void;
 }
 
 export interface AssetUpdate {
@@ -40,7 +41,7 @@ function sendFile(
   scene: Scene,
   blob: File | URL,
   layer: string,
-  progress?: (evt: AxiosProgressEvent) => void,
+  progress?: (evt: LoadProgress) => void,
 ): Promise<AxiosResponse> {
   return new Promise((resolve, reject) => {
     const url = `${state.environment.api}/scene/${scene._id}/content`;
@@ -58,7 +59,8 @@ function sendFile(
       .then((headers) =>
         axios.put(url, formData, {
           headers: headers,
-          onUploadProgress: progress,
+          onUploadProgress: (e) =>
+            progress?.({ progress: e.progress || 0, img: layer }),
         }),
       )
       .then((value) => resolve(value))

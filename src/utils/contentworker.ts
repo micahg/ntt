@@ -1,4 +1,4 @@
-import { DownloadProgress, loadImage } from "./content";
+import { LoadProgress, loadImage } from "./content";
 import {
   Point,
   Rect,
@@ -143,7 +143,7 @@ function sizeVisibleCanvasses(width: number, height: number) {
 }
 
 function loadAllImages(bearer: string, background: string, overlay?: string) {
-  const progress = (p: DownloadProgress) =>
+  const progress = (p: LoadProgress) =>
     postMessage({ cmd: "progress", evt: p });
   const bgP = loadImage(background, bearer, progress);
   const ovP = overlay

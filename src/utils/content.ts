@@ -1,11 +1,11 @@
 import axios, { AxiosRequestConfig } from "axios";
 
-export type DownloadProgress = {
+export type LoadProgress = {
   img: string;
   progress: number;
 };
 
-export type progressFunction = (p: DownloadProgress) => void;
+export type progressFunction = (p: LoadProgress) => void;
 
 export function loadImage(
   url: string,
