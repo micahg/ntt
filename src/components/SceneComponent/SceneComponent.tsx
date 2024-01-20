@@ -195,46 +195,27 @@ const SceneComponent = ({
    * change, its because we'd have just uploaded, we don't need to download it)
    */
   useEffect(() => {
-    const dCanvas = detailCanvasRef?.current;
-    const pCanvas = playerCanvasRef?.current;
-    if (!bearer) return;
-    if (
-      scene?.detailContent &&
-      detailFile === undefined &&
-      dCanvas &&
-      !loadingDetail
-    ) {
-      setLoadingDetail(true);
-      const url = `${apiUrl}/${scene.detailContent}`;
-      loadImage(url, bearer, detailProgressHandler).then((img) =>
-        renderImage(img, dCanvas),
-      );
-    }
-    if (
-      scene?.playerContent &&
-      playerFile === undefined &&
-      pCanvas &&
-      !loadingPlayer
-    ) {
-      setLoadingPlayer(true);
+    const canvas = playerCanvasRef?.current;
+    if (!bearer || !apiUrl || !canvas || loadingPlayer) return;
+    setLoadingPlayer(true);
+    if (scene?.playerContent) {
       const url = `${apiUrl}/${scene.playerContent}`;
-      loadImage(url, bearer, playerProgressHandler).then((img) =>
-        renderImage(img, pCanvas),
-      );
+      loadImage(url, bearer, playerProgressHandler).then((img) => {
+        renderImage(img, canvas);
+      });
     }
-  }, [
-    apiUrl,
-    bearer,
-    detailCanvasRef,
-    detailFile,
-    detailWH,
-    playerCanvasRef,
-    playerFile,
-    playerWH,
-    scene,
-    loadingDetail,
-    loadingPlayer,
-  ]);
+  }, [apiUrl, bearer, loadingPlayer, playerCanvasRef, scene]);
+  useEffect(() => {
+    const canvas = detailCanvasRef?.current;
+    if (!bearer || !apiUrl || !canvas || loadingDetail) return;
+    setLoadingDetail(true);
+    if (scene?.detailContent) {
+      const url = `${apiUrl}/${scene.detailContent}`;
+      loadImage(url, bearer, detailProgressHandler).then((img) => {
+        renderImage(img, canvas);
+      });
+    }
+  }, [apiUrl, bearer, detailCanvasRef, scene, loadingDetail]);
 
   return (
     <Box
