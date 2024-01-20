@@ -46,8 +46,6 @@ const SceneComponent = ({
    * changed image when the display repaints. File is for when we upload when
    * the user submits, WH is so we can show an error if the sizes don't match.
    */
-  const [playerUrl, setPlayerUrl] = useState<string | undefined>(); // img src
-  const [detailUrl, setDetailUrl] = useState<string | undefined>(); // img src
   const [playerFile, setPlayerFile] = useState<File | undefined>(); // upload data
   const [detailFile, setDetailFile] = useState<File | undefined>(); // upload data
   const [playerWH, setPlayerWH] = useState<number[]>([]); // img width, height
@@ -115,7 +113,6 @@ const SceneComponent = ({
           );
         });
         setDetailFile(file);
-        setDetailUrl(URL.createObjectURL(file));
         setDetailUpdated(true);
       } else if (layer === "player") {
         createImageBitmap(file).then((i) => {
@@ -128,7 +125,6 @@ const SceneComponent = ({
           );
         });
         setPlayerFile(file);
-        setPlayerUrl(URL.createObjectURL(file));
         setPlayerUpdated(true);
       } else console.error("Invalid layer");
     };
@@ -202,12 +198,10 @@ const SceneComponent = ({
     if (!bearer) return;
     if (scene?.detailContent && detailFile === undefined && dCanvas) {
       const url = `${apiUrl}/${scene.detailContent}`;
-      setDetailUrl(url);
       loadImage(url, bearer).then((img) => renderImage(img, dCanvas));
     }
     if (scene?.playerContent && playerFile === undefined && pCanvas) {
       const url = `${apiUrl}/${scene.playerContent}`;
-      setPlayerUrl(url);
       loadImage(url, bearer).then((img) => renderImage(img, pCanvas));
     }
   }, [
