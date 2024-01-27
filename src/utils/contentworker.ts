@@ -463,6 +463,12 @@ self.onmessage = (evt) => {
       selecting = false;
       break;
     }
+    case "paint": {
+      const [x, y] = [evt.data.x2, evt.data.y2];
+      console.log([x, y]);
+
+      break;
+    }
     case "record": {
       if (lastAnimX < 0) {
         // less than 0 indicates a new recording so initialize the last

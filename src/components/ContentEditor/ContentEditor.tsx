@@ -18,6 +18,7 @@ import {
   ZoomIn,
   ZoomOut,
   LayersClear,
+  Brush,
   Sync,
   Map,
   Palette,
@@ -51,6 +52,7 @@ interface InternalState {
   color: RefObject<HTMLInputElement>;
   obscure: boolean;
   zoom: boolean;
+  painting: boolean;
 }
 
 const ContentEditor = ({
@@ -68,6 +70,7 @@ const ContentEditor = ({
     zoom: false,
     obscure: false,
     color: createRef(),
+    painting: false,
   });
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
@@ -114,6 +117,16 @@ const ContentEditor = ({
     (value: boolean) => {
       if (internalState.obscure !== value && redrawToolbar) {
         internalState.obscure = value;
+        redrawToolbar();
+      }
+    },
+    [internalState, redrawToolbar],
+  );
+
+  const updatePainting = useCallback(
+    (value: boolean) => {
+      if (internalState.painting !== value && redrawToolbar) {
+        internalState.painting = value;
         redrawToolbar();
       }
     },
@@ -173,8 +186,12 @@ const ContentEditor = ({
   const selectOverlay = useCallback(
     (buttons: number, x1: number, y1: number, x2: number, y2: number) => {
       if (!worker) return;
+      let cmd;
+      if (internalState.painting) cmd = "paint";
+      else if (internalState.obscure) cmd = "record";
+      else return;
       worker.postMessage({
-        cmd: "record",
+        cmd: cmd,
         buttons: buttons,
         x1: x1,
         y1: y1,
@@ -182,7 +199,7 @@ const ContentEditor = ({
         y2: y2,
       });
     },
-    [worker],
+    [internalState.obscure, internalState.painting, worker],
   );
 
   /**
@@ -285,28 +302,35 @@ const ContentEditor = ({
         icon: Palette,
         tooltip: "Color Palette",
         hidden: () => false,
-        disabled: () => false,
+        disabled: () => internalState.painting,
         callback: gmSelectColor,
       },
       {
         icon: LayersClear,
         tooltip: "Clear Overlay",
         hidden: () => false,
-        disabled: () => internalState.obscure,
+        disabled: () => internalState.obscure || internalState.painting,
         callback: () => sm.transition("clear"),
+      },
+      {
+        icon: Brush,
+        tooltip: "Paint",
+        hidden: () => false,
+        disabled: () => internalState.obscure,
+        callback: () => sm.transition("paint"),
       },
       {
         icon: VisibilityOff,
         tooltip: "Obscure",
         hidden: () => false,
-        disabled: () => !internalState.obscure,
+        disabled: () => !internalState.obscure || internalState.painting,
         callback: () => sm.transition("obscure"),
       },
       {
         icon: Visibility,
         tooltip: "Reveal",
         hidden: () => false,
-        disabled: () => !internalState.obscure,
+        disabled: () => !internalState.obscure || internalState.painting,
         callback: () => sm.transition("reveal"),
       },
       {
@@ -327,14 +351,14 @@ const ContentEditor = ({
         icon: Opacity,
         tooltip: "Opacity",
         hidden: () => false,
-        disabled: () => internalState.obscure,
+        disabled: () => internalState.obscure || internalState.painting,
         callback: (evt) => gmSelectOpacityMenu(evt),
       },
       {
         icon: RotateRight,
         tooltip: "Rotate",
         hidden: () => false,
-        disabled: () => internalState.obscure,
+        disabled: () => internalState.obscure || internalState.painting,
         callback: () => sm.transition("rotateClock"),
       },
     ];
@@ -376,7 +400,9 @@ const ContentEditor = ({
       sm.resetCoordinates();
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
+      // these ones update internal state - can't wait to fix that - doesn't feel right
       updateObscure(false);
+      updatePainting(false);
     });
 
     setCallback(sm, "record", () => {
@@ -459,6 +485,10 @@ const ContentEditor = ({
       worker.postMessage({ cmd: "clear" });
       sm.transition("done");
     });
+    setCallback(sm, "paint", () => updatePainting(true));
+    setCallback(sm, "painting", () => {
+      console.log("NOW PAINTING");
+    });
     setCallback(sm, "rotate_clock", () => {
       const angle = ((scene.angle || 0) + 90) % 360;
       worker.postMessage({ cmd: "rotate", angle: angle });
@@ -475,6 +505,7 @@ const ContentEditor = ({
     scene,
     overlayCanvasRef,
     worker,
+    updatePainting,
   ]);
 
   useEffect(() => {

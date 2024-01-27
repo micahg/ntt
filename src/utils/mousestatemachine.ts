@@ -35,6 +35,7 @@ export class MouseStateMachine implements StateMachine {
         push: "push",
         zoomOut: "zoomOut",
         clear: "clear",
+        paint: "paint",
         opacity: "opacity_select",
         rotateClock: "rotate_clock",
       },
@@ -82,6 +83,14 @@ export class MouseStateMachine implements StateMachine {
       },
       clear: {
         done: "wait",
+      },
+      paint: {
+        down: "painting",
+        move: "record_mouse",
+      },
+      painting: {
+        move: "record_mouse",
+        up: "wait", // use paint instead of wait if you want to enable multiple strokes
       },
       opacity_select: {
         display: "opacity_display",
