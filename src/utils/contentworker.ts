@@ -465,8 +465,15 @@ self.onmessage = (evt) => {
     }
     case "paint": {
       const [x, y] = [evt.data.x2, evt.data.y2];
-      console.log([x, y]);
-
+      if (evt.data.buttons === 0) {
+        // console.log(`SHOW BRUSH ${[x, y]}`);
+      } else if (evt.data.buttons === 1) {
+        overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+        overlayCtx.beginPath();
+        overlayCtx.arc(x, y, 10, 0, 2 * Math.PI);
+        overlayCtx.fill();
+        // console.log(`PAINT AT ${[x, y]}`);
+      }
       break;
     }
     case "record": {
@@ -488,7 +495,7 @@ self.onmessage = (evt) => {
       }
       break;
     }
-    case "endrecording": {
+    case "end_selecting": {
       if (panning) {
         storeOverlay(false);
         postMessage({ cmd: "pan_complete" });

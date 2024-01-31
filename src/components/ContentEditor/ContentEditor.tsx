@@ -13,6 +13,7 @@ import { MouseStateMachine } from "../../utils/mousestatemachine";
 import { setCallback } from "../../utils/statemachine";
 import styles from "./ContentEditor.module.css";
 import {
+  Rectangle,
   RotateRight,
   Opacity,
   ZoomIn,
@@ -50,7 +51,7 @@ interface ContentEditorProps {
 // so that the object itself remains unchanged.
 interface InternalState {
   color: RefObject<HTMLInputElement>;
-  obscure: boolean;
+  selecting: boolean;
   zoom: boolean;
   painting: boolean;
 }
@@ -68,7 +69,7 @@ const ContentEditor = ({
 
   const [internalState] = useState<InternalState>({
     zoom: false,
-    obscure: false,
+    selecting: false,
     color: createRef(),
     painting: false,
   });
@@ -113,10 +114,10 @@ const ContentEditor = ({
     (state: AppReducerState) => state.content.pushTime,
   );
 
-  const updateObscure = useCallback(
+  const updateSelecting = useCallback(
     (value: boolean) => {
-      if (internalState.obscure !== value && redrawToolbar) {
-        internalState.obscure = value;
+      if (internalState.selecting !== value && redrawToolbar) {
+        internalState.selecting = value;
         redrawToolbar();
       }
     },
@@ -183,12 +184,12 @@ const ContentEditor = ({
     if (worker) worker.postMessage({ cmd: "resize", width: w, height: h });
   }, 250);
 
-  const selectOverlay = useCallback(
+  const handleMouseMove = useCallback(
     (buttons: number, x1: number, y1: number, x2: number, y2: number) => {
       if (!worker) return;
       let cmd;
       if (internalState.painting) cmd = "paint";
-      else if (internalState.obscure) cmd = "record";
+      else if (internalState.selecting) cmd = "record";
       else return;
       worker.postMessage({
         cmd: cmd,
@@ -199,7 +200,7 @@ const ContentEditor = ({
         y2: y2,
       });
     },
-    [internalState.obscure, internalState.painting, worker],
+    [internalState.selecting, internalState.painting, worker],
   );
 
   /**
@@ -309,35 +310,28 @@ const ContentEditor = ({
         icon: LayersClear,
         tooltip: "Clear Overlay",
         hidden: () => false,
-        disabled: () => internalState.obscure || internalState.painting,
+        disabled: () => internalState.selecting || internalState.painting,
         callback: () => sm.transition("clear"),
-      },
-      {
-        icon: Brush,
-        tooltip: "Paint",
-        hidden: () => false,
-        disabled: () => internalState.obscure,
-        callback: () => sm.transition("paint"),
       },
       {
         icon: VisibilityOff,
         tooltip: "Obscure",
         hidden: () => false,
-        disabled: () => !internalState.obscure || internalState.painting,
+        disabled: () => !internalState.selecting || internalState.painting,
         callback: () => sm.transition("obscure"),
       },
       {
         icon: Visibility,
         tooltip: "Reveal",
         hidden: () => false,
-        disabled: () => !internalState.obscure || internalState.painting,
+        disabled: () => !internalState.selecting || internalState.painting,
         callback: () => sm.transition("reveal"),
       },
       {
         icon: ZoomIn,
         tooltip: "Zoom In",
         hidden: () => internalState.zoom,
-        disabled: () => !internalState.obscure,
+        disabled: () => !internalState.selecting,
         callback: () => sm.transition("zoomIn"),
       },
       {
@@ -351,15 +345,29 @@ const ContentEditor = ({
         icon: Opacity,
         tooltip: "Opacity",
         hidden: () => false,
-        disabled: () => internalState.obscure || internalState.painting,
+        disabled: () => internalState.selecting || internalState.painting,
         callback: (evt) => gmSelectOpacityMenu(evt),
       },
       {
         icon: RotateRight,
         tooltip: "Rotate",
         hidden: () => false,
-        disabled: () => internalState.obscure || internalState.painting,
+        disabled: () => internalState.selecting || internalState.painting,
         callback: () => sm.transition("rotateClock"),
+      },
+      {
+        icon: Brush,
+        tooltip: "Paint",
+        hidden: () => false,
+        disabled: () => internalState.selecting,
+        callback: () => sm.transition("paint"),
+      },
+      {
+        icon: Rectangle,
+        tooltip: "Select",
+        hidden: () => false,
+        disabled: () => internalState.selecting || internalState.painting,
+        callback: () => sm.transition("select"),
       },
     ];
     populateToolbar(actions);
@@ -401,19 +409,18 @@ const ContentEditor = ({
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
       // these ones update internal state - can't wait to fix that - doesn't feel right
-      updateObscure(false);
+      updateSelecting(false);
       updatePainting(false);
     });
 
     setCallback(sm, "record", () => {
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
-      updateObscure(true);
       setShowOpacitySlider(false);
     });
     setCallback(sm, "background_select", () => {
       sm.resetCoordinates();
-      updateObscure(false);
+      updateSelecting(false);
       setShowBackgroundMenu(true);
     });
     setCallback(sm, "background_link", () => {
@@ -441,23 +448,22 @@ const ContentEditor = ({
       });
     });
     setCallback(sm, "complete", () => {
-      // console.log(`${sm.x1()}, ${sm.x2()}, ${sm.y1()}, ${sm.y2()}`)
-      // so if we measure the coordinates to be the same OR the end
-      // coordinates, x2 or y2, are less than 0 (no end recorded)
-      // just transition back to the start
-      if (
-        (sm.x1() === sm.x2() && sm.y1() === sm.y2()) ||
-        sm.x2() < 0 ||
-        sm.y2() < 0
-      ) {
+      if (internalState.selecting) {
+        if (
+          (sm.x1() === sm.x2() && sm.y1() === sm.y2()) ||
+          sm.x2() < 0 ||
+          sm.y2() < 0
+        ) {
+          sm.transition("wait");
+        }
+        worker.postMessage({ cmd: "end_selecting" });
+      } else if (internalState.painting) {
         sm.transition("wait");
       }
-      worker.postMessage({ cmd: "endrecording" });
     });
     setCallback(sm, "opacity_select", () => {
       sm.resetCoordinates();
-      // setCanObscure(false);
-      updateObscure(false);
+      updateSelecting(false);
       setShowOpacityMenu(true);
     });
     setCallback(sm, "opacity_display", () => {
@@ -479,13 +485,20 @@ const ContentEditor = ({
       worker.postMessage({ cmd: "opacity", opacity: args[0] }),
     );
     sm.setStartCallback(() => worker.postMessage({ cmd: "start_recording" }));
-    sm.setMoveCallback(selectOverlay);
+    sm.setMoveCallback(handleMouseMove);
     setCallback(sm, "push", () => dispatch({ type: "content/push" }));
     setCallback(sm, "clear", () => {
       worker.postMessage({ cmd: "clear" });
       sm.transition("done");
     });
-    setCallback(sm, "paint", () => updatePainting(true));
+    setCallback(sm, "select", () => {
+      updateSelecting(true);
+      updatePainting(false);
+    });
+    setCallback(sm, "paint", () => {
+      updateSelecting(false);
+      updatePainting(true);
+    });
     setCallback(sm, "painting", () => {
       console.log("NOW PAINTING");
     });
@@ -500,12 +513,14 @@ const ContentEditor = ({
     dispatch,
     imageSize,
     sceneManager,
-    selectOverlay,
-    updateObscure,
+    handleMouseMove,
+    updateSelecting,
     scene,
     overlayCanvasRef,
     worker,
     updatePainting,
+    internalState.painting,
+    internalState.selecting,
   ]);
 
   useEffect(() => {

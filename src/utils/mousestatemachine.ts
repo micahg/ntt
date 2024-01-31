@@ -28,16 +28,28 @@ export class MouseStateMachine implements StateMachine {
     this.current = "wait";
     this.actions = {};
     this.states = {
+      // before anything happens
       wait: {
-        // waiting to start recording
+        push: "push",
         down: "record_mouse",
         background: "background_select",
-        push: "push",
         zoomOut: "zoomOut",
         clear: "clear",
+        select: "select",
         paint: "paint",
         opacity: "opacity_select",
         rotateClock: "rotate_clock",
+      },
+      // after select or paint is done
+      complete: {
+        down: "record_mouse",
+        background: "background_select",
+        select: "select",
+        paint: "paint",
+        obscure: "obscure",
+        reveal: "reveal",
+        zoomIn: "zoomIn",
+        wait: "wait",
       },
       push: {
         done: "wait",
@@ -48,15 +60,6 @@ export class MouseStateMachine implements StateMachine {
         up: "complete",
         out: "complete",
         down: "record_mouse",
-      },
-      complete: {
-        // done recording - box selected
-        down: "record_mouse",
-        obscure: "obscure",
-        reveal: "reveal",
-        zoomIn: "zoomIn",
-        background: "background_select",
-        wait: "wait",
       },
       obscure: {
         wait: "wait",
@@ -83,6 +86,13 @@ export class MouseStateMachine implements StateMachine {
       },
       clear: {
         done: "wait",
+      },
+      select: {
+        down: "selecting",
+      },
+      selecting: {
+        move: "record_mouse",
+        up: "wait",
       },
       paint: {
         down: "painting",
@@ -150,8 +160,8 @@ export class MouseStateMachine implements StateMachine {
     ) {
       return;
     }
+    // TODO stop recording start/end coordinates -- let the recipient do it
     if (this.startX < 0) {
-      this.buttons = evt.buttons;
       this.startX = evt.offsetX;
       this.startY = evt.offsetY;
       if (this.startCallback) this.startCallback();
@@ -160,7 +170,7 @@ export class MouseStateMachine implements StateMachine {
       this.endX = evt.offsetX;
       if (this.moveCallback)
         this.moveCallback(
-          this.buttons,
+          evt.buttons,
           this.startX,
           this.startY,
           this.endX,
