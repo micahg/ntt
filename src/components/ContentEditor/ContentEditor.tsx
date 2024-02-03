@@ -52,6 +52,7 @@ interface ContentEditorProps {
 interface InternalState {
   color: RefObject<HTMLInputElement>;
   selecting: boolean;
+  selected: boolean;
   zoom: boolean;
   painting: boolean;
 }
@@ -70,6 +71,7 @@ const ContentEditor = ({
   const [internalState] = useState<InternalState>({
     zoom: false,
     selecting: false,
+    selected: false,
     color: createRef(),
     painting: false,
   });
@@ -118,6 +120,15 @@ const ContentEditor = ({
     (value: boolean) => {
       if (internalState.selecting !== value && redrawToolbar) {
         internalState.selecting = value;
+        redrawToolbar();
+      }
+    },
+    [internalState, redrawToolbar],
+  );
+  const updateSelected = useCallback(
+    (value: boolean) => {
+      if (internalState.selected !== value && redrawToolbar) {
+        internalState.selected = value;
         redrawToolbar();
       }
     },
@@ -289,21 +300,21 @@ const ContentEditor = ({
         icon: Sync,
         tooltip: "Sync Remote Display",
         hidden: () => false,
-        disabled: () => false,
+        disabled: () => internalState.painting || internalState.selecting,
         callback: () => sm.transition("push"),
       },
       {
         icon: Map,
         tooltip: "Scene Backgrounds",
         hidden: () => false,
-        disabled: () => false,
+        disabled: () => internalState.painting || internalState.selecting,
         callback: sceneManager,
       },
       {
         icon: Palette,
         tooltip: "Color Palette",
         hidden: () => false,
-        disabled: () => internalState.painting,
+        disabled: () => internalState.painting || internalState.selecting,
         callback: gmSelectColor,
       },
       {
@@ -317,21 +328,21 @@ const ContentEditor = ({
         icon: VisibilityOff,
         tooltip: "Obscure",
         hidden: () => false,
-        disabled: () => !internalState.selecting || internalState.painting,
+        disabled: () => !internalState.selected,
         callback: () => sm.transition("obscure"),
       },
       {
         icon: Visibility,
         tooltip: "Reveal",
         hidden: () => false,
-        disabled: () => !internalState.selecting || internalState.painting,
+        disabled: () => !internalState.selected,
         callback: () => sm.transition("reveal"),
       },
       {
         icon: ZoomIn,
         tooltip: "Zoom In",
         hidden: () => internalState.zoom,
-        disabled: () => !internalState.selecting,
+        disabled: () => !internalState.selected,
         callback: () => sm.transition("zoomIn"),
       },
       {
@@ -425,23 +436,19 @@ const ContentEditor = ({
       // these ones update internal state - can't wait to fix that - doesn't feel right
       updateSelecting(false);
       updatePainting(false);
-      /**
-       * MICAH WHEN YOU RESUME we're using post paint/post select click in the complete state
-       * to move to wait an reset things... from here we have to post to the worker to clear any selection
-       *
-       * ... also probably fix state machine since it can't select after.
-       */
-      console.log(`MICAH YOU GOTTA CLEAN UP DANGLING SELECTIONS HERE`);
+      updateSelected(false);
     });
 
     setCallback(sm, "record", () => {
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
       setShowOpacitySlider(false);
+      updateSelected(false);
     });
     setCallback(sm, "background_select", () => {
       sm.resetCoordinates();
       updateSelecting(false);
+      updateSelected(false);
       setShowBackgroundMenu(true);
     });
     setCallback(sm, "background_link", () => {
@@ -469,11 +476,15 @@ const ContentEditor = ({
       });
     });
     setCallback(sm, "complete", () => {
-      if (internalState.selecting) worker.postMessage({ cmd: "end_selecting" });
+      if (internalState.selecting) {
+        worker.postMessage({ cmd: "end_selecting" });
+        updateSelected(true);
+      }
     });
     setCallback(sm, "opacity_select", () => {
       sm.resetCoordinates();
       updateSelecting(false);
+      updateSelected(false);
       setShowOpacityMenu(true);
     });
     setCallback(sm, "opacity_display", () => {
@@ -503,10 +514,12 @@ const ContentEditor = ({
     });
     setCallback(sm, "select", () => {
       updateSelecting(true);
+      updateSelected(false);
       updatePainting(false);
     });
     setCallback(sm, "paint", () => {
       updateSelecting(false);
+      updateSelected(false);
       updatePainting(true);
     });
     setCallback(sm, "painting", () => {
@@ -526,11 +539,11 @@ const ContentEditor = ({
     handleMouseMove,
     updateSelecting,
     updatePainting,
+    updateSelected,
     scene,
     overlayCanvasRef,
     worker,
-    internalState.painting,
-    internalState.selecting,
+    internalState,
   ]);
 
   useEffect(() => {
