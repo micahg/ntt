@@ -376,6 +376,7 @@ const ContentEditor = ({
       {
         icon: Brush,
         tooltip: "Finish Paint",
+        emphasis: true,
         hidden: () => !internalState.painting,
         disabled: () => false,
         callback: () => sm.transition("wait"),
@@ -390,6 +391,7 @@ const ContentEditor = ({
       {
         icon: Rectangle,
         tooltip: "Finish Select",
+        emphasis: true,
         hidden: () => !internalState.selecting,
         disabled: () => false,
         callback: () => sm.transition("wait"),
