@@ -31,12 +31,16 @@ export class MouseStateMachine implements StateMachine {
       // before anything happens
       wait: {
         push: "push",
-        down: "record_mouse",
         background: "background_select",
         zoomOut: "zoomOut",
         clear: "clear",
+        /**********************/
+        // don't add more of these -- these (paint, select, whatever else) are just instances of
+        // recording -- it should probably be a "record" state and then track what the recording means
+        // in the component.
         select: "select",
         paint: "paint",
+        /**********************/
         opacity: "opacity_select",
         rotateClock: "rotate_clock",
       },
@@ -44,8 +48,8 @@ export class MouseStateMachine implements StateMachine {
       complete: {
         down: "record_mouse",
         background: "background_select",
-        select: "select",
-        paint: "paint",
+        select: "wait",
+        paint: "wait",
         obscure: "obscure",
         reveal: "reveal",
         zoomIn: "zoomIn",
@@ -88,6 +92,7 @@ export class MouseStateMachine implements StateMachine {
         done: "wait",
       },
       select: {
+        wait: "wait",
         down: "selecting",
       },
       selecting: {
@@ -95,6 +100,7 @@ export class MouseStateMachine implements StateMachine {
         up: "wait",
       },
       paint: {
+        wait: "wait",
         down: "painting",
         move: "record_mouse",
       },

@@ -358,16 +358,30 @@ const ContentEditor = ({
       {
         icon: Brush,
         tooltip: "Paint",
-        hidden: () => false,
+        hidden: () => internalState.painting,
         disabled: () => internalState.selecting,
         callback: () => sm.transition("paint"),
       },
       {
+        icon: Brush,
+        tooltip: "Finish Paint",
+        hidden: () => !internalState.painting,
+        disabled: () => false,
+        callback: () => sm.transition("wait"),
+      },
+      {
         icon: Rectangle,
         tooltip: "Select",
-        hidden: () => false,
-        disabled: () => internalState.selecting || internalState.painting,
+        hidden: () => internalState.selecting,
+        disabled: () => internalState.painting,
         callback: () => sm.transition("select"),
+      },
+      {
+        icon: Rectangle,
+        tooltip: "Finish Select",
+        hidden: () => !internalState.selecting,
+        disabled: () => false,
+        callback: () => sm.transition("wait"),
       },
     ];
     populateToolbar(actions);
@@ -411,6 +425,13 @@ const ContentEditor = ({
       // these ones update internal state - can't wait to fix that - doesn't feel right
       updateSelecting(false);
       updatePainting(false);
+      /**
+       * MICAH WHEN YOU RESUME we're using post paint/post select click in the complete state
+       * to move to wait an reset things... from here we have to post to the worker to clear any selection
+       *
+       * ... also probably fix state machine since it can't select after.
+       */
+      console.log(`MICAH YOU GOTTA CLEAN UP DANGLING SELECTIONS HERE`);
     });
 
     setCallback(sm, "record", () => {
@@ -448,18 +469,7 @@ const ContentEditor = ({
       });
     });
     setCallback(sm, "complete", () => {
-      if (internalState.selecting) {
-        if (
-          (sm.x1() === sm.x2() && sm.y1() === sm.y2()) ||
-          sm.x2() < 0 ||
-          sm.y2() < 0
-        ) {
-          sm.transition("wait");
-        }
-        worker.postMessage({ cmd: "end_selecting" });
-      } else if (internalState.painting) {
-        sm.transition("wait");
-      }
+      if (internalState.selecting) worker.postMessage({ cmd: "end_selecting" });
     });
     setCallback(sm, "opacity_select", () => {
       sm.resetCoordinates();
@@ -515,10 +525,10 @@ const ContentEditor = ({
     sceneManager,
     handleMouseMove,
     updateSelecting,
+    updatePainting,
     scene,
     overlayCanvasRef,
     worker,
-    updatePainting,
     internalState.painting,
     internalState.selecting,
   ]);
