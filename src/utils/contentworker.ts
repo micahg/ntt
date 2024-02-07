@@ -334,6 +334,13 @@ function storeOverlay(post = true) {
   overlayImage = fullOverlayCanvas.transferToImageBitmap();
 }
 
+function animateBrush() {
+  if (!recording) return;
+  if (selecting) renderImage(overlayCtx, overlayImage, _angle);
+  renderBrush(endX, endY, 10);
+  requestAnimationFrame(animateBrush);
+}
+
 function animateSelection() {
   if (!recording) return;
   if (selecting) {
@@ -473,24 +480,19 @@ self.onmessage = (evt) => {
       break;
     }
     case "paint": {
-      recording = true;
       [endX, endY] = [evt.data.x2, evt.data.y2];
+      if (!recording) {
+        recording = true;
+        requestAnimationFrame(animateBrush);
+      }
       if (evt.data.buttons === 0) {
-        // MICAH TODO I suspect that wee can do this faster by
-        // - request animate frame
-        // - paint overlay
-        // - paint translucent cursor
-        // AND IF IT IS FASTER you should rework selection to be the same!
+        selecting = true;
         overlayCtx.fillStyle = GUIDE_FILL;
-        restoreOverlay();
-        renderBrush(endX, endY, 10);
       } else if (evt.data.buttons === 1) {
-        recording = false;
+        // MICAH THIS DOESN"T SEEM RIGHT
+        // I FEEL LIKE HERE WE SHOULD JUST RENDER DIRECTLY TO THE IMAGE AND STORE IT AND LET THE ANIMATION FRAME PICK IT UP WITHOUT DRAWING THE TRANSLUCENT
         overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
-        overlayCtx.beginPath();
-        overlayCtx.arc(endX, endY, 10, 0, 2 * Math.PI);
-        overlayCtx.fill();
-        // console.log(`PAINT AT ${[x, y]}`);
+        selecting = false;
       }
       break;
     }

@@ -481,7 +481,9 @@ const ContentEditor = ({
       if (internalState.selecting) {
         worker.postMessage({ cmd: "end_selecting" });
         updateSelected(true);
-      } else if (internalState.painting) sm.transition("paint");
+      } else if (internalState.painting) {
+        sm.transition("paint");
+      }
     });
     setCallback(sm, "opacity_select", () => {
       sm.resetCoordinates();
