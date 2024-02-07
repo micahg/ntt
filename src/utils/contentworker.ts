@@ -336,8 +336,10 @@ function storeOverlay(post = true) {
 
 function animateBrush() {
   if (!recording) return;
-  if (selecting) renderImage(overlayCtx, overlayImage, _angle);
-  renderBrush(endX, endY, 10);
+  if (selecting) {
+    renderImage(overlayCtx, overlayImage, _angle);
+    renderBrush(endX, endY, 10);
+  }
   requestAnimationFrame(animateBrush);
 }
 
@@ -480,18 +482,27 @@ self.onmessage = (evt) => {
       break;
     }
     case "paint": {
+      // update the current mouse coordinates
       [endX, endY] = [evt.data.x2, evt.data.y2];
+
+      // if we are not recording then start recording and animating
       if (!recording) {
         recording = true;
         requestAnimationFrame(animateBrush);
       }
+
       if (evt.data.buttons === 0) {
+        // here we don't draw BUT if you look at animateBrush, you'll see that while we're selecting
+        // (drawing the translucent brush) we'll just repaint the overlay and then render the brush
         selecting = true;
         overlayCtx.fillStyle = GUIDE_FILL;
       } else if (evt.data.buttons === 1) {
-        // MICAH THIS DOESN"T SEEM RIGHT
-        // I FEEL LIKE HERE WE SHOULD JUST RENDER DIRECTLY TO THE IMAGE AND STORE IT AND LET THE ANIMATION FRAME PICK IT UP WITHOUT DRAWING THE TRANSLUCENT
+        // here however we just update the canvas with the actual brush. It seems that the fill call
+        // in renderBrush will force the canvas to update so there isn't much point in using animation
+        // frames
+        recording = false;
         overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+        renderBrush(endX, endY, 10);
         selecting = false;
       }
       break;
