@@ -54,6 +54,7 @@ let startX: number, startY: number, endX: number, endY: number;
 let lastAnimX = -1;
 let lastAnimY = -1;
 
+const GUIDE_FILL = "rgba(255, 255, 255, 0.25)";
 let opacity = "1";
 let red = "255";
 let green = "0";
@@ -236,6 +237,14 @@ function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
   return [p1.x, p1.y, p2.x - p1.x, p2.y - p1.y];
 }
 
+function renderBrush(x: number, y: number, radius: number) {
+  overlayCtx.save();
+  overlayCtx.beginPath();
+  overlayCtx.arc(x, y, radius, 0, 2 * Math.PI);
+  overlayCtx.fill();
+  overlayCtx.restore();
+}
+
 function renderBox(
   x1: number,
   y1: number,
@@ -329,7 +338,7 @@ function animateSelection() {
   if (!recording) return;
   if (selecting) {
     restoreOverlay();
-    renderBox(startX, startY, endX, endY, "rgba(255, 255, 255, 0.25)", false);
+    renderBox(startX, startY, endX, endY, GUIDE_FILL, false);
   } else if (panning) {
     // calculate the (rotated) movement since the last frame and update for the next
     const [w, h] = rot(-_angle, endX - lastAnimX, endY - lastAnimY);
@@ -464,13 +473,22 @@ self.onmessage = (evt) => {
       break;
     }
     case "paint": {
-      const [x, y] = [evt.data.x2, evt.data.y2];
+      recording = true;
+      [endX, endY] = [evt.data.x2, evt.data.y2];
       if (evt.data.buttons === 0) {
-        // console.log(`SHOW BRUSH ${[x, y]}`);
+        // MICAH TODO I suspect that wee can do this faster by
+        // - request animate frame
+        // - paint overlay
+        // - paint translucent cursor
+        // AND IF IT IS FASTER you should rework selection to be the same!
+        overlayCtx.fillStyle = GUIDE_FILL;
+        restoreOverlay();
+        renderBrush(endX, endY, 10);
       } else if (evt.data.buttons === 1) {
+        recording = false;
         overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
         overlayCtx.beginPath();
-        overlayCtx.arc(x, y, 10, 0, 2 * Math.PI);
+        overlayCtx.arc(endX, endY, 10, 0, 2 * Math.PI);
         overlayCtx.fill();
         // console.log(`PAINT AT ${[x, y]}`);
       }

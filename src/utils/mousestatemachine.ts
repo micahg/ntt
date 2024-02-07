@@ -48,8 +48,8 @@ export class MouseStateMachine implements StateMachine {
       complete: {
         down: "record_mouse",
         background: "background_select",
-        select: "wait",
-        paint: "wait",
+        select: "select",
+        paint: "paint",
         obscure: "obscure",
         reveal: "reveal",
         zoomIn: "zoomIn",
@@ -64,6 +64,7 @@ export class MouseStateMachine implements StateMachine {
         up: "complete",
         out: "complete",
         down: "record_mouse",
+        wait: "wait", // for situations like paint->record_mouse where we show translucent brush
       },
       obscure: {
         wait: "wait",
