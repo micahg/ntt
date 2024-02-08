@@ -277,6 +277,7 @@ function clearCanvas() {
   fullCtx.clearRect(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
 }
 
+// TODO this might be faster if we just paint hte image bitmaps instead
 function restoreOverlay() {
   overlayCtx.putImageData(buff, 0, 0);
   fullCtx.putImageData(fullBuff, 0, 0);
@@ -336,17 +337,15 @@ function storeOverlay(post = true) {
 
 function animateBrush() {
   if (!recording) return;
-  if (selecting) {
-    renderImage(overlayCtx, overlayImage, _angle);
-    renderBrush(endX, endY, 10);
-  }
+  renderImage(overlayCtx, overlayImage, _angle);
+  renderBrush(endX, endY, 10);
   requestAnimationFrame(animateBrush);
 }
 
 function animateSelection() {
   if (!recording) return;
   if (selecting) {
-    restoreOverlay();
+    renderImage(overlayCtx, overlayImage, _angle);
     renderBox(startX, startY, endX, endY, GUIDE_FILL, false);
   } else if (panning) {
     // calculate the (rotated) movement since the last frame and update for the next
@@ -485,25 +484,21 @@ self.onmessage = (evt) => {
       // update the current mouse coordinates
       [endX, endY] = [evt.data.x2, evt.data.y2];
 
-      // if we are not recording then start recording and animating
-      if (!recording) {
+      if (!recording && evt.data.buttons === 0) {
+        // here we don't draw BUT if you look at animateBrush, you'll see that we'll just repaint the
+        // overlay and then render the translucent brush
+        overlayCtx.fillStyle = GUIDE_FILL;
         recording = true;
         requestAnimationFrame(animateBrush);
-      }
-
-      if (evt.data.buttons === 0) {
-        // here we don't draw BUT if you look at animateBrush, you'll see that while we're selecting
-        // (drawing the translucent brush) we'll just repaint the overlay and then render the brush
-        selecting = true;
-        overlayCtx.fillStyle = GUIDE_FILL;
       } else if (evt.data.buttons === 1) {
         // here however we just update the canvas with the actual brush. It seems that the fill call
         // in renderBrush will force the canvas to update so there isn't much point in using animation
         // frames
-        recording = false;
-        overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+        if (recording) {
+          recording = false;
+          overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+        }
         renderBrush(endX, endY, 10);
-        selecting = false;
       }
       break;
     }
