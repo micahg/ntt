@@ -29,8 +29,6 @@ let fullCtx: OffscreenCanvasRenderingContext2D;
 let recording = false;
 let selecting = false;
 let panning = false;
-let buff: ImageData;
-let fullBuff: ImageData;
 let _angle: number;
 let _zoom: number;
 const _zoom_step = 0.5;
@@ -177,17 +175,10 @@ function renderAllCanvasses(
     renderImage(backgroundCtx, background, _angle);
     if (overlay) {
       renderImage(overlayCtx, overlay, _angle);
-      buff = overlayCtx.getImageData(
-        0,
-        0,
-        overlayCtx.canvas.width,
-        overlayCtx.canvas.height,
-      );
       // sync full overlay to background size and draw un-scaled/un-rotated image
       fullOverlayCanvas.width = background.width;
       fullOverlayCanvas.height = background.height;
       fullCtx.drawImage(overlay, 0, 0);
-      fullBuff = fullCtx.getImageData(0, 0, overlay.width, overlay.height);
     }
   }
 }
@@ -237,12 +228,20 @@ function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
   return [p1.x, p1.y, p2.x - p1.x, p2.y - p1.y];
 }
 
-function renderBrush(x: number, y: number, radius: number) {
+function renderBrush(x: number, y: number, radius: number, full = true) {
   overlayCtx.save();
   overlayCtx.beginPath();
   overlayCtx.arc(x, y, radius, 0, 2 * Math.PI);
   overlayCtx.fill();
   overlayCtx.restore();
+  if (full) {
+    const p = unrotateAndScalePoints(createPoints([x, y]))[0];
+    fullCtx.save();
+    fullCtx.beginPath();
+    fullCtx.arc(p.x, p.y, Math.round(radius * _zoom), 0, 2 * Math.PI);
+    fullCtx.fill();
+    fullCtx.restore();
+  }
 }
 
 function renderBox(
@@ -279,8 +278,8 @@ function clearCanvas() {
 
 // TODO this might be faster if we just paint hte image bitmaps instead
 function restoreOverlay() {
-  overlayCtx.putImageData(buff, 0, 0);
-  fullCtx.putImageData(fullBuff, 0, 0);
+  renderImage(overlayCtx, overlayImage, _angle);
+  fullCtx.drawImage(overlayImage, 0, 0);
 }
 
 function fullRerender(zoomOut = false) {
@@ -313,18 +312,6 @@ function fullRerender(zoomOut = false) {
  *             for upload.
  */
 function storeOverlay(post = true) {
-  fullBuff = fullCtx.getImageData(
-    0,
-    0,
-    fullCtx.canvas.width,
-    fullCtx.canvas.height,
-  );
-  buff = overlayCtx.getImageData(
-    0,
-    0,
-    overlayCtx.canvas.width,
-    overlayCtx.canvas.height,
-  );
   if (post)
     fullOverlayCanvas
       .convertToBlob()
@@ -338,7 +325,7 @@ function storeOverlay(post = true) {
 function animateBrush() {
   if (!recording) return;
   renderImage(overlayCtx, overlayImage, _angle);
-  renderBrush(endX, endY, 10);
+  renderBrush(endX, endY, 10, false);
   requestAnimationFrame(animateBrush);
 }
 
@@ -434,18 +421,6 @@ self.onmessage = (evt) => {
             fullWidth: backgroundImage.width,
             fullHeight: backgroundImage.height,
           });
-          buff = overlayCtx.getImageData(
-            0,
-            0,
-            overlayCtx.canvas.width,
-            overlayCtx.canvas.height,
-          );
-          fullBuff = fullCtx.getImageData(
-            0,
-            0,
-            fullCtx.canvas.width,
-            fullCtx.canvas.height,
-          );
         })
         .catch((err) => {
           console.error(
@@ -496,7 +471,9 @@ self.onmessage = (evt) => {
         // frames
         if (recording) {
           recording = false;
+          restoreOverlay(); // one day i hope someone smarter than me can explain why removing this wipes the canvas
           overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+          fullCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
         }
         renderBrush(endX, endY, 10);
       }
@@ -519,6 +496,11 @@ self.onmessage = (evt) => {
         panning = evt.data.buttons === 2;
         requestAnimationFrame(animateSelection);
       }
+      break;
+    }
+    case "end_painting": {
+      storeOverlay(true);
+      renderImage(overlayCtx, overlayImage, _angle);
       break;
     }
     case "end_selecting": {
