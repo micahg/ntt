@@ -34,6 +34,7 @@ export class MouseStateMachine implements StateMachine {
         background: "background_select",
         zoomOut: "zoomOut",
         clear: "clear",
+        down: "record_mouse", // canvas interaction with no tool selected (pan/zoom)
         /**********************/
         // don't add more of these -- these (paint, select, whatever else) are just instances of
         // recording -- it should probably be a "record" state and then track what the recording means
@@ -46,7 +47,7 @@ export class MouseStateMachine implements StateMachine {
       },
       // after select or paint is done
       complete: {
-        down: "record_mouse",
+        down: "record_mouse", // canvas interaction with no tool selected (pan/zoom)
         background: "background_select",
         select: "select",
         paint: "paint",

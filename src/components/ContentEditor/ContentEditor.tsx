@@ -201,7 +201,7 @@ const ContentEditor = ({
       let cmd;
       if (internalState.painting) cmd = "paint";
       else if (internalState.selecting) cmd = "record";
-      else return;
+      else cmd = "move";
       worker.postMessage({
         cmd: cmd,
         buttons: buttons,
@@ -432,11 +432,18 @@ const ContentEditor = ({
     if (!scene || !worker) return;
 
     setCallback(sm, "wait", () => {
+      // if we're on wait we are brand new OR we've come from complete (eg: select or paint)
+      // either way, we need to basically disable most actions and make sure the worker is
+      // chilled out
       sm.resetCoordinates();
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
       // these ones update internal state - can't wait to fix that - doesn't feel right
       updateSelecting(false);
+      // state machine for paint loops from complete back to paint to prevent having to click
+      // the paint button every time. So, now we know we're *really* done, make sure the worker
+      // knows too and stops recording mouse events
+      worker.postMessage({ cmd: "wait" });
       updatePainting(false);
       updateSelected(false);
     });
@@ -482,7 +489,11 @@ const ContentEditor = ({
         worker.postMessage({ cmd: "end_selecting" });
         updateSelected(true);
       } else if (internalState.painting) {
+        worker.postMessage({ cmd: "end_painting" });
         sm.transition("paint");
+      } else {
+        worker.postMessage({ cmd: "end_panning" });
+        sm.transition("wait");
       }
     });
     setCallback(sm, "opacity_select", () => {
@@ -566,6 +577,14 @@ const ContentEditor = ({
     canvas.addEventListener("mouseup", (e) => sm.transition("up", e));
     canvas.addEventListener("mousemove", (e) => sm.transition("move", e));
     canvas.addEventListener("wheel", (e: WheelEvent) => {
+      // MICAH RESUME HERE
+      //
+      // state machine is a little more generic now. Wheel event should
+      // increase/decrease brush size while painting OR zoom in and out while
+      // not, so this TOO depends on the internalstate of the component.
+      //
+      // FIX is probably to sm.stransition(wheelevent) and then check the internal
+      // state in th callback.
       if (e.deltaY > 0) {
         worker.postMessage({ cmd: "zoom_in", x: e.offsetX, y: e.offsetY });
       } else if (e.deltaY < 0) {

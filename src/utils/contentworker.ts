@@ -479,6 +479,7 @@ self.onmessage = (evt) => {
       }
       break;
     }
+    case "move":
     case "record": {
       if (lastAnimX < 0) {
         // less than 0 indicates a new recording so initialize the last
@@ -492,13 +493,21 @@ self.onmessage = (evt) => {
       endY = evt.data.y2;
       if (!recording) {
         recording = true;
-        selecting = evt.data.buttons === 1;
-        panning = evt.data.buttons === 2;
+        selecting = evt.data.cmd === "record";
+        panning = evt.data.cmd === "move";
         requestAnimationFrame(animateSelection);
       }
       break;
     }
+    case "wait":
+    case "end_panning": {
+      panning = false;
+      recording = false;
+      break;
+    }
     case "end_painting": {
+      recording = false;
+      panning = false;
       storeOverlay(true);
       renderImage(overlayCtx, overlayImage, _angle);
       break;
