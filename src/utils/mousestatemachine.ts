@@ -21,6 +21,8 @@ export class MouseStateMachine implements StateMachine {
         y1: number,
         x2: number,
         y2: number,
+        x?: number,
+        y?: number,
       ) => void)
     | null = null;
 
@@ -32,7 +34,7 @@ export class MouseStateMachine implements StateMachine {
       wait: {
         push: "push",
         background: "background_select",
-        zoomOut: "zoomOut",
+        remoteZoomOut: "remoteZoomOut",
         clear: "clear",
         down: "record_mouse", // canvas interaction with no tool selected (pan/zoom)
         /**********************/
@@ -54,7 +56,7 @@ export class MouseStateMachine implements StateMachine {
         paint: "paint",
         obscure: "obscure",
         reveal: "reveal",
-        zoomIn: "zoomIn",
+        remoteZoomIn: "remoteZoomIn",
         wait: "wait",
       },
       push: {
@@ -73,12 +75,20 @@ export class MouseStateMachine implements StateMachine {
         done: "record_mouse",
       },
       obscure: {
-        wait: "wait",
+        select: "select",
       },
       reveal: {
+        select: "select",
+      },
+      // LOCAL EDITOR ZOOM
+      zoom: {
         wait: "wait",
       },
-      zoom: {
+      // REMOTE DISPLAY ZOOMS
+      remoteZoomIn: {
+        select: "select",
+      },
+      remoteZoomOut: {
         wait: "wait",
       },
       background_select: {
@@ -185,6 +195,8 @@ export class MouseStateMachine implements StateMachine {
           this.startY,
           this.endX,
           this.endY,
+          evt.offsetX,
+          evt.offsetY,
         );
     }
   }

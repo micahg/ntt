@@ -34,6 +34,7 @@ let _zoom: number;
 const _zoom_step = 0.5;
 let _max_zoom: number;
 let _first_zoom_step: number;
+let _frame: number;
 
 // canvas width and height (sent from main thread)
 const _canvas: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -328,11 +329,12 @@ function storeOverlay(post = true) {
   overlayImage = fullOverlayCanvas.transferToImageBitmap();
 }
 
-function animateBrush() {
+function animateBrush(x: number, y: number) {
   if (!recording) return;
   renderImage(overlayCtx, overlayImage, _angle);
-  renderBrush(endX, endY, brush, false);
-  requestAnimationFrame(animateBrush);
+  renderBrush(x, y, brush, false);
+  _frame = requestAnimationFrame(() => animateBrush(x, y));
+  console.log(_frame);
 }
 
 function animateSelection() {
@@ -463,14 +465,19 @@ self.onmessage = (evt) => {
     }
     case "paint": {
       // update the current mouse coordinates
-      [endX, endY] = [evt.data.x2, evt.data.y2];
+      // [endX, endY] = [evt.data.x2, evt.data.y2];
 
-      if (!recording && evt.data.buttons === 0) {
+      if (evt.data.buttons === 0) {
         // here we don't draw BUT if you look at animateBrush, you'll see that we'll just repaint the
         // overlay and then render the translucent brush
-        overlayCtx.fillStyle = GUIDE_FILL;
-        recording = true;
-        requestAnimationFrame(animateBrush);
+        if (!recording) {
+          overlayCtx.fillStyle = GUIDE_FILL;
+          recording = true;
+        }
+        // IS this even necessary? I guess if the mouse moves faster than the screen refresh it might cut some
+        // old frames out of the list
+        cancelAnimationFrame(_frame);
+        requestAnimationFrame(() => animateBrush(evt.data.x, evt.data.y));
       } else if (evt.data.buttons === 1) {
         // here however we just update the canvas with the actual brush. It seems that the fill call
         // in renderBrush will force the canvas to update so there isn't much point in using animation
@@ -481,7 +488,7 @@ self.onmessage = (evt) => {
           overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
           fullCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
         }
-        renderBrush(endX, endY, brush);
+        renderBrush(evt.data.x, evt.data.y, brush);
       }
       break;
     }
@@ -490,13 +497,13 @@ self.onmessage = (evt) => {
       if (lastAnimX < 0) {
         // less than 0 indicates a new recording so initialize the last
         // animation x and y coordinates
-        lastAnimX = evt.data.x1;
-        lastAnimY = evt.data.y1;
+        lastAnimX = evt.data.x;
+        lastAnimY = evt.data.y;
+        startX = evt.data.x;
+        startY = evt.data.y;
       }
-      startX = evt.data.x1;
-      startY = evt.data.y1;
-      endX = evt.data.x2;
-      endY = evt.data.y2;
+      endX = evt.data.x;
+      endY = evt.data.y;
       if (!recording) {
         recording = true;
         selecting = evt.data.cmd === "record";

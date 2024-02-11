@@ -196,7 +196,15 @@ const ContentEditor = ({
   }, 250);
 
   const handleMouseMove = useCallback(
-    (buttons: number, x1: number, y1: number, x2: number, y2: number) => {
+    (
+      buttons: number,
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+      x?: number,
+      y?: number,
+    ) => {
       if (!worker) return;
       let cmd;
       if (internalState.painting) cmd = "paint";
@@ -209,6 +217,8 @@ const ContentEditor = ({
         y1: y1,
         x2: x2,
         y2: y2,
+        x: x,
+        y: y,
       });
     },
     [internalState.selecting, internalState.painting, worker],
@@ -343,14 +353,14 @@ const ContentEditor = ({
         tooltip: "Zoom In",
         hidden: () => internalState.zoom,
         disabled: () => !internalState.selected,
-        callback: () => sm.transition("zoomIn"),
+        callback: () => sm.transition("remoteZoomIn"),
       },
       {
         icon: ZoomOut,
         tooltip: "Zoom Out",
         hidden: () => !internalState.zoom,
         disabled: () => false,
-        callback: () => sm.transition("zoomOut"),
+        callback: () => sm.transition("remoteZoomOut"),
       },
       {
         icon: Opacity,
@@ -466,18 +476,19 @@ const ContentEditor = ({
     setCallback(sm, "background_upload", sceneManager);
     setCallback(sm, "obscure", () => {
       worker.postMessage({ cmd: "obscure" });
-      sm.transition("wait");
+      sm.transition("select");
     });
     setCallback(sm, "reveal", () => {
       worker.postMessage({ cmd: "reveal" });
-      sm.transition("wait");
+      sm.transition("select");
     });
-    setCallback(sm, "zoomIn", () => {
+    setCallback(sm, "remoteZoomIn", () => {
       if (!worker) return;
+      sm.transition("select");
       const sel = getRect(sm.x1(), sm.y1(), sm.x2(), sm.y2());
       worker.postMessage({ cmd: "zoom", rect: sel });
     });
-    setCallback(sm, "zoomOut", () => {
+    setCallback(sm, "remoteZoomOut", () => {
       const imgRect = getRect(0, 0, imageSize[0], imageSize[1]);
       dispatch({
         type: "content/zoom",
