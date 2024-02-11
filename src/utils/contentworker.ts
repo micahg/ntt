@@ -191,7 +191,7 @@ function unrotateAndScalePoints(points: Point[]) {
 }
 
 /**
- * Given to points on the overlay, un-rotate and scale to the full size overlay
+ * Given two points on the overlay, un-rotate and scale to the full size overlay
  */
 function unrotateBox(x1: number, y1: number, x2: number, y2: number) {
   const op = rotateBackToBackgroundOrientation;
@@ -235,7 +235,11 @@ function renderBrush(x: number, y: number, radius: number, full = true) {
   overlayCtx.fill();
   overlayCtx.restore();
   if (full) {
+    // un-rotate and scale
     const p = unrotateAndScalePoints(createPoints([x, y]))[0];
+    // then add the image area offset
+    p.x += _img.x;
+    p.y += _img.y;
     fullCtx.save();
     fullCtx.beginPath();
     fullCtx.arc(p.x, p.y, Math.round(radius * _zoom), 0, 2 * Math.PI);
