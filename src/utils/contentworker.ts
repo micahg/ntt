@@ -334,7 +334,6 @@ function animateBrush(x: number, y: number) {
   renderImage(overlayCtx, overlayImage, _angle);
   renderBrush(x, y, brush, false);
   _frame = requestAnimationFrame(() => animateBrush(x, y));
-  console.log(_frame);
 }
 
 function animateSelection() {
