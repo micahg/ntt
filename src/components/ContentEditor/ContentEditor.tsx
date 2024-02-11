@@ -467,7 +467,7 @@ const ContentEditor = ({
     });
     setCallback(sm, "background_upload", sceneManager);
     setCallback(sm, "obscure", () => {
-      worker.postMessage({ cmd: "obscure" });
+      worker.postMessage({ cmd: "obscure", rect: selection });
       sm.transition("select");
     });
     setCallback(sm, "reveal", () => {

@@ -557,7 +557,8 @@ self.onmessage = (evt) => {
     case "obscure": {
       restoreOverlay();
       const fill = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
-      renderBox(startX, startY, endX, endY, fill);
+      const r = evt.data.rect as unknown as Rect;
+      renderBox(r.x, r.y, r.x + r.width, r.y + r.height, fill);
       storeOverlay();
       break;
     }
