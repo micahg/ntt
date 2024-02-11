@@ -13,18 +13,7 @@ export class MouseStateMachine implements StateMachine {
   startY = -1;
   endX = 0;
   endY = 0;
-  startCallback: (() => void) | null = null;
-  moveCallback:
-    | ((
-        buttons: number,
-        x1: number,
-        y1: number,
-        x2: number,
-        y2: number,
-        x?: number,
-        y?: number,
-      ) => void)
-    | null = null;
+  moveCallback: ((buttons: number, x: number, y: number) => void) | null = null;
 
   constructor() {
     this.current = "wait";
@@ -180,25 +169,8 @@ export class MouseStateMachine implements StateMachine {
     ) {
       return;
     }
-    // TODO stop recording start/end coordinates -- let the recipient do it
-    if (this.startX < 0) {
-      this.startX = evt.offsetX;
-      this.startY = evt.offsetY;
-      if (this.startCallback) this.startCallback();
-    } else {
-      this.endY = evt.offsetY;
-      this.endX = evt.offsetX;
-      if (this.moveCallback)
-        this.moveCallback(
-          evt.buttons,
-          this.startX,
-          this.startY,
-          this.endX,
-          this.endY,
-          evt.offsetX,
-          evt.offsetY,
-        );
-    }
+    if (this.moveCallback)
+      this.moveCallback(evt.buttons, evt.offsetX, evt.offsetY);
   }
 
   public resetCoordinates() {
@@ -222,18 +194,7 @@ export class MouseStateMachine implements StateMachine {
     return this.endY;
   }
 
-  public setMoveCallback(
-    cb: (
-      buttons: number,
-      x1: number,
-      y1: number,
-      x2: number,
-      y2: number,
-    ) => void,
-  ) {
+  public setMoveCallback(cb: (buttons: number, x: number, y: number) => void) {
     this.moveCallback = cb;
-  }
-  public setStartCallback(cb: () => void) {
-    this.startCallback = cb;
   }
 }

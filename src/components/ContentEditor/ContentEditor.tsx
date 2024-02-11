@@ -8,7 +8,7 @@ import React, {
 import { useDispatch, useSelector } from "react-redux";
 import { AppReducerState } from "../../reducers/AppReducer";
 import { getRect } from "../../utils/drawing";
-import { getWidthAndHeight } from "../../utils/geometry";
+import { Rect, getWidthAndHeight } from "../../utils/geometry";
 import { MouseStateMachine } from "../../utils/mousestatemachine";
 import { setCallback } from "../../utils/statemachine";
 import styles from "./ContentEditor.module.css";
@@ -90,6 +90,7 @@ const ContentEditor = ({
     useState<boolean>(false); // avoid transfer errors
   const [downloads] = useState<Record<string, number>>({});
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [selection, setSelection] = useState<Rect | null>(null);
 
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
@@ -196,15 +197,7 @@ const ContentEditor = ({
   }, 250);
 
   const handleMouseMove = useCallback(
-    (
-      buttons: number,
-      x1: number,
-      y1: number,
-      x2: number,
-      y2: number,
-      x?: number,
-      y?: number,
-    ) => {
+    (buttons: number, x: number, y: number) => {
       if (!worker) return;
       let cmd;
       if (internalState.painting) cmd = "paint";
@@ -213,10 +206,6 @@ const ContentEditor = ({
       worker.postMessage({
         cmd: cmd,
         buttons: buttons,
-        x1: x1,
-        y1: y1,
-        x2: x2,
-        y2: y2,
         x: x,
         y: y,
       });
@@ -271,6 +260,9 @@ const ContentEditor = ({
       } else if (evt.data.cmd === "pan_complete") {
         // after panning is done, we can go back to waiting state
         sm.transition("wait");
+      } else if (evt.data.cmd === "select_complete") {
+        if ("rect" in evt.data) setSelection(evt.data.rect as unknown as Rect);
+        else console.error(`No rect in ${evt.data.cmd}`);
       } else if (evt.data.cmd === "progress") {
         if ("evt" in evt.data) {
           const e = evt.data.evt as LoadProgress;
@@ -485,8 +477,7 @@ const ContentEditor = ({
     setCallback(sm, "remoteZoomIn", () => {
       if (!worker) return;
       sm.transition("select");
-      const sel = getRect(sm.x1(), sm.y1(), sm.x2(), sm.y2());
-      worker.postMessage({ cmd: "zoom", rect: sel });
+      worker.postMessage({ cmd: "zoom", rect: selection });
     });
     setCallback(sm, "remoteZoomOut", () => {
       const imgRect = getRect(0, 0, imageSize[0], imageSize[1]);
@@ -531,7 +522,6 @@ const ContentEditor = ({
     setCallback(sm, "update_render_opacity", (args) =>
       worker.postMessage({ cmd: "opacity", opacity: args[0] }),
     );
-    sm.setStartCallback(() => worker.postMessage({ cmd: "start_recording" }));
     sm.setMoveCallback(handleMouseMove);
     setCallback(sm, "push", () => dispatch({ type: "content/push" }));
     setCallback(sm, "clear", () => {
@@ -590,6 +580,7 @@ const ContentEditor = ({
     overlayCanvasRef,
     worker,
     internalState,
+    selection,
   ]);
 
   useEffect(() => {

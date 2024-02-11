@@ -529,6 +529,11 @@ self.onmessage = (evt) => {
       if (panning) {
         storeOverlay(false);
         postMessage({ cmd: "pan_complete" });
+      } else {
+        postMessage({
+          cmd: "select_complete",
+          rect: rectFromPoints(createPoints([startX, startY, endX, endY])),
+        });
       }
       // when we're done recording we're done panning BUT not selecting
       // we still have a selection on screen. Selection ends at the start
@@ -538,6 +543,10 @@ self.onmessage = (evt) => {
       // reset last animation coordinates
       lastAnimX = -1;
       lastAnimY = -1;
+      startX = -1;
+      startY = -1;
+      endX = -1;
+      endY = -1;
       break;
     }
     case "obscure": {
