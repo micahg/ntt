@@ -516,6 +516,12 @@ self.onmessage = (evt) => {
     case "end_panning": {
       panning = false;
       recording = false;
+      lastAnimX = -1;
+      lastAnimY = -1;
+      startX = -1;
+      startY = -1;
+      endX = -1;
+      endY = -1;
       break;
     }
     case "end_painting": {
