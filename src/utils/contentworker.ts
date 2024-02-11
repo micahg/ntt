@@ -52,11 +52,13 @@ let startX: number, startY: number, endX: number, endY: number;
 let lastAnimX = -1;
 let lastAnimY = -1;
 
+const MIN_BRUSH = 10;
 const GUIDE_FILL = "rgba(255, 255, 255, 0.25)";
 let opacity = "1";
 let red = "255";
 let green = "0";
 let blue = "0";
+let brush = MIN_BRUSH;
 
 function trimPanning() {
   if (_img.x <= 0) _img.x = 0;
@@ -329,7 +331,7 @@ function storeOverlay(post = true) {
 function animateBrush() {
   if (!recording) return;
   renderImage(overlayCtx, overlayImage, _angle);
-  renderBrush(endX, endY, 10, false);
+  renderBrush(endX, endY, brush, false);
   requestAnimationFrame(animateBrush);
 }
 
@@ -479,7 +481,7 @@ self.onmessage = (evt) => {
           overlayCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
           fullCtx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
         }
-        renderBrush(endX, endY, 10);
+        renderBrush(endX, endY, brush);
       }
       break;
     }
@@ -602,6 +604,14 @@ self.onmessage = (evt) => {
       else zoom += _zoom_step;
       if (zoom >= _max_zoom) zoom = _max_zoom; // after a resize this can happen
       if (zoom !== _zoom) adjustZoom(zoom, evt.data.x, evt.data.y);
+      break;
+    }
+    case "brush_inc": {
+      brush += MIN_BRUSH;
+      break;
+    }
+    case "brush_dec": {
+      brush -= brush > MIN_BRUSH ? MIN_BRUSH : 0;
       break;
     }
     default: {

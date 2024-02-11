@@ -549,6 +549,17 @@ const ContentEditor = ({
         worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
       }
     });
+    setCallback(sm, "record_mouse_wheel", (args) => {
+      if (internalState.painting) {
+        sm.transition("done");
+        const e: WheelEvent = args[0] as WheelEvent;
+        if (e.deltaY > 0) {
+          worker.postMessage({ cmd: "brush_inc", x: e.offsetX, y: e.offsetY });
+        } else if (e.deltaY < 0) {
+          worker.postMessage({ cmd: "brush_dec", x: e.offsetX, y: e.offsetY });
+        }
+      }
+    });
     setCallback(sm, "rotate_clock", () => {
       const angle = ((scene.angle || 0) + 90) % 360;
       worker.postMessage({ cmd: "rotate", angle: angle });

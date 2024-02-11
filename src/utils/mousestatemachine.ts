@@ -67,6 +67,10 @@ export class MouseStateMachine implements StateMachine {
         out: "complete",
         down: "record_mouse",
         wait: "wait", // for situations like paint->record_mouse where we show translucent brush
+        wheel: "record_mouse_wheel",
+      },
+      record_mouse_wheel: {
+        done: "record_mouse",
       },
       obscure: {
         wait: "wait",
