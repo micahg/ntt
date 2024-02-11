@@ -540,6 +540,15 @@ const ContentEditor = ({
     setCallback(sm, "painting", () => {
       console.log("NOW PAINTING");
     });
+    setCallback(sm, "zoom", (args) => {
+      sm.transition("wait");
+      const e: WheelEvent = args[0] as WheelEvent;
+      if (e.deltaY > 0) {
+        worker.postMessage({ cmd: "zoom_in", x: e.offsetX, y: e.offsetY });
+      } else if (e.deltaY < 0) {
+        worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
+      }
+    });
     setCallback(sm, "rotate_clock", () => {
       const angle = ((scene.angle || 0) + 90) % 360;
       worker.postMessage({ cmd: "rotate", angle: angle });
@@ -576,21 +585,7 @@ const ContentEditor = ({
     canvas.addEventListener("mousedown", (e) => sm.transition("down", e));
     canvas.addEventListener("mouseup", (e) => sm.transition("up", e));
     canvas.addEventListener("mousemove", (e) => sm.transition("move", e));
-    canvas.addEventListener("wheel", (e: WheelEvent) => {
-      // MICAH RESUME HERE
-      //
-      // state machine is a little more generic now. Wheel event should
-      // increase/decrease brush size while painting OR zoom in and out while
-      // not, so this TOO depends on the internalstate of the component.
-      //
-      // FIX is probably to sm.stransition(wheelevent) and then check the internal
-      // state in th callback.
-      if (e.deltaY > 0) {
-        worker.postMessage({ cmd: "zoom_in", x: e.offsetX, y: e.offsetY });
-      } else if (e.deltaY < 0) {
-        worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
-      }
-    });
+    canvas.addEventListener("wheel", (e) => sm.transition("wheel", e));
 
     // watch for canvas size changes and report to worker
     new ResizeObserver((e) => handleResizeEvent(e)).observe(canvas);

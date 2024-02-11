@@ -44,6 +44,7 @@ export class MouseStateMachine implements StateMachine {
         /**********************/
         opacity: "opacity_select",
         rotateClock: "rotate_clock",
+        wheel: "zoom",
       },
       // after select or paint is done
       complete: {
@@ -73,10 +74,7 @@ export class MouseStateMachine implements StateMachine {
       reveal: {
         wait: "wait",
       },
-      zoomIn: {
-        wait: "wait",
-      },
-      zoomOut: {
+      zoom: {
         wait: "wait",
       },
       background_select: {
