@@ -283,7 +283,6 @@ function clearCanvas() {
   fullCtx.clearRect(0, 0, fullCtx.canvas.width, fullCtx.canvas.height);
 }
 
-// TODO this might be faster if we just paint hte image bitmaps instead
 function restoreOverlay() {
   renderImage(overlayCtx, overlayImage, _angle);
   fullCtx.drawImage(overlayImage, 0, 0);
