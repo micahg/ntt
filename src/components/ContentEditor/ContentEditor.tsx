@@ -8,16 +8,18 @@ import React, {
 import { useDispatch, useSelector } from "react-redux";
 import { AppReducerState } from "../../reducers/AppReducer";
 import { getRect } from "../../utils/drawing";
-import { getWidthAndHeight } from "../../utils/geometry";
+import { Rect, getWidthAndHeight } from "../../utils/geometry";
 import { MouseStateMachine } from "../../utils/mousestatemachine";
 import { setCallback } from "../../utils/statemachine";
 import styles from "./ContentEditor.module.css";
 import {
+  Rectangle,
   RotateRight,
   Opacity,
   ZoomIn,
   ZoomOut,
   LayersClear,
+  Brush,
   Sync,
   Map,
   Palette,
@@ -49,8 +51,10 @@ interface ContentEditorProps {
 // so that the object itself remains unchanged.
 interface InternalState {
   color: RefObject<HTMLInputElement>;
-  obscure: boolean;
+  selecting: boolean;
+  selected: boolean;
   zoom: boolean;
+  painting: boolean;
 }
 
 const ContentEditor = ({
@@ -66,8 +70,10 @@ const ContentEditor = ({
 
   const [internalState] = useState<InternalState>({
     zoom: false,
-    obscure: false,
+    selecting: false,
+    selected: false,
     color: createRef(),
+    painting: false,
   });
   const [showBackgroundMenu, setShowBackgroundMenu] = useState<boolean>(false);
   const [showOpacityMenu, setShowOpacityMenu] = useState<boolean>(false);
@@ -84,6 +90,7 @@ const ContentEditor = ({
     useState<boolean>(false); // avoid transfer errors
   const [downloads] = useState<Record<string, number>>({});
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [selection, setSelection] = useState<Rect | null>(null);
 
   /**
    * THIS GUY RIGHT HERE IS REALLY IMPORTANT. Because we use a callback to render
@@ -110,10 +117,29 @@ const ContentEditor = ({
     (state: AppReducerState) => state.content.pushTime,
   );
 
-  const updateObscure = useCallback(
+  const updateSelecting = useCallback(
     (value: boolean) => {
-      if (internalState.obscure !== value && redrawToolbar) {
-        internalState.obscure = value;
+      if (internalState.selecting !== value && redrawToolbar) {
+        internalState.selecting = value;
+        redrawToolbar();
+      }
+    },
+    [internalState, redrawToolbar],
+  );
+  const updateSelected = useCallback(
+    (value: boolean) => {
+      if (internalState.selected !== value && redrawToolbar) {
+        internalState.selected = value;
+        redrawToolbar();
+      }
+    },
+    [internalState, redrawToolbar],
+  );
+
+  const updatePainting = useCallback(
+    (value: boolean) => {
+      if (internalState.painting !== value && redrawToolbar) {
+        internalState.painting = value;
         redrawToolbar();
       }
     },
@@ -170,19 +196,21 @@ const ContentEditor = ({
     if (worker) worker.postMessage({ cmd: "resize", width: w, height: h });
   }, 250);
 
-  const selectOverlay = useCallback(
-    (buttons: number, x1: number, y1: number, x2: number, y2: number) => {
+  const handleMouseMove = useCallback(
+    (buttons: number, x: number, y: number) => {
       if (!worker) return;
+      let cmd;
+      if (internalState.painting) cmd = "paint";
+      else if (internalState.selecting) cmd = "record";
+      else cmd = "move";
       worker.postMessage({
-        cmd: "record",
+        cmd: cmd,
         buttons: buttons,
-        x1: x1,
-        y1: y1,
-        x2: x2,
-        y2: y2,
+        x: x,
+        y: y,
       });
     },
-    [worker],
+    [internalState.selecting, internalState.painting, worker],
   );
 
   /**
@@ -232,6 +260,9 @@ const ContentEditor = ({
       } else if (evt.data.cmd === "pan_complete") {
         // after panning is done, we can go back to waiting state
         sm.transition("wait");
+      } else if (evt.data.cmd === "select_complete") {
+        if ("rect" in evt.data) setSelection(evt.data.rect as unknown as Rect);
+        else console.error(`No rect in ${evt.data.cmd}`);
       } else if (evt.data.cmd === "progress") {
         if ("evt" in evt.data) {
           const e = evt.data.evt as LoadProgress;
@@ -271,71 +302,101 @@ const ContentEditor = ({
         icon: Sync,
         tooltip: "Sync Remote Display",
         hidden: () => false,
-        disabled: () => false,
+        disabled: () => internalState.painting || internalState.selecting,
         callback: () => sm.transition("push"),
       },
       {
         icon: Map,
         tooltip: "Scene Backgrounds",
         hidden: () => false,
-        disabled: () => false,
+        disabled: () => internalState.painting || internalState.selecting,
         callback: sceneManager,
       },
       {
         icon: Palette,
         tooltip: "Color Palette",
         hidden: () => false,
-        disabled: () => false,
+        disabled: () => internalState.painting || internalState.selecting,
         callback: gmSelectColor,
       },
       {
         icon: LayersClear,
         tooltip: "Clear Overlay",
         hidden: () => false,
-        disabled: () => internalState.obscure,
+        disabled: () => internalState.selecting || internalState.painting,
         callback: () => sm.transition("clear"),
       },
       {
         icon: VisibilityOff,
         tooltip: "Obscure",
         hidden: () => false,
-        disabled: () => !internalState.obscure,
+        disabled: () => !internalState.selected,
         callback: () => sm.transition("obscure"),
       },
       {
         icon: Visibility,
         tooltip: "Reveal",
         hidden: () => false,
-        disabled: () => !internalState.obscure,
+        disabled: () => !internalState.selected,
         callback: () => sm.transition("reveal"),
       },
       {
         icon: ZoomIn,
         tooltip: "Zoom In",
         hidden: () => internalState.zoom,
-        disabled: () => !internalState.obscure,
-        callback: () => sm.transition("zoomIn"),
+        disabled: () => !internalState.selected,
+        callback: () => sm.transition("remoteZoomIn"),
       },
       {
         icon: ZoomOut,
         tooltip: "Zoom Out",
         hidden: () => !internalState.zoom,
         disabled: () => false,
-        callback: () => sm.transition("zoomOut"),
+        callback: () => sm.transition("remoteZoomOut"),
       },
       {
         icon: Opacity,
         tooltip: "Opacity",
         hidden: () => false,
-        disabled: () => internalState.obscure,
+        disabled: () => internalState.selecting || internalState.painting,
         callback: (evt) => gmSelectOpacityMenu(evt),
       },
       {
         icon: RotateRight,
         tooltip: "Rotate",
         hidden: () => false,
-        disabled: () => internalState.obscure,
+        disabled: () => internalState.selecting || internalState.painting,
         callback: () => sm.transition("rotateClock"),
+      },
+      {
+        icon: Brush,
+        tooltip: "Paint",
+        hidden: () => internalState.painting,
+        disabled: () => internalState.selecting,
+        callback: () => sm.transition("paint"),
+      },
+      {
+        icon: Brush,
+        tooltip: "Finish Paint",
+        emphasis: true,
+        hidden: () => !internalState.painting,
+        disabled: () => false,
+        callback: () => sm.transition("wait"),
+      },
+      {
+        icon: Rectangle,
+        tooltip: "Select",
+        hidden: () => internalState.selecting,
+        disabled: () => internalState.painting,
+        callback: () => sm.transition("select"),
+      },
+      {
+        icon: Rectangle,
+        tooltip: "Finish Select",
+        emphasis: true,
+        hidden: () => !internalState.selecting,
+        disabled: () => false,
+        callback: () => sm.transition("wait"),
       },
     ];
     populateToolbar(actions);
@@ -373,21 +434,32 @@ const ContentEditor = ({
     if (!scene || !worker) return;
 
     setCallback(sm, "wait", () => {
+      // if we're on wait we are brand new OR we've come from complete (eg: select or paint)
+      // either way, we need to basically disable most actions and make sure the worker is
+      // chilled out
       sm.resetCoordinates();
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
-      updateObscure(false);
+      // these ones update internal state - can't wait to fix that - doesn't feel right
+      updateSelecting(false);
+      // state machine for paint loops from complete back to paint to prevent having to click
+      // the paint button every time. So, now we know we're *really* done, make sure the worker
+      // knows too and stops recording mouse events
+      worker.postMessage({ cmd: "wait" });
+      updatePainting(false);
+      updateSelected(false);
     });
 
     setCallback(sm, "record", () => {
       setShowBackgroundMenu(false);
       setShowOpacityMenu(false);
-      updateObscure(true);
       setShowOpacitySlider(false);
+      updateSelected(false);
     });
     setCallback(sm, "background_select", () => {
       sm.resetCoordinates();
-      updateObscure(false);
+      updateSelecting(false);
+      updateSelected(false);
       setShowBackgroundMenu(true);
     });
     setCallback(sm, "background_link", () => {
@@ -395,19 +467,19 @@ const ContentEditor = ({
     });
     setCallback(sm, "background_upload", sceneManager);
     setCallback(sm, "obscure", () => {
-      worker.postMessage({ cmd: "obscure" });
-      sm.transition("wait");
+      worker.postMessage({ cmd: "obscure", rect: selection });
+      sm.transition("select");
     });
     setCallback(sm, "reveal", () => {
       worker.postMessage({ cmd: "reveal" });
-      sm.transition("wait");
+      sm.transition("select");
     });
-    setCallback(sm, "zoomIn", () => {
+    setCallback(sm, "remoteZoomIn", () => {
       if (!worker) return;
-      const sel = getRect(sm.x1(), sm.y1(), sm.x2(), sm.y2());
-      worker.postMessage({ cmd: "zoom", rect: sel });
+      sm.transition("select");
+      worker.postMessage({ cmd: "zoom", rect: selection });
     });
-    setCallback(sm, "zoomOut", () => {
+    setCallback(sm, "remoteZoomOut", () => {
       const imgRect = getRect(0, 0, imageSize[0], imageSize[1]);
       dispatch({
         type: "content/zoom",
@@ -415,23 +487,21 @@ const ContentEditor = ({
       });
     });
     setCallback(sm, "complete", () => {
-      // console.log(`${sm.x1()}, ${sm.x2()}, ${sm.y1()}, ${sm.y2()}`)
-      // so if we measure the coordinates to be the same OR the end
-      // coordinates, x2 or y2, are less than 0 (no end recorded)
-      // just transition back to the start
-      if (
-        (sm.x1() === sm.x2() && sm.y1() === sm.y2()) ||
-        sm.x2() < 0 ||
-        sm.y2() < 0
-      ) {
+      if (internalState.selecting) {
+        worker.postMessage({ cmd: "end_selecting" });
+        updateSelected(true);
+      } else if (internalState.painting) {
+        worker.postMessage({ cmd: "end_painting" });
+        sm.transition("paint");
+      } else {
+        worker.postMessage({ cmd: "end_panning" });
         sm.transition("wait");
       }
-      worker.postMessage({ cmd: "endrecording" });
     });
     setCallback(sm, "opacity_select", () => {
       sm.resetCoordinates();
-      // setCanObscure(false);
-      updateObscure(false);
+      updateSelecting(false);
+      updateSelected(false);
       setShowOpacityMenu(true);
     });
     setCallback(sm, "opacity_display", () => {
@@ -452,12 +522,44 @@ const ContentEditor = ({
     setCallback(sm, "update_render_opacity", (args) =>
       worker.postMessage({ cmd: "opacity", opacity: args[0] }),
     );
-    sm.setStartCallback(() => worker.postMessage({ cmd: "start_recording" }));
-    sm.setMoveCallback(selectOverlay);
+    sm.setMoveCallback(handleMouseMove);
     setCallback(sm, "push", () => dispatch({ type: "content/push" }));
     setCallback(sm, "clear", () => {
       worker.postMessage({ cmd: "clear" });
       sm.transition("done");
+    });
+    setCallback(sm, "select", () => {
+      updateSelecting(true);
+      updateSelected(false);
+      updatePainting(false);
+    });
+    setCallback(sm, "paint", () => {
+      updateSelecting(false);
+      updateSelected(false);
+      updatePainting(true);
+    });
+    setCallback(sm, "painting", () => {
+      console.log("NOW PAINTING");
+    });
+    setCallback(sm, "zoom", (args) => {
+      sm.transition("wait");
+      const e: WheelEvent = args[0] as WheelEvent;
+      if (e.deltaY > 0) {
+        worker.postMessage({ cmd: "zoom_in", x: e.offsetX, y: e.offsetY });
+      } else if (e.deltaY < 0) {
+        worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
+      }
+    });
+    setCallback(sm, "record_mouse_wheel", (args) => {
+      if (internalState.painting) {
+        sm.transition("done");
+        const e: WheelEvent = args[0] as WheelEvent;
+        if (e.deltaY > 0) {
+          worker.postMessage({ cmd: "brush_inc", x: e.offsetX, y: e.offsetY });
+        } else if (e.deltaY < 0) {
+          worker.postMessage({ cmd: "brush_dec", x: e.offsetX, y: e.offsetY });
+        }
+      }
     });
     setCallback(sm, "rotate_clock", () => {
       const angle = ((scene.angle || 0) + 90) % 360;
@@ -470,11 +572,15 @@ const ContentEditor = ({
     dispatch,
     imageSize,
     sceneManager,
-    selectOverlay,
-    updateObscure,
+    handleMouseMove,
+    updateSelecting,
+    updatePainting,
+    updateSelected,
     scene,
     overlayCanvasRef,
     worker,
+    internalState,
+    selection,
   ]);
 
   useEffect(() => {
@@ -492,13 +598,7 @@ const ContentEditor = ({
     canvas.addEventListener("mousedown", (e) => sm.transition("down", e));
     canvas.addEventListener("mouseup", (e) => sm.transition("up", e));
     canvas.addEventListener("mousemove", (e) => sm.transition("move", e));
-    canvas.addEventListener("wheel", (e: WheelEvent) => {
-      if (e.deltaY > 0) {
-        worker.postMessage({ cmd: "zoom_in", x: e.offsetX, y: e.offsetY });
-      } else if (e.deltaY < 0) {
-        worker.postMessage({ cmd: "zoom_out", x: e.offsetX, y: e.offsetY });
-      }
-    });
+    canvas.addEventListener("wheel", (e) => sm.transition("wheel", e));
 
     // watch for canvas size changes and report to worker
     new ResizeObserver((e) => handleResizeEvent(e)).observe(canvas);
