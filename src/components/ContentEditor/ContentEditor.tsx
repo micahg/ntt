@@ -12,6 +12,7 @@ import { Rect, getWidthAndHeight } from "../../utils/geometry";
 import { MouseStateMachine } from "../../utils/mousestatemachine";
 import { setCallback } from "../../utils/statemachine";
 import styles from "./ContentEditor.module.css";
+import MenuIcon from "@mui/icons-material/Menu";
 import {
   Rectangle,
   RotateRight,
@@ -34,6 +35,8 @@ import {
   Popover,
   Slider,
   LinearProgress,
+  Paper,
+  Typography,
 } from "@mui/material";
 import { setupOffscreenCanvas } from "../../utils/offscreencanvas";
 import { debounce } from "lodash";
@@ -723,53 +726,111 @@ const ContentEditor = ({
         position: "relative",
       }}
     >
-      {/* <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
-        <LinearProgress />
-      </Box> */}
-      <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>
-        Sorry, your browser does not support canvas.
-      </canvas>
-      <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef} />
-      <canvas hidden ref={fullCanvasRef} />
-      <input
-        ref={colorInputRef}
-        type="color"
-        defaultValue="#ff0000"
-        onChange={(evt) => setOverlayColour(evt.target.value)}
-        hidden
-      />
       {showBackgroundMenu && (
         <div className={`${styles.Menu} ${styles.BackgroundMenu}`}>
           <button onClick={() => sm.transition("upload")}>Upload</button>
           <button onClick={() => sm.transition("link")}>Link</button>
         </div>
       )}
-      <Menu open={showOpacityMenu} anchorEl={anchorEl}>
-        <MenuItem onClick={() => gmSelectOpacityOption("display")}>
-          Display Opacity
-        </MenuItem>
-        <MenuItem onClick={() => gmSelectOpacityOption("render")}>
-          Render Opacity
-        </MenuItem>
-      </Menu>
-      <Popover
-        anchorEl={anchorEl}
-        open={showOpacitySlider}
-        onClose={gmCloseOpacitySlider}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Box sx={{ width: "10em", mt: "3em", mb: "1em", mx: "2em" }}>
-          <Slider
-            min={0}
-            max={1}
-            step={0.01}
-            defaultValue={1}
-            aria-label="Default"
-            valueLabelDisplay="auto"
-            onChange={gmSetOpacity}
-          />
+      {!scene?.playerContent && (
+        <Box sx={{ padding: "1em" }}>
+          <Paper sx={{ padding: "1em", margin: "1em 0" }} elevation={6}>
+            <Typography variant="h5" gutterBottom>
+              Editor Crash Course
+            </Typography>
+            <p>Welcome, GM, to the tabletop editor.</p>
+            <ul>
+              <li>
+                Scenes can be accessed from the{" "}
+                <MenuIcon sx={{ verticalAlign: "bottom" }} /> in the top left.
+              </li>
+              <li>
+                You can set the scene image using the{" "}
+                <Map sx={{ verticalAlign: "bottom" }} /> button in the editor
+                toolbar.
+              </li>
+              <ul>
+                <li>Scenes have a player-visible image.</li>
+                <li>
+                  Optionally, you can also set a detailed image that includes
+                  information that should not be shared with viewers.
+                </li>
+                <li>
+                  When you have set your images, come back and edit the
+                  <MenuIcon sx={{ verticalAlign: "bottom" }} /> and the scene by
+                  its name.
+                </li>
+              </ul>
+              <li>
+                <Brush sx={{ verticalAlign: "bottom" }} /> will allow you to
+                paint.
+              </li>
+              <li>
+                <Rectangle sx={{ verticalAlign: "bottom" }} /> allows you to
+                select regions.
+              </li>
+              <ul>
+                <li>
+                  Selected regions can be obscured &#40;
+                  <VisibilityOff sx={{ verticalAlign: "bottom" }} />
+                  &#41;, revealed &#40;
+                  <Visibility sx={{ verticalAlign: "bottom" }} />
+                  &#41; revealed, and zoomed &#40;
+                  <ZoomIn sx={{ verticalAlign: "bottom" }} />
+                  <ZoomOut sx={{ verticalAlign: "bottom" }} />
+                  &#41;on the remote display.
+                </li>
+              </ul>
+            </ul>
+            <p>
+              Using the mouse wheel you can zoom in and out on the editor. While
+              painting, the mouse wheel will change the size of your brush.
+            </p>
+          </Paper>
         </Box>
-      </Popover>
+      )}
+      {scene?.playerContent && (
+        <Box>
+          <canvas className={styles.ContentCanvas} ref={contentCanvasRef}>
+            Sorry, your browser does not support canvas.
+          </canvas>
+          <canvas className={styles.OverlayCanvas} ref={overlayCanvasRef} />
+          <canvas hidden ref={fullCanvasRef} />
+          <input
+            ref={colorInputRef}
+            type="color"
+            defaultValue="#ff0000"
+            onChange={(evt) => setOverlayColour(evt.target.value)}
+            hidden
+          />
+          <Menu open={showOpacityMenu} anchorEl={anchorEl}>
+            <MenuItem onClick={() => gmSelectOpacityOption("display")}>
+              Display Opacity
+            </MenuItem>
+            <MenuItem onClick={() => gmSelectOpacityOption("render")}>
+              Render Opacity
+            </MenuItem>
+          </Menu>
+          <Popover
+            anchorEl={anchorEl}
+            open={showOpacitySlider}
+            onClose={gmCloseOpacitySlider}
+            anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          >
+            <Box sx={{ width: "10em", mt: "3em", mb: "1em", mx: "2em" }}>
+              <Slider
+                min={0}
+                max={1}
+                step={0.01}
+                defaultValue={1}
+                aria-label="Default"
+                valueLabelDisplay="auto"
+                onChange={gmSetOpacity}
+              />
+            </Box>
+          </Popover>
+        </Box>
+      )}
       {downloadProgress > 0 && downloadProgress < 100 && (
         <Box sx={{ margin: "-0.5em", width: `calc(100% + 1em)` }}>
           <LinearProgress variant="determinate" value={downloadProgress} />
